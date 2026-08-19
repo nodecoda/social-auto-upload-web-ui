@@ -515,146 +515,13 @@
             </template>
 
             <!-- settingsFields（排除已在通用字段渲染的） -->
-            <template v-for="field in currentPlatformConfig.settingsFields" :key="field.key">
-              <template v-if="field.key !== 'title' && field.key !== 'description' && field.key !== 'videoFormat'">
-                <div
-                  v-if="!field.visibleWhen || form[field.visibleWhen.key] === field.visibleWhen.value"
-                  :class="['setting-card', { 'setting-card--full-row': field.fullRow }]"
-                  :style="{ borderColor: currentPlatformConfig.color + '26', background: currentPlatformConfig.color + '0a' }"
-                >
-                  <div class="setting-label" :style="{ color: currentPlatformConfig.color }">
-                    <span v-if="field.required" style="color: #f56c6c; margin-right: 2px;">*</span>
-                    {{ field.label }}
-                  </div>
-                  <div v-if="field.description" class="setting-desc">{{ field.description }}</div>
-
-                  <el-input
-                    v-if="field.type === 'input'"
-                    v-model="form[field.key]"
-                    :placeholder="field.placeholder"
-                    size="small"
-                  />
-                  <el-switch
-                    v-else-if="field.type === 'switch'"
-                    v-model="form[field.key]"
-                  />
-                  <div v-else-if="field.type === 'radio'" class="radio-row" :class="{ 'is-disabled': field.disabledWhen && form[field.disabledWhen.key] === field.disabledWhen.value }">
-                    <label
-                      v-for="opt in field.options"
-                      :key="String(opt.value)"
-                      :class="['radio-item', { 'cursor-pointer': !(field.disabledWhen && form[field.disabledWhen.key] === field.disabledWhen.value), 'is-disabled': field.disabledWhen && form[field.disabledWhen.key] === field.disabledWhen.value }]"
-                    >
-                      <input
-                        type="radio"
-                        :name="(selectedAccountId || selectedPlatform) + '-' + field.key"
-                        :value="opt.value"
-                        v-model="form[field.key]"
-                        :disabled="field.disabledWhen && form[field.disabledWhen.key] === field.disabledWhen.value"
-                        class="cursor-pointer"
-                      />
-                      <span
-                        :class="['radio-text', { on: form[field.key] === opt.value }]"
-                        :style="form[field.key] === opt.value && !(field.disabledWhen && form[field.disabledWhen.key] === field.disabledWhen.value) ? { borderColor: currentPlatformConfig.color, color: currentPlatformConfig.color } : {}"
-                      >{{ opt.label }}</span>
-                    </label>
-                  </div>
-                  <el-select
-                    v-else-if="field.type === 'select'"
-                    v-model="form[field.key]"
-                    :placeholder="field.placeholder"
-                    size="small"
-                    clearable
-                    class="cursor-pointer"
-                  >
-                    <el-option
-                      v-for="opt in (field.options || [])"
-                      :key="opt.value"
-                      :label="opt.label"
-                      :value="opt.value"
-                    />
-                    <el-option v-if="!field.options || field.options.length === 0" label="暂无可选项" :value="''" disabled />
-                  </el-select>
-                  <el-select
-                    v-else-if="field.type === 'multiSelect'"
-                    v-model="form[field.key]"
-                    :placeholder="field.placeholder"
-                    size="small"
-                    multiple
-                    collapse-tags
-                    collapse-tags-tooltip
-                    clearable
-                    class="cursor-pointer"
-                  >
-                    <el-option
-                      v-for="opt in (field.options || [])"
-                      :key="opt.value"
-                      :label="opt.label"
-                      :value="opt.value"
-                    />
-                    <el-option v-if="!field.options || field.options.length === 0" label="暂无可选项" :value="''" disabled />
-                  </el-select>
-                  <el-date-picker
-                    v-else-if="field.type === 'datetime'"
-                    v-model="form[field.key]"
-                    type="datetime"
-                    :placeholder="field.placeholder"
-                    :disabled-date="field.disabledDate || (field.key === 'scheduleTime' ? scheduleDisabledDate : undefined)"
-                    :disabled-hours="field.disabledHours || (field.key === 'scheduleTime' ? () => scheduleDisabledHours(field.key) : undefined)"
-                    :disabled-minutes="field.disabledMinutes || (field.key === 'scheduleTime' ? (h) => scheduleDisabledMinutes(field.key, h) : undefined)"
-                    value-format="YYYY-MM-DD HH:mm:ss"
-                    size="small"
-                    class="cursor-pointer"
-                  />
-                  <el-date-picker
-                    v-else-if="field.type === 'date'"
-                    v-model="form[field.key]"
-                    type="date"
-                    :placeholder="field.placeholder"
-                    :disabled-date="(date) => date > new Date()"
-                    value-format="YYYY-MM-DD"
-                    size="small"
-                    class="cursor-pointer"
-                  />
-                  <XhsPoiSelect
-                    v-else-if="field.type === 'poiSelect' && !field.key.startsWith('vivo')"
-                    :account-id="selectedAccountId"
-                    v-model="form[field.key]"
-                    :data="form[field.key + 'Data']"
-                    @change="(val) => handleXhsPoiChange(field.key, val)"
-                  />
-                  <VivoPositionSelect
-                    v-else-if="field.type === 'poiSelect' && field.key.startsWith('vivo')"
-                    :account-id="selectedAccountId"
-                    v-model="form[field.key]"
-                    :data="form[field.key + 'Data']"
-                    @change="(val) => handleXhsPoiChange(field.key, val)"
-                  />
-                  <el-cascader
-                    v-else-if="field.type === 'cascader'"
-                    v-model="form[field.key]"
-                    :options="field.options || []"
-                    :placeholder="field.placeholder"
-                    :props="field.props || { expandTrigger: 'hover' }"
-                    size="small"
-                    clearable
-                    filterable
-                    class="cursor-pointer weibo-cascader"
-                  />
-                  <RemoteSearchSelect
-                    v-else-if="field.type === 'compilationSelect'"
-                    v-model="form[field.key]"
-                    :data="form.compilationData"
-                    :fetcher="fetchCompilation"
-                    :field-map="compilationFieldMap"
-                    search-mode="backend"
-                    empty-behavior="clear"
-                    placeholder="输入合集名称搜索"
-                    search-placeholder="输入合集名称,按回车搜索"
-                    @change="(val) => handleAlipayCompilationChange(field.key, val)"
-                  />
-                </div>
-              </template>
-            </template>
+            <SettingsFieldsRenderer
+              :fields="currentPlatformConfig.settingsFields"
+              :form="form"
+              :platform="currentPlatformConfig"
+              :selected-platform="selectedPlatform"
+              :selected-account-id="selectedAccountId"
+            />
           </div>
         </div>
 
@@ -789,19 +656,16 @@ import OneClickFillDialog from '@/components/OneClickFillDialog.vue'
 import DouyinActivitySelect from '@/components/douyin/ActivitySelect.vue'
 import DouyinTagSelect from '@/components/douyin/TagSelect.vue'
 import { channelsApi } from '@/api/channels'
-import XhsPoiSelect from '@/components/xiaohongshu/PoiSelect.vue'
-import VivoPositionSelect from '@/components/vivo/PositionSelect.vue'
 import RemoteSearchSelect from '@/components/common/RemoteSearchSelect.vue'
 import PrePublishCheckDialog from '@/components/PrePublishCheckDialog.vue'
 import GuangheItemPicker from '@/components/GuangheItemPicker.vue'
 import JdItemPicker from '@/components/JdItemPicker.vue'
 import PublishHeader from '@/components/PublishHeader.vue'
 import PublishPhonePreview from '@/components/PublishPhonePreview.vue'
+import SettingsFieldsRenderer from '@/components/SettingsFieldsRenderer.vue'
 import { xhsApi } from '@/api/xiaohongshu'
 import { biliApi } from '@/api/bilibili'
 import { douyinImageApi } from '@/api/douyinImage'
-import { alipayApi } from '@/api/alipay'
-import { toutiaoApi } from '@/api/toutiao'
 import { weiboApi } from '@/api/weibo'
 import { weixinGzhApi } from '@/api/weixin_gzh'
 import { jdApi } from '@/api/jd'
@@ -1076,49 +940,6 @@ const MEDIA_KEYS = new Set([
 ])
 
 // ========== Schedule Time Picker Constraints ==========
-// 定时发布:必须晚于当前时间,最多往后 14 天
-// 仅对 scheduleTime 字段生效,其它 datetime 字段不受影响
-const SCHEDULE_MAX_DAYS = 14
-
-function scheduleDisabledDate(date) {
-  if (!date) return false
-  const now = new Date()
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const maxDate = new Date(startOfToday)
-  maxDate.setDate(maxDate.getDate() + SCHEDULE_MAX_DAYS)
-  return date < startOfToday || date > maxDate
-}
-
-function _sameDay(a, b) {
-  return a.getFullYear() === b.getFullYear()
-    && a.getMonth() === b.getMonth()
-    && a.getDate() === b.getDate()
-}
-
-// disabled-hours: 选中日期为今天时禁用已过去的小时
-function scheduleDisabledHours(fieldKey) {
-  if (fieldKey !== 'scheduleTime') return []
-  const raw = form[fieldKey]
-  if (!raw) return []
-  const selected = new Date(raw)
-  if (isNaN(selected.getTime())) return []
-  const now = new Date()
-  if (!_sameDay(selected, now)) return []
-  return Array.from({ length: now.getHours() }, (_, i) => i)
-}
-
-// disabled-minutes: 选中日期为今天且小时为当前小时时禁用已过去的分钟
-function scheduleDisabledMinutes(fieldKey, hour) {
-  if (fieldKey !== 'scheduleTime') return []
-  const raw = form[fieldKey]
-  if (!raw) return []
-  const selected = new Date(raw)
-  if (isNaN(selected.getTime())) return []
-  const now = new Date()
-  if (!_sameDay(selected, now) || hour !== now.getHours()) return []
-  return Array.from({ length: now.getMinutes() }, (_, i) => i)
-}
-
 // ========== 淘宝光合: 关联商品/店铺 picker ==========
 // picker 组件可见性 + 配置
 const guanghePickerVisible = ref(false)
@@ -1522,15 +1343,6 @@ function handleDouyinMixChange(mix) {
   }
 }
 
-// 支付宝合集选择回调:把选中的完整对象存到 form.compilationData 便于回显,
-// v-model 已把 compilationId 绑定到 form.compilation
-function handleAlipayCompilationChange(fieldKey, comp) {
-  if (comp) {
-    form.compilationData = comp
-  } else {
-    form.compilationData = null
-  }
-}
 
 // B站合集 —— RemoteSearchSelect 数据源(前端过滤模式)
 async function fetchBiliCollections(keyword) {
@@ -1552,25 +1364,6 @@ async function fetchDouyinMixes(keyword) {
   }
 }
 
-// 支付宝/头条合集(compilation)—— RemoteSearchSelect 数据源(后端搜索模式)
-// 按 selectedPlatform 切换 api:头条用 toutiaoApi,其余用 alipayApi
-async function fetchCompilation(keyword) {
-  const api = selectedPlatform.value === 'toutiao' ? toutiaoApi : alipayApi
-  const resp = await api.searchCompilation(selectedAccountId.value, keyword || '')
-  return { list: resp.data?.list || [] }
-}
-// compilation 字段映射:title 主标题,category+total 派生描述,coverUrl 扁平封面
-const compilationFieldMap = {
-  label: 'title',
-  key: 'compilationId',
-  desc: (item) => {
-    const parts = []
-    if (item.category) parts.push(item.category)
-    if (item.total != null) parts.push(`${item.total} 个内容`)
-    return parts.join(' · ')
-  },
-  cover: 'coverUrl'
-}
 
 // 微博合集 —— RemoteSearchSelect 数据源(后端一次返回全量,前端过滤)
 async function fetchWeiboCollections(keyword) {
@@ -1640,14 +1433,6 @@ const xhsCollectionFieldMap = {
     : ''
 }
 
-// 小红书拍摄地点(POI)选择回调:存完整对象到 <key>Data,publishData 取 poi 名称
-function handleXhsPoiChange(fieldKey, poi) {
-  if (poi) {
-    form[fieldKey + 'Data'] = poi
-  } else {
-    form[fieldKey + 'Data'] = null
-  }
-}
 
 // B 站合集选择回调:v-model 已把 biliCollectionName 绑到 form,
 // 这里把完整对象存到 form.biliCollectionData
@@ -2962,6 +2747,7 @@ function formatSize(bytes) {
 
 <style lang="scss" scoped>
 @use '@/styles/variables.scss' as *;
+@use '@/styles/settings-card.scss' as *;
 
 .cursor-pointer {
   cursor: pointer;
@@ -3230,89 +3016,6 @@ function formatSize(bytes) {
   grid-column: 1 / -1;
 }
 
-.setting-card {
-  padding: 14px 16px;
-  border: 1px solid;
-  border-radius: $radius-card;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  transition: $transition-base;
-
-  &:hover {
-    filter: brightness(1.1);
-  }
-
-  .setting-label {
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .setting-desc {
-    font-size: 12px;
-    color: $text-secondary;
-    line-height: 1.6;
-    white-space: pre-line;
-  }
-
-  :deep(.el-input__wrapper),
-  :deep(.el-select .el-input__wrapper) {
-    background: rgba($overlay-rgb, 0.03);
-    border: 1px solid $border;
-    border-radius: $radius-sm;
-    box-shadow: none;
-    transition: $transition-base;
-
-    &:hover {
-      border-color: $border-active;
-    }
-  }
-
-  .radio-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-
-    // 禁用态(如小红书选「来源转载」时原创声明禁用)
-    &.is-disabled {
-      .radio-item.is-disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-        pointer-events: none;
-      }
-    }
-  }
-
-  .radio-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-
-    input[type='radio'] {
-      display: none;
-    }
-
-    .radio-text {
-      padding: 4px 14px;
-      border: 1px solid $border;
-      border-radius: $radius-sm;
-      font-size: 12px;
-      color: $text-secondary;
-      transition: $transition-base;
-
-      &.on {
-        font-weight: 600;
-        box-shadow: 0 0 0 1px rgba($brand-start, 0.3);
-      }
-    }
-
-    &.disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-      .radio-text.muted { opacity: 0.5; }
-    }
-  }
-}
 
 .setting-hint {
   font-size: 12px;
