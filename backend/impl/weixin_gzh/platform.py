@@ -642,6 +642,8 @@ class WeixinGzhPlatform(BasePlatform):
                 logger.info("[阶段①] 等待视频上传完成...")
                 await self._wait_for_video_uploaded(page)
                 logger.info("[阶段①] 视频上传成功!")
+                # 关闭上传成功通知("知道了"弹窗)
+                await self._dismiss_upload_notice(page)
 
                 # 3. 封面(公众号固定 16:9)
                 if cover_path:
@@ -761,6 +763,36 @@ class WeixinGzhPlatform(BasePlatform):
         await upload_input.wait_for(state="attached", timeout=15000)
         await upload_input.set_input_files(file_path)
         logger.info("[阶段①] 视频文件已提交,等待上传...")
+
+
+    @staticmethod
+    async def _dismiss_upload_notice(page):
+        """关闭上传成功通知（「知道了」提示）。
+
+        实测: 视频上传成功后页面 header 通知区域会弹出「知道了」按钮
+        （位于 .weui-desktop-block__main__header__extend 内,不是标准
+        dialog）。该通知若不关闭，「保存并发表」/「保存」/「预览」按钮
+        会一直被 disabled,导致 _click_save_and_send 里 force click 也无效
+        （点了不产生任何效果,不会有新 tab）。
+        """
+        try:
+            clicked = await page.evaluate(
+                """() => {
+                    const btns = Array.from(document.querySelectorAll('button'));
+                    const t = btns.find(b =>
+                        (b.textContent || '').trim() === '知道了'
+                        && b.offsetParent !== null
+                    );
+                    if (t) { t.click(); return true; }
+                    return false;
+                }"""
+            )
+            if clicked:
+                logger.info("[阶段①] 已关闭上传成功通知「知道了」")
+            else:
+                logger.info("[阶段①] 未发现上传成功通知（或已自动消失）")
+        except Exception as e:
+            logger.info("[阶段①] 关闭上传通知异常(非致命): %s", str(e)[:80])
 
     @staticmethod
     async def _wait_for_video_uploaded(page, timeout_s: int = 14400):

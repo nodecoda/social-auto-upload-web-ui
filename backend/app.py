@@ -175,7 +175,9 @@ from blueprints.jd_bp import bp as jd_bp  # noqa: E402
 app.register_blueprint(jd_bp)
 logger.info("[Startup] jd_picker registered OK")
 
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend" / "dist"
+if not FRONTEND_DIR.exists():
+    FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 logger.info(f"[Startup] Frontend dir: {FRONTEND_DIR} (exists={FRONTEND_DIR.exists()})")
 
 

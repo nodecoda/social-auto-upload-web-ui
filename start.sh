@@ -330,6 +330,18 @@ print_ok "ffprobe 已安装 ($(cmd_source ffprobe))"
 # 清除系统代理，避免 httpx/cloakbrowser 读取到不支持的 socks:// 代理
 unset http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY
 
+# 若本机存在本地代理（127.0.0.1:10809，如 clash/v2ray），自动启用 http/https 代理
+# 用于访问 code&浏览器下载、微信域名等需要网络的请求；cloakbrowser 仅支持 http 代理
+if [ -n "${LOCAL_PROXY:-}" ]; then
+    export http_proxy="$LOCAL_PROXY"
+    export https_proxy="$LOCAL_PROXY"
+    print_ok "已启用本地代理: $LOCAL_PROXY"
+elif command -v ss &>/dev/null && ss -tln 2>/dev/null | grep -q "127.0.0.1:10809"; then
+    export http_proxy="http://127.0.0.1:10809"
+    export https_proxy="http://127.0.0.1:10809"
+    print_ok "已启用本地代理: http://127.0.0.1:10809"
+fi
+
 # ============================================================
 # Step 2: 处理端口冲突
 # ============================================================

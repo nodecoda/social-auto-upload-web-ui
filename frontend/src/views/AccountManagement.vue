@@ -970,7 +970,7 @@ const handleDelete = (row) => {
 }
 
 const handleDownloadCookie = (row) => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5409'
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
   const downloadUrl = `${baseUrl}/downloadCookie?filePath=${encodeURIComponent(row.filePath)}`
   const link = document.createElement('a')
   link.href = downloadUrl

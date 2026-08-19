@@ -252,7 +252,7 @@ const dialogDrafts = ref([])                // 给 dialog 的草稿列表
 const dialogFailures = ref([])              // 校验失败列表
 const isPublishing = ref(false)
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5409'
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
 
 function getCoverUrl(path) {
   return getFileUrl(path)

@@ -171,7 +171,7 @@ function startLogin(platformKey, accountId = null) {
 
   const type = platform.id  // 1-10
   const tempId = crypto.randomUUID()
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5409'
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
   let url = `${baseUrl}/login?type=${type}&id=${encodeURIComponent(tempId)}`
   if (accountId) {
     url += `&account_id=${encodeURIComponent(accountId)}`

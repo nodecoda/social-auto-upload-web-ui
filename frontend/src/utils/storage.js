@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5409'
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || window.location.origin
 
 /**
  * 统一文件 URL 构建

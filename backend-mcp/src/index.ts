@@ -7,10 +7,6 @@ import { AuthManager } from './auth.js';
 
 async function main() {
   const config = loadConfig();
-  const server = createMcpServer({
-    backendUrl: config.backendUrl,
-    dbPath: config.dbPath,
-  });
 
   const auth = new AuthManager(config.dbPath);
   await auth.init();
@@ -20,16 +16,27 @@ async function main() {
   console.log(`[MCP] DB Path: ${config.dbPath}`);
   console.log(`[MCP] Auth enabled: ${auth.isAuthEnabled()}`);
 
+  // ── Stdio 模式 ──
   if (config.transportMode === 'stdio' || config.transportMode === 'both') {
+    const stdioServer = createMcpServer({
+      backendUrl: config.backendUrl,
+      dbPath: config.dbPath,
+    });
     const stdioTransport = new StdioServerTransport();
-    await server.connect(stdioTransport);
+    await stdioServer.connect(stdioTransport);
     console.log('[MCP] Stdio transport connected');
   }
 
+  // ── SSE 模式 ──
   if (config.transportMode === 'sse' || config.transportMode === 'both') {
+    const sseServer = createMcpServer({
+      backendUrl: config.backendUrl,
+      dbPath: config.dbPath,
+    });
+
     const app = express();
 
-    // 存储活跃的SSE传输实例
+    // 存储活跃的 SSE 传输实例
     const transports: Map<string, SSEServerTransport> = new Map();
 
     // SSE 端点鉴权：未配置 token 时放行；配置了则要求 Bearer header 或 ?token= query
@@ -53,7 +60,7 @@ async function main() {
         transports.delete(sseTransport.sessionId);
       };
 
-      await server.connect(sseTransport);
+      await sseServer.connect(sseTransport);
       await sseTransport.start();
     });
 

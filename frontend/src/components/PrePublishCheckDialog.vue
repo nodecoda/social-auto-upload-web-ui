@@ -291,7 +291,7 @@ function startRelogin(card) {
   card.fixError = ''
 
   const tempId = crypto.randomUUID()
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5409'
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
   const url = `${baseUrl}/login?type=${card.type}&id=${encodeURIComponent(tempId)}&account_id=${encodeURIComponent(card.id)}`
 
   const es = new EventSource(url)

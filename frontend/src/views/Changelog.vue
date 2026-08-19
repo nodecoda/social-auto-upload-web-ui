@@ -60,7 +60,7 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const dialogUrl = ref('')
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5409'
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
 
 function formatDay(dateStr) {
   if (!dateStr) return ''

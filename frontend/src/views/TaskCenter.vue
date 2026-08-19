@@ -165,7 +165,7 @@ const fetchQueueStatus = async () => {
 // SSE connection for real-time updates
 let eventSource = null
 const connectSSE = () => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5409'
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
   eventSource = new EventSource(`${baseUrl}/api/v2/tasks/stream`)
   eventSource.onmessage = (e) => {
     try {
