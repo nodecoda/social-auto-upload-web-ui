@@ -77,6 +77,11 @@ echo ""
 echo -e "${CYAN}是否更新？[Y/n]  更新将覆盖本地修改，未提交的代码将丢失${NC}"
 read -r answer
 if [[ ! "$answer" =~ ^[Nn]$ ]]; then
+    if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+        echo -e "${CROSS} 检测到未提交的本地修改，已取消更新。"
+        echo "  请先提交或 stash 本地修改（git status 查看详情）"
+        exit 1
+    fi
     git reset --hard "origin/$CURRENT_BRANCH" > /dev/null 2>&1
     echo -e "${CHECK} 更新完成"
 else

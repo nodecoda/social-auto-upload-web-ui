@@ -15,6 +15,10 @@ import tempfile
 _TEST_DATA_DIR = tempfile.mkdtemp(prefix='sau_pytest_')
 os.environ['SAU_DATA_DIR'] = _TEST_DATA_DIR
 
+# 反馈测试凭据：conf.py 不再含硬编码默认值，测试环境提供假凭据（真实环境变量优先）
+os.environ.setdefault('FEEDBACK_APP_KEY', 'ak_test')
+os.environ.setdefault('FEEDBACK_APP_SECRET', 'sk_test')
+
 import pytest
 
 

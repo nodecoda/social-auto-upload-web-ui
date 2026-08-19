@@ -95,9 +95,14 @@ if command -v git &>/dev/null && [[ -d "$PROJECT_ROOT/.git" ]]; then
     echo -e "${CYAN}正在检查并更新到最新版本...${NC}"
     git remote set-url origin "$REPO_URL" 2>/dev/null
     if git fetch origin "$MAIN_BRANCH" 2>/dev/null; then
-        git checkout -f "$MAIN_BRANCH" 2>/dev/null
-        git reset --hard "origin/$MAIN_BRANCH"
-        echo -e "${CHECK} 已更新到最新版本"
+        if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+            print_warn "检测到未提交的本地修改，跳过自动更新（避免覆盖）"
+            echo "  请先提交或 stash 本地修改（git status 查看详情）"
+        else
+            git checkout -f "$MAIN_BRANCH" 2>/dev/null
+            git reset --hard "origin/$MAIN_BRANCH"
+            echo -e "${CHECK} 已更新到最新版本"
+        fi
     else
         print_warn "无法连接 GitHub 更新，继续使用本地版本"
     fi

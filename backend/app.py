@@ -37,6 +37,8 @@ from conf import (
 from util._logger import get_channel_logger
 
 logger = get_channel_logger("backend")
+if not (FEEDBACK_APP_KEY and FEEDBACK_APP_SECRET):
+    logger.warning("[Feedback] 未配置 FEEDBACK_APP_KEY / FEEDBACK_APP_SECRET，反馈系统将返回 503（可在环境变量配置）")
 
 
 def _ensure_materials_table():
@@ -1515,6 +1517,11 @@ def health_check():
 # ── 反馈系统代理（HMAC 签名由后端完成，前端永不接触 app_secret）──
 
 
+def _feedback_configured() -> bool:
+    """反馈凭据是否已配置（环境变量 FEEDBACK_APP_KEY / FEEDBACK_APP_SECRET）。"""
+    return bool(FEEDBACK_APP_KEY and FEEDBACK_APP_SECRET)
+
+
 def _feedback_sign(timestamp_ms: str, app_key: str = None, app_secret: str = None) -> str:
     if app_key is None:
         app_key = FEEDBACK_APP_KEY
@@ -1547,6 +1554,8 @@ def feedback_list():
     - status=1/2/3/4 → 仅对应状态
     - include_all=true → 全部
     """
+    if not _feedback_configured():
+        return jsonify({'code': 503, 'message': '反馈系统未配置（缺少 FEEDBACK_APP_KEY / FEEDBACK_APP_SECRET）', 'data': None}), 503
     try:
         page = int(request.args.get('page', 1))
         page_size = min(int(request.args.get('page_size', 20)), 100)
@@ -1593,6 +1602,8 @@ def feedback_list():
 
 @app.route('/api/feedback/submit', methods=['POST'])
 def feedback_submit():
+    if not _feedback_configured():
+        return jsonify({'code': 503, 'message': '反馈系统未配置（缺少 FEEDBACK_APP_KEY / FEEDBACK_APP_SECRET）', 'data': None}), 503
     content = request.form.get('content', '').strip()
     # 邮箱优先取表单（覆盖场景），否则从 settings 读
     email = request.form.get('email', '').strip() or _get_feedback_email()
@@ -1618,6 +1629,8 @@ def feedback_submit():
 
 @app.route('/api/feedback/vote', methods=['POST'])
 def feedback_vote():
+    if not _feedback_configured():
+        return jsonify({'code': 503, 'message': '反馈系统未配置（缺少 FEEDBACK_APP_KEY / FEEDBACK_APP_SECRET）', 'data': None}), 503
     body = request.get_json(silent=True) or {}
     fb_id = body.get('id')
     # 邮箱优先取 body（允许前端临时用别的身份），否则从 settings 读
