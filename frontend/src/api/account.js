@@ -22,9 +22,9 @@ export const accountApi = {
     return http.post('/updateUserinfo', data)
   },
 
-  // 删除账号
+  // 删除账号（DELETE，带副作用操作不走 GET）
   deleteAccount(id) {
-    return http.get(`/deleteAccount?id=${id}`)
+    return http.delete(`/deleteAccount?id=${id}`)
   },
 
   // 同步账号资料（头像+昵称）
