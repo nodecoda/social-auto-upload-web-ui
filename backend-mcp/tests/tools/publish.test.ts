@@ -45,7 +45,7 @@ describe('publish tools', () => {
     expect(result.isError).toBeFalsy();
     expect(mockClient.post).toHaveBeenCalledWith('/postVideo', expect.objectContaining({
       accountList: ['/path/to/channels.json'],  // ← 从位置数组里拿到的 filePath
-    }));
+    }), expect.any(Number));
   });
 
   it('video_publish 接受 material_id，内部查素材转 fileList', async () => {
@@ -77,7 +77,7 @@ describe('publish tools', () => {
       type: 2,
       title: 'test',
       fileList: [stored_path],  // ← material_id 被转成 fileList
-    }));
+    }), expect.any(Number));
     expect(result.isError).toBeFalsy();
   });
 
