@@ -7,7 +7,7 @@ on:
 
 jobs:
   backend-mcp:
-    name: backend-mcp (tsc + vitest)
+    name: backend-mcp (tsc + vitest + coverage)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -22,9 +22,16 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-backend-mcp
+          path: backend-mcp/coverage/
+          retention-days: 14
 
   frontend:
-    name: frontend (vitest + vite build)
+    name: frontend (vitest + coverage + vite build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,10 +45,17 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm test
+      - run: npm run test:coverage
       - run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-frontend
+          path: frontend/coverage/
+          retention-days: 14
 
   backend:
-    name: backend (pytest)
+    name: backend (pytest + coverage)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -52,6 +66,12 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt pytest pytest-cov
-      # 覆盖率硬门槛（防回退）：conf/storage 已 100%/98%，总覆盖率 18%
+      # 覆盖率硬门槛（防回退）：conf/storage 已 100%/98%，总覆盖率 19%（平台抽测后实测）
       # 覆盖率报告见 Actions artifact；本地复现: python -m pytest --cov=. --cov-config=.coveragerc
-      - run: python -m pytest -q --cov=. --cov-config=.coveragerc --cov-report=term-missing --cov-fail-under=17
+      - run: python -m pytest -q --cov=. --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=19
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-backend
+          path: backend/coverage.xml
+          retention-days: 14
