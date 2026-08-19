@@ -24,7 +24,7 @@ export const guangheApi = {
 
   // 切换筛选(仅商品模式平台优选 tab)
   // body: { rule?, category? }
-  pickerFilter(sessionId, { rule, category } = {}) {
+  pickerFilter(sessionId, { rule, category }: { rule?: string; category?: string } = {}) {
     return http.post('/api/taobao_guanghe/picker/filter', { session_id: sessionId, rule, category })
   },
 
