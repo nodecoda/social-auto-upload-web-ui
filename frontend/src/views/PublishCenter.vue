@@ -22,32 +22,18 @@
       <!-- Left: form + content -->
       <div class="main-form-col">
       <!-- Top bar -->
-      <div class="main-header">
-        <div class="header-left">
-          <span class="page-title">发布视频</span>
-          <span
-            v-if="currentPlatformConfig"
-            class="platform-tag"
-            :style="{ background: currentPlatformConfig.bgColor, color: currentPlatformConfig.color }"
-          >
-            {{ currentPlatformConfig.name }} · 个性化设置
-          </span>
-        </div>
-        <div class="header-right">
-          <el-button :icon="Document" @click="saveDraft" class="header-btn">
-            {{ currentDraftId ? '更新草稿' : '保存草稿' }}
-          </el-button>
-          <el-button :icon="MagicStick" @click="oneClickDialogOpen = true" class="header-btn">
-            一键填写
-          </el-button>
-          <el-button :icon="Setting" @click="batchSetDialogOpen = true" :disabled="publishAccountIds.size === 0" class="header-btn">
-            批量设置
-          </el-button>
-          <el-button type="primary" :icon="Promotion" @click="publishAll" :disabled="publishing" class="header-btn header-btn--primary">
-            {{ publishing ? '发布中...' : '一键发布' }}
-          </el-button>
-        </div>
-      </div>
+      <PublishHeader
+        :platform-name="currentPlatformConfig?.name"
+        :platform-bg-color="currentPlatformConfig?.bgColor"
+        :platform-color="currentPlatformConfig?.color"
+        :draft-id="currentDraftId"
+        :has-accounts="publishAccountIds.size > 0"
+        :publishing="publishing"
+        @save-draft="saveDraft"
+        @one-click="oneClickDialogOpen = true"
+        @batch-set="batchSetDialogOpen = true"
+        @publish="publishAll"
+      />
 
       <!-- Scrollable content -->
       <div class="main-content">
@@ -693,47 +679,13 @@
       </div><!-- /main-form-col -->
 
       <!-- Right: Phone preview panel -->
-      <div class="phone-panel">
-        <div class="phone-panel-header">
-          <span class="phone-panel-title">视频预览</span>
-        </div>
-        <div class="phone-preview-area">
-          <div :class="['phone-mockup', videoModeTab]">
-            <div class="phone-notch"></div>
-            <div class="phone-screen">
-              <template v-if="currentVideoData">
-                <video
-                  :src="currentVideoData.url"
-                  controls
-                  preload="metadata"
-                  class="phone-video-player"
-                ></video>
-              </template>
-              <template v-else>
-                <div class="phone-empty" @click="triggerUploadVideo()">
-                  <el-icon :size="28"><Upload /></el-icon>
-                  <span>上传视频</span>
-                </div>
-              </template>
-            </div>
-            <div class="phone-home-bar"></div>
-          </div>
-        </div>
-        <div class="phone-panel-actions">
-          <button class="cover-action-btn primary" @click="triggerUploadVideo()">
-            <el-icon :size="14"><Upload /></el-icon><span>本地上传</span>
-          </button>
-          <button class="cover-action-btn" @click="selectFromLibrary('video')">
-            <el-icon :size="14"><Picture /></el-icon><span>素材库</span>
-          </button>
-        </div>
-        <div v-if="currentVideoData" class="phone-panel-info">
-          <span class="phone-info-name">{{ currentVideoData.name }}</span>
-          <button class="phone-info-remove" @click="clearVideo()">
-            <el-icon :size="12"><Delete /></el-icon>
-          </button>
-        </div>
-      </div>
+      <PublishPhonePreview
+        :video-data="currentVideoData"
+        :mode-tab="videoModeTab"
+        @upload="triggerUploadVideo()"
+        @library="selectFromLibrary('video')"
+        @remove="clearVideo()"
+      />
 
       </div><!-- /main-body -->
     </main>
@@ -814,7 +766,7 @@
 
 <script setup>
 import { ref, reactive, computed, nextTick, watch, onMounted } from 'vue'
-import { Upload, Picture, VideoCameraFilled, Delete, Document, WarningFilled, MagicStick, Setting, Promotion, UserFilled, Close, Plus } from '@element-plus/icons-vue'
+import { VideoCameraFilled, WarningFilled, UserFilled, Close, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import { useAccountStore } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
@@ -843,6 +795,8 @@ import RemoteSearchSelect from '@/components/common/RemoteSearchSelect.vue'
 import PrePublishCheckDialog from '@/components/PrePublishCheckDialog.vue'
 import GuangheItemPicker from '@/components/GuangheItemPicker.vue'
 import JdItemPicker from '@/components/JdItemPicker.vue'
+import PublishHeader from '@/components/PublishHeader.vue'
+import PublishPhonePreview from '@/components/PublishPhonePreview.vue'
 import { xhsApi } from '@/api/xiaohongshu'
 import { biliApi } from '@/api/bilibili'
 import { douyinImageApi } from '@/api/douyinImage'
@@ -3044,68 +2998,6 @@ function formatSize(bytes) {
   overflow: hidden;
 }
 
-.main-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
-  border-bottom: 1px solid $border;
-  flex-shrink: 0;
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-
-    .page-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: $text-primary;
-    }
-
-    .platform-tag {
-      font-size: 12px;
-      font-weight: 500;
-      padding: 4px 12px;
-      border-radius: 20px;
-    }
-  }
-
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-
-    .header-btn {
-      // el-button 默认 padding 8px 15px / font-size 14px / height 32px
-      // 想要更紧凑一点,小分辨率下自动缩
-      @media (max-width: 1280px) {
-        padding: 6px 12px !important;
-        font-size: 12px !important;
-      }
-    }
-
-    .header-btn--primary {
-      // 一键发布: 保留项目渐变 + 阴影
-      background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
-      border: none !important;
-      box-shadow: 0 4px 20px rgba($brand-start, 0.35) !important;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      padding: 10px 24px !important;
-
-      &:hover {
-        box-shadow: 0 6px 28px rgba($brand-start, 0.5) !important;
-        transform: translateY(-1px);
-        opacity: 1 !important;
-      }
-      &:active { transform: translateY(0) scale(0.98); }
-      &:disabled { opacity: 0.5 !important; cursor: not-allowed; transform: none; box-shadow: none !important; }
-    }
-  }
-}
 
 .main-content {
   flex: 1;
@@ -3212,203 +3104,6 @@ function formatSize(bytes) {
   margin-right: 4px;
 }
 
-// ----- Right Phone Panel -----
-.phone-panel {
-  width: 400px;
-  flex-shrink: 0;
-  background: $bg-base;
-  border-left: 1px solid $border;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba($overlay-rgb, 0.08) transparent;
-  &::-webkit-scrollbar { width: 4px; }
-  &::-webkit-scrollbar-thumb { background: rgba($overlay-rgb, 0.1); border-radius: 2px; }
-}
-
-.phone-panel-header {
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid $border;
-}
-
-.phone-panel-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: $text-primary;
-}
-
-.phone-mode-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 12px 16px 8px;
-}
-
-.mode-tab {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: $text-muted;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: $transition-fast;
-  font-family: inherit;
-  outline: none;
-
-  &:hover:not(.active) {
-    color: $text-secondary;
-    background: rgba($overlay-rgb, 0.03);
-  }
-  &.active {
-    background: rgba($brand-start, 0.08);
-    border-color: rgba($brand-start, 0.2);
-    color: $brand-start;
-  }
-}
-
-.mode-icon-portrait {
-  display: inline-block;
-  width: 10px;
-  height: 14px;
-  border: 2px solid currentColor;
-  border-radius: 3px;
-}
-.mode-icon-landscape {
-  display: inline-block;
-  width: 14px;
-  height: 10px;
-  border: 2px solid currentColor;
-  border-radius: 3px;
-}
-
-.phone-preview-area {
-  display: flex;
-  justify-content: center;
-  padding: 16px 4px;
-}
-
-.phone-mockup {
-  position: relative;
-  background: #1a1a2e;
-  border: 3px solid #2a2a40;
-  border-radius: 28px;
-  padding: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba($overlay-rgb, 0.05);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: width 0.3s ease;
-
-  width: 90%;
-}
-
-.phone-notch {
-  width: 60px;
-  height: 6px;
-  background: #2a2a40;
-  border-radius: 3px;
-  margin-bottom: 6px;
-}
-
-.phone-screen {
-  width: 100%;
-  aspect-ratio: 9 / 16;
-  background: $bg-base;
-  border-radius: 16px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.phone-video-player {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-  outline: none;
-}
-
-.phone-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  height: 100%;
-  color: $text-muted;
-  font-size: 11px;
-  cursor: pointer;
-  transition: $transition-fast;
-
-  &:hover {
-    color: $brand-start;
-    background: rgba($brand-start, 0.04);
-  }
-}
-
-.phone-home-bar {
-  width: 40px;
-  height: 4px;
-  background: rgba($overlay-rgb, 0.15);
-  border-radius: 2px;
-  margin-top: 6px;
-}
-
-.phone-panel-actions {
-  display: flex;
-  gap: 8px;
-  padding: 0 16px 12px;
-  .cover-action-btn { flex: 1; }
-}
-
-.phone-panel-info {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 0 16px;
-  padding: 10px 12px;
-  background: rgba($overlay-rgb, 0.03);
-  border: 1px solid $border;
-  border-radius: $radius-base;
-}
-
-.phone-info-name {
-  font-size: 12px;
-  color: $text-secondary;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
-.phone-info-remove {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: $text-muted;
-  cursor: pointer;
-  transition: $transition-fast;
-  &:hover {
-    background: rgba($danger-color, 0.1);
-    color: $danger-color;
-  }
-}
-
 // ----- Cover Section -----
 .cover-section {
   background: rgba($overlay-rgb, 0.01);
@@ -3422,69 +3117,6 @@ function formatSize(bytes) {
   align-items: stretch;
 }
 
-.cover-action-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 14px;
-  border: 1px solid $border;
-  border-radius: $radius-sm;
-  background: rgba($overlay-rgb, 0.03);
-  color: $text-secondary;
-  font-size: 12px;
-  cursor: pointer;
-  transition: $transition-base;
-  outline: none;
-  font-family: inherit;
-  line-height: 1;
-
-  .el-icon {
-    flex-shrink: 0;
-    color: $text-muted;
-    transition: $transition-base;
-  }
-
-  &:hover {
-    border-color: rgba($brand-start, 0.35);
-    background: linear-gradient(135deg, rgba($brand-start, 0.08), rgba($brand-end, 0.06));
-    color: $text-primary;
-
-    .el-icon {
-      color: $brand-start;
-    }
-  }
-
-  &:active {
-    transform: scale(0.97);
-  }
-
-  &.primary {
-    border-color: rgba($brand-start, 0.25);
-    background: linear-gradient(135deg, rgba($brand-start, 0.1), rgba($brand-end, 0.08));
-    color: $text-primary;
-
-    .el-icon {
-      color: $brand-start;
-    }
-
-    &:hover {
-      border-color: rgba($brand-start, 0.45);
-      background: linear-gradient(135deg, rgba($brand-start, 0.18), rgba($brand-end, 0.14));
-    }
-  }
-
-  &.danger {
-    &:hover {
-      border-color: rgba($danger-color, 0.35);
-      background: rgba($danger-color, 0.08);
-      color: $danger-color;
-
-      .el-icon {
-        color: $danger-color;
-      }
-    }
-  }
-}
 
 // ========== Form Fields ==========
 .form-field {
