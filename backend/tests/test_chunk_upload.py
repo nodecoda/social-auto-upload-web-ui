@@ -11,8 +11,8 @@ from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-_tmpdir = tempfile.mkdtemp()
-os.environ['SAU_DATA_DIR'] = _tmpdir
+# 共享 pytest 隔离数据目录（conftest 已设置 SAU_DATA_DIR 并初始化 schema）
+_tmpdir = os.environ['SAU_DATA_DIR']
 DB_PATH = Path(_tmpdir) / "db" / "database.db"
 CHUNK_DIR = Path(_tmpdir) / "upload_chunks"
 

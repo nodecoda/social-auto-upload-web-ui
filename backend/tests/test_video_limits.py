@@ -9,11 +9,12 @@ from util.video_limits import (
 # ----- 平台规则完整性 -----
 
 def test_all_platforms_have_limits():
-    """恰好 12 个平台，不多不少"""
+    """恰好 18 个平台，不多不少"""
     expected_keys = {
         "tencent_video", "iqiyi", "douyin", "baijiahao", "weibo",
         "kuaishou", "bilibili", "xiaohongshu", "channels",
         "tiktok", "youtube", "alipay",
+        "csdn", "jingmai", "taobao_guanghe", "vivo", "weixin_gzh", "zhihu",
     }
     assert set(VIDEO_LIMITS.keys()) == expected_keys
 
@@ -162,9 +163,16 @@ def test_validate_title_xiaohongshu_empty():
 
 def test_validate_title_other_platform_unlimited():
     """未限制标题长度的平台(除小红书外)默认放行"""
-    for k in ("douyin", "weibo", "kuaishou", "alipay"):
+    for k in ("douyin", "kuaishou", "alipay"):
         ok, _ = validate_title_for_platform(k, "a" * 500)
         assert ok is True, f"{k} 应该有无限标题长度"
+
+
+def test_validate_title_weibo_over_30():
+    """微博标题 ≤ 30 字。"""
+    ok, msg = validate_title_for_platform("weibo", "a" * 31)
+    assert ok is False
+    assert "30" in msg
 
 
 def test_validate_title_unknown_platform_ok():
