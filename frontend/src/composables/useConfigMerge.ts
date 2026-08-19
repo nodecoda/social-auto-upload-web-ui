@@ -98,7 +98,6 @@ function mergeConfig(common, platformDefault, platformOv, accountOv) {
     compilationData: accountOv?.compilationData ?? platformOv?.compilationData ?? platformDefault?.compilationData ?? null,
     // 今日头条
     enableGenerateImage: accountOv?.enableGenerateImage ?? platformOv?.enableGenerateImage ?? platformDefault?.enableGenerateImage ?? true,
-    collection: accountOv?.collection ?? platformOv?.collection ?? platformDefault?.collection ?? '',
     extendLink: accountOv?.extendLink ?? platformOv?.extendLink ?? platformDefault?.extendLink ?? false,
     extendLinkUrl: accountOv?.extendLinkUrl ?? platformOv?.extendLinkUrl ?? platformDefault?.extendLinkUrl ?? '',
     // B 站合集(账号级)

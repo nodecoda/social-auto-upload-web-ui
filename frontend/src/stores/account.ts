@@ -65,7 +65,7 @@ export const useAccountStore = defineStore('account', () => {
     try {
       const res = await accountApi.getTags()
       if (res.code === 200 && res.data) {
-        allTags.value = res.data
+        allTags.value = res.data as any[]
       }
     } catch (e) {
       console.error('加载标签失败:', e)

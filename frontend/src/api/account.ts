@@ -33,7 +33,7 @@ export const accountApi = {
   },
 
   // ── 标签管理 ──
-  getTags() {
+  getTags(): Promise<{ code?: number; data?: unknown }> {
     return http.get('/api/tags')
   },
 
