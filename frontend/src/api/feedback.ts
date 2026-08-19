@@ -1,7 +1,7 @@
 import { http } from '@/utils/request'
 
-export function listFeedback({ status, includeAll = false, page = 1, pageSize = 20 }) {
-  const params = { page, page_size: pageSize }
+export function listFeedback({ status, includeAll = false, page = 1, pageSize = 20 }: { status?: string | number | null; includeAll?: boolean; page?: number; pageSize?: number }) {
+  const params: Record<string, unknown> = { page, page_size: pageSize }
   if (status !== undefined && status !== null) {
     params.status = status
   } else if (includeAll) {
