@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PublishHeader from './PublishHeader.vue'
 
-const stubs = { ElButton: { template: '<button :disabled="disabled" @click="$emit(\'click\')"><slot /></button>' } }
+const stubs = { ElButton: { template: '<button :disabled="disabled" @click="$emit(\'click\')"><slot /></button>', props: ['disabled'] } }
 
 describe('PublishHeader', () => {
   it('渲染标题与四个操作按钮', () => {
@@ -17,6 +17,18 @@ describe('PublishHeader', () => {
   it('有 draftId 时按钮文案为「更新草稿」', () => {
     const w = mount(PublishHeader, { props: { draftId: 123, hasAccounts: true }, global: { stubs } })
     expect(w.text()).toContain('更新草稿')
+  })
+
+  it('自定义 title 生效', () => {
+    const w = mount(PublishHeader, { props: { title: '图集发布', hasAccounts: true }, global: { stubs } })
+    expect(w.text()).toContain('图集发布')
+  })
+
+  it('disableOneClick 时一键填写禁用', () => {
+    const w = mount(PublishHeader, { props: { disableOneClick: true, hasAccounts: false }, global: { stubs } })
+    const btns = w.findAll('button')
+    const fill = btns.find(b => b.text().includes('一键填写'))
+    expect(fill.attributes('disabled')).toBeDefined()
   })
 
   it('无账号时批量设置按钮禁用', () => {
