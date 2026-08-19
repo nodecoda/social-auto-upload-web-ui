@@ -21,32 +21,20 @@
       <!-- Left: form + content -->
       <div class="main-form-col">
       <!-- Top bar -->
-      <div class="main-header">
-        <div class="header-left">
-          <span class="page-title">图集发布</span>
-          <span
-            v-if="currentPlatformConfig"
-            class="platform-tag"
-            :style="{ background: currentPlatformConfig.bgColor, color: currentPlatformConfig.color }"
-          >
-            {{ currentPlatformConfig.name }} · 个性化设置
-          </span>
-        </div>
-        <div class="header-right">
-          <el-button :icon="Document" @click="saveDraft" class="header-btn">
-            {{ currentDraftId ? '更新草稿' : '保存草稿' }}
-          </el-button>
-          <el-button :icon="MagicStick" @click="oneClickDialogOpen = true" :disabled="publishAccountIds.size === 0" class="header-btn">
-            一键填写
-          </el-button>
-          <el-button :icon="Setting" @click="batchSetDialogOpen = true" :disabled="publishAccountIds.size === 0" class="header-btn">
-            批量设置
-          </el-button>
-          <el-button type="primary" :icon="Promotion" @click="publishAll" :disabled="publishing" class="header-btn header-btn--primary">
-            {{ publishing ? '发布中...' : '一键发布' }}
-          </el-button>
-        </div>
-      </div>
+      <PublishHeader
+        title="图集发布"
+        :platform-name="currentPlatformConfig?.name"
+        :platform-bg-color="currentPlatformConfig?.bgColor"
+        :platform-color="currentPlatformConfig?.color"
+        :draft-id="currentDraftId"
+        :has-accounts="publishAccountIds.size > 0"
+        :publishing="publishing"
+        :disable-one-click="publishAccountIds.size === 0"
+        @save-draft="saveDraft"
+        @one-click="oneClickDialogOpen = true"
+        @batch-set="batchSetDialogOpen = true"
+        @publish="publishAll"
+      />
 
       <!-- Scrollable content -->
       <div class="main-content">
@@ -181,50 +169,14 @@
       </div><!-- /main-form-col -->
 
       <!-- Right: Image preview panel -->
-      <div class="phone-panel">
-        <div class="phone-panel-header">
-          <span class="phone-panel-title">图片预览</span>
-          <button
-            v-if="currentEditTarget.images.length > 0"
-            class="cover-action-btn"
-            @click="openPreviewDialog"
-          >
-            <el-icon :size="14"><FullScreen /></el-icon><span>放大预览</span>
-          </button>
-        </div>
-
-        <div class="phone-preview-area">
-          <div class="phone-mockup">
-            <div class="phone-notch"></div>
-            <div class="phone-screen">
-              <ImageCarousel
-                v-if="currentEditTarget.images.length > 0"
-                :images="currentEditTarget.images"
-                @change="onCarouselChange"
-              />
-              <div v-else class="phone-empty" @click="triggerUpload">
-                <el-icon :size="28"><Upload /></el-icon>
-                <span>上传图片</span>
-              </div>
-            </div>
-            <div class="phone-home-bar"></div>
-          </div>
-        </div>
-
-        <div class="phone-panel-actions">
-          <button class="cover-action-btn primary" @click="triggerUpload">
-            <el-icon :size="14"><Upload /></el-icon><span>本地上传</span>
-          </button>
-          <button class="cover-action-btn" @click="openMaterialLibraryForImage(-1)">
-            <el-icon :size="14"><Picture /></el-icon><span>素材库</span>
-          </button>
-        </div>
-
-        <div v-if="currentEditTarget.images.length > 0" class="phone-panel-info">
-          <span class="phone-info-name">{{ currentEditTarget.images[currentPreviewIndex]?.name || '未选择图片' }}</span>
-          <span class="phone-info-count">{{ currentPreviewIndex + 1 }}/{{ currentEditTarget.images.length }}</span>
-        </div>
-      </div>
+      <ImagePhonePreview
+        :images="currentEditTarget.images"
+        :preview-index="currentPreviewIndex"
+        @upload="triggerUpload"
+        @library="openMaterialLibraryForImage(-1)"
+        @preview="openPreviewDialog"
+        @carousel-change="onCarouselChange"
+      />
 
       </div><!-- /main-body -->
     </main>
@@ -286,10 +238,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted } from 'vue'
-import {
-  Upload, Picture, PictureFilled,
-  Document, FullScreen, MagicStick, Setting, Promotion, UserFilled
-} from '@element-plus/icons-vue'
+import { PictureFilled, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAccountStore } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
@@ -312,6 +261,8 @@ import OneClickFillDialog from '@/components/OneClickFillDialog.vue'
 import BatchSetDialog from '@/components/BatchSetDialog.vue'
 import { useImageBatchSetApply } from '@/composables/useImageBatchSetApply'
 import { useAutoSave } from '@/composables/useAutoSave'
+import PublishHeader from '@/components/PublishHeader.vue'
+import ImagePhonePreview from '@/components/ImagePhonePreview.vue'
 
 import DouyinImagePublishPanel from '@/components/douyin/ImagePublishPanel.vue'
 import XiaohongshuImagePublishPanel from '@/components/xiaohongshu/ImagePublishPanel.vue'
@@ -1168,72 +1119,6 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-// ========== HEADER BAR ==========
-.main-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 28px;
-  border-bottom: 1px solid rgba($overlay-rgb, 0.06);
-  flex-shrink: 0;
-  background: linear-gradient(90deg, rgba($brand-start, 0.04) 0%, transparent 40%, transparent 60%, rgba($info-color, 0.03) 100%);
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-
-    .page-title {
-      font-size: 20px;
-      font-weight: 800;
-      color: $popper-text;
-      letter-spacing: -0.02em;
-    }
-
-    .platform-tag {
-      font-size: 12px;
-      font-weight: 600;
-      padding: 5px 16px;
-      border-radius: 20px;
-      letter-spacing: 0.02em;
-    }
-  }
-
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-
-    .header-btn {
-      // el-button 默认 padding 8px 15px / font-size 14px / height 32px
-      // 想要更紧凑一点,小分辨率下自动缩
-      @media (max-width: 1280px) {
-        padding: 6px 12px !important;
-        font-size: 12px !important;
-      }
-    }
-
-    .header-btn--primary {
-      // 一键发布: 保留项目渐变 + 阴影
-      background: linear-gradient(135deg, #8b5cf6, #6366f1) !important;
-      border: none !important;
-      box-shadow: 0 4px 20px rgba($brand-start, 0.35) !important;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      padding: 10px 24px !important;
-
-      &:hover {
-        box-shadow: 0 6px 28px rgba($brand-start, 0.5) !important;
-        transform: translateY(-1px);
-        opacity: 1 !important;
-      }
-      &:active { transform: translateY(0) scale(0.98); }
-      &:disabled { opacity: 0.5 !important; cursor: not-allowed; transform: none; box-shadow: none !important; }
-    }
-  }
-}
 
 .main-content {
   flex: 1;
@@ -1535,194 +1420,6 @@ onMounted(async () => {
   .hint-sub { font-size: 13px; color: $text-muted; font-weight: 400; }
 }
 
-// ========== PHONE PREVIEW PANEL ==========
-.phone-panel {
-  width: 380px;
-  flex-shrink: 0;
-  background: linear-gradient(180deg, $bg-elevated 0%, $bg-base 100%);
-  border-left: 1px solid rgba($overlay-rgb, 0.06);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba($brand-start, 0.1) transparent;
-  &::-webkit-scrollbar { width: 4px; }
-  &::-webkit-scrollbar-thumb { background: rgba($brand-start, 0.1); border-radius: 2px; }
-}
-
-.phone-panel-header {
-  padding: 16px 20px 12px;
-  border-bottom: 1px solid rgba($overlay-rgb, 0.06);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.phone-panel-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: $popper-text;
-}
-
-.phone-preview-area {
-  display: flex;
-  justify-content: center;
-  padding: 20px 4px;
-}
-
-.phone-mockup {
-  position: relative;
-  background: linear-gradient(145deg, #1e1e3a, #14142a);
-  border: 2px solid rgba($brand-start, 0.12);
-  border-radius: 36px;
-  padding: 10px;
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba($brand-start, 0.06),
-    0 0 60px rgba($brand-start, 0.06);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: all 0.3s ease;
-  width: 88%;
-
-  &:hover {
-    box-shadow:
-      0 20px 56px rgba(0, 0, 0, 0.55),
-      0 0 0 1px rgba($brand-start, 0.1),
-      0 0 80px rgba($brand-start, 0.1);
-    transform: translateY(-2px);
-  }
-}
-
-.phone-notch {
-  width: 80px;
-  height: 6px;
-  background: rgba($overlay-rgb, 0.08);
-  border-radius: 3px;
-  margin-bottom: 8px;
-}
-
-.phone-screen {
-  width: 100%;
-  aspect-ratio: 9 / 16;
-  background: $bg-base;
-  border-radius: 20px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.phone-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  height: 100%;
-  color: $text-muted;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-weight: 500;
-
-  &:hover {
-    color: $brand-start;
-    background: rgba($brand-start, 0.03);
-    .el-icon { transform: scale(1.1); }
-  }
-
-  .el-icon { transition: transform 0.2s ease; }
-}
-
-.phone-home-bar {
-  width: 48px;
-  height: 4px;
-  background: linear-gradient(90deg, #8b5cf6, #3b82f6);
-  border-radius: 2px;
-  margin-top: 8px;
-  opacity: 0.5;
-}
-
-.phone-panel-actions {
-  display: flex;
-  gap: 10px;
-  padding: 4px 20px 16px;
-  .cover-action-btn { flex: 1; }
-}
-
-.phone-panel-info {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 0 20px;
-  padding: 10px 14px;
-  background: rgba($overlay-rgb, 0.025);
-  border: 1px solid rgba($overlay-rgb, 0.06);
-  border-radius: 10px;
-}
-
-.phone-info-name {
-  font-size: 12px;
-  color: $text-secondary;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
-.phone-info-count {
-  font-size: 11px;
-  color: #a78bfa;
-  font-weight: 600;
-  flex-shrink: 0;
-  margin-left: 8px;
-}
-
-.cover-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: 1px solid rgba($overlay-rgb, 0.08);
-  border-radius: 10px;
-  background: rgba($overlay-rgb, 0.025);
-  color: $text-secondary;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  outline: none;
-  font-family: inherit;
-  line-height: 1;
-
-  .el-icon { flex-shrink: 0; color: $text-muted; transition: all 0.2s ease; }
-
-  &:hover {
-    border-color: rgba($brand-start, 0.25);
-    background: rgba($brand-start, 0.06);
-    color: $text-primary;
-    .el-icon { color: $brand-start; }
-  }
-
-  &:active { transform: scale(0.97); }
-
-  &.primary {
-    border-color: rgba($brand-start, 0.2);
-    background: rgba($brand-start, 0.08);
-    color: #c4b5fd;
-    .el-icon { color: $brand-start; }
-
-    &:hover {
-      border-color: rgba($brand-start, 0.35);
-      background: rgba($brand-start, 0.14);
-    }
-  }
-}
 
 .setting-hint {
   font-size: 12px;

@@ -1,7 +1,7 @@
 <template>
   <div class="main-header">
     <div class="header-left">
-      <span class="page-title">发布视频</span>
+      <span class="page-title">{{ title }}</span>
       <span
         v-if="platformName"
         class="platform-tag"
@@ -14,7 +14,7 @@
       <el-button :icon="Document" @click="$emit('save-draft')" class="header-btn">
         {{ draftId ? '更新草稿' : '保存草稿' }}
       </el-button>
-      <el-button :icon="MagicStick" @click="$emit('one-click')" class="header-btn">
+      <el-button :icon="MagicStick" @click="$emit('one-click')" :disabled="disableOneClick" class="header-btn">
         一键填写
       </el-button>
       <el-button :icon="Setting" @click="$emit('batch-set')" :disabled="!hasAccounts" class="header-btn">
@@ -31,12 +31,15 @@
 import { Document, MagicStick, Setting, Promotion } from '@element-plus/icons-vue'
 
 defineProps({
+  title: { type: String, default: '发布视频' },
   platformName: { type: String, default: '' },
   platformBgColor: { type: String, default: '' },
   platformColor: { type: String, default: '' },
   draftId: { type: [String, Number], default: null },
   hasAccounts: { type: Boolean, default: false },
   publishing: { type: Boolean, default: false },
+  // 无账号时禁用一键填写（图集发布需要账号才能填充渠道配置）
+  disableOneClick: { type: Boolean, default: false },
 })
 
 defineEmits(['save-draft', 'one-click', 'batch-set', 'publish'])
@@ -48,26 +51,29 @@ defineEmits(['save-draft', 'one-click', 'batch-set', 'publish'])
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
-  border-bottom: 1px solid $border;
+  padding: 14px 28px;
+  border-bottom: 1px solid rgba($overlay-rgb, 0.06);
   flex-shrink: 0;
+  background: linear-gradient(90deg, rgba($brand-start, 0.04) 0%, transparent 40%, transparent 60%, rgba($info-color, 0.03) 100%);
 
   .header-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
 
     .page-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: $text-primary;
+      font-size: 20px;
+      font-weight: 800;
+      color: $popper-text;
+      letter-spacing: -0.02em;
     }
 
     .platform-tag {
       font-size: 12px;
-      font-weight: 500;
-      padding: 4px 12px;
+      font-weight: 600;
+      padding: 5px 16px;
       border-radius: 20px;
+      letter-spacing: 0.02em;
     }
   }
 
