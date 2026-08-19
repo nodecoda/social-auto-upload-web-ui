@@ -120,6 +120,28 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     include: ['src/**/*.test.js'],
+    coverage: {
+      provider: 'v8',
+      include: [
+        'src/stores/**',
+        'src/composables/**',
+        'src/components/AccountSidebar.vue',
+        'src/components/BatchSetDialog.vue',
+        'src/components/OneClickFillDialog.vue',
+        'src/components/PublishStats.vue',
+      ],
+      // 门槛按实测基线留裕量（stores 99.4% / composables 85.8% / 4 组件 90-100% / include 作用域 94.3%）
+      // 红 CI 只反映真实回退；Phase 4 迁移时随覆盖增长再抬升
+      thresholds: {
+        lines: 80,
+        'src/stores/**': { lines: 60 },
+        'src/composables/**': { lines: 60 },
+        'src/components/AccountSidebar.vue': { lines: 55 },
+        'src/components/BatchSetDialog.vue': { lines: 55 },
+        'src/components/OneClickFillDialog.vue': { lines: 55 },
+        'src/components/PublishStats.vue': { lines: 55 },
+      },
+    },
   },
   build: {
     outDir: 'dist',

@@ -9,7 +9,11 @@ from pathlib import Path
 # 把 backend 目录加进 sys.path（与项目其他测试一致）
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from impl.xiaohongshu.platform import _count_hashtags, _XHS_MAX_TOPICS  # noqa: E402
+from impl.xiaohongshu.platform import (  # noqa: E402
+    _count_hashtags,
+    _normalize_desc_hashtags,
+    _XHS_MAX_TOPICS,
+)
 
 
 # ----- _count_hashtags: 描述文本里独立 #xxx 计数 -----
@@ -104,3 +108,31 @@ def test_inline_hash_in_desc_not_counted():
     """描述里 a#b 不计入,只有独立的 #xxx 算"""
     # a#b#c#d 全部粘连 = 0 个独立话题
     assert _total("a#b#c#d 文案", ["t%d" % i for i in range(10)]) == 10
+
+
+# ----- _normalize_desc_hashtags: 描述里 #xxx 前补空格 -----
+
+def test_normalize_desc_hashtags_none_or_empty():
+    """None / 空串原样返回,不报错。"""
+    assert _normalize_desc_hashtags(None) is None
+    assert _normalize_desc_hashtags("") == ""
+
+
+def test_normalize_desc_hashtags_no_hashtags_unchanged():
+    """不含 # 的文本原样返回。"""
+    assert _normalize_desc_hashtags("普通文案") == "普通文案"
+
+
+def test_normalize_desc_hashtags_inline_gets_space():
+    """粘连在文字后的 #xxx 前面补空格(docstring 示例)。"""
+    text = "文案#话题1#话题2 看这个#话题3"
+    expected = "文案 #话题1 #话题2 看这个 #话题3"
+    assert _normalize_desc_hashtags(text) == expected
+
+
+def test_normalize_desc_hashtags_leading_and_after_space_untouched():
+    """行首 / 空白后的 #xxx 不动。"""
+    assert _normalize_desc_hashtags("#话题1 描述") == "#话题1 描述"
+    assert _normalize_desc_hashtags("a #b") == "a #b"
+    assert _normalize_desc_hashtags("文本\t#tab后") == "文本\t#tab后"
+    assert _normalize_desc_hashtags("文本\n#换行后") == "文本\n#换行后"
