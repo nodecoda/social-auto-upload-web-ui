@@ -56,3 +56,7 @@ AGENTS.md
 .zcode/
 # Git worktrees
 .worktrees/
+
+# Python coverage data
+.coverage
+htmlcov/
