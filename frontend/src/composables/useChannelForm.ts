@@ -10,7 +10,13 @@ import { ref, reactive, watch } from 'vue'
  * @param {function}  publishFn       (accountId, accountName, commonData, merged, extra) => Promise
  * @param {function}  validateFn       (accountId) => { valid, errors }
  */
-export function useChannelForm(defaults, { props, emit }, { publishFn, validateFn } = {}) {
+interface ChannelFormOptions {
+  publishFn?: (accountId: string | number, accountName: string, commonData: unknown, merged: Record<string, any>, extra?: unknown) => Promise<unknown>
+  validateFn?: (accountId: string | number, merged: Record<string, any>) => { valid: boolean; errors: string[] }
+}
+
+export function useChannelForm(defaults: Record<string, any>, { props, emit }: { props: Record<string, any>; emit: (event: string, ...args: any[]) => void }, options: ChannelFormOptions = {}) {
+  const { publishFn, validateFn } = options
   // ===== 内部状态 =====
   const platformConfig = reactive({ ...defaults })
   const accountOverrides = reactive({})
@@ -29,9 +35,9 @@ export function useChannelForm(defaults, { props, emit }, { publishFn, validateF
     return override && Object.values(override).some(hasValues)
   }
 
-  function getMergedConfig(accountId) {
-    const override = accountOverrides[accountId] || {}
-    const merged = {}
+  function getMergedConfig(accountId: string | number): Record<string, any> {
+    const override: Record<string, any> = accountOverrides[accountId] || {}
+    const merged: Record<string, any> = {}
     // 深拷贝 platformConfig，数组字段必须断开引用，否则 form 和 platformConfig 共享同一数组
     for (const [k, v] of Object.entries(platformConfig)) {
       merged[k] = Array.isArray(v) ? [...v] : v
