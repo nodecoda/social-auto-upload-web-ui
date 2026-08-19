@@ -236,8 +236,8 @@ def test_validate_draft_youtube_missing_audience_or_altered(monkeypatch):
     assert any('audience' in e or 'alteredContent' in e for e in errs)
 
 
-def test_validate_draft_portrait_without_portrait_cover(monkeypatch):
-    """videoFormat=portrait 但缺竖版封面 → 报错。"""
+def test_validate_draft_portrait_without_portrait_cover_now_allowed(monkeypatch):
+    """videoFormat=portrait 但只有横版封面 → 不再报错（方向由素材表决定，横竖封面任一即可）。"""
     _user_info_lookup_patch(monkeypatch, [FakeAccount(1, 'xiaohongshu', '/cookies/x1')])
     draft = _video_draft({
         'commonConfig': {'videoLandscape': {'id': 'v'}, 'videoPortrait': None,
@@ -250,7 +250,7 @@ def test_validate_draft_portrait_without_portrait_cover(monkeypatch):
         'publishAccountIds': [1],
     })
     errs = validate_draft_for_publish(draft)
-    assert any('竖版封面' in e or 'portrait' in e.lower() or 'cover' in e.lower() for e in errs)
+    assert errs == []
 
 
 def test_validate_draft_douyin_activity_tags_cap(monkeypatch):
@@ -400,15 +400,15 @@ def test_build_kwargs_cover_renames_to_landscape_portrait():
     assert kw['thumbnail_portrait_path'] == '/abs/port.jpg'
 
 
-def test_build_kwargs_video_chosen_by_videoformat():
-    """videoFormat=portrait 选 coverPortrait 视频，landscape 选 coverLandscape。"""
+def test_build_kwargs_video_landscape_first():
+    """视频文件横版优先，无则竖版（不再按 videoFormat 区分；方向由素材表 materials.orientation 决定）。"""
     merged = {'videoFormat': 'portrait',
               'videoPortrait': {'stored_path': '/abs/port.mp4'},
               'videoLandscape': {'stored_path': '/abs/land.mp4'}}
     common = {}
     account = FakeAccountForBuild()
     kw = build_platform_kwargs(merged, common, account)
-    assert kw['files'] == ['/abs/port.mp4']
+    assert kw['files'] == ['/abs/land.mp4']
 
 
 def test_build_kwargs_video_falls_to_common():
