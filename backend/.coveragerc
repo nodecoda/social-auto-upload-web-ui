@@ -1,0 +1,7 @@
+[run]
+omit =
+    .venv/*
+    */site-packages/*
+    tests/*
+    test_*.py
+    init_db.py

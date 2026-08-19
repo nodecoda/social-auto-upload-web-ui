@@ -51,5 +51,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r requirements.txt pytest
-      - run: python -m pytest -q
+      - run: pip install -r requirements.txt pytest pytest-cov
+      # 覆盖率硬门槛（防回退）：conf/storage 已 100%/98%，总覆盖率 18%
+      # 覆盖率报告见 Actions artifact；本地复现: python -m pytest --cov=. --cov-config=.coveragerc
+      - run: python -m pytest -q --cov=. --cov-config=.coveragerc --cov-report=term-missing --cov-fail-under=17
