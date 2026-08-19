@@ -1,8 +1,17 @@
-import axios from 'axios'
+import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 
+// 后端统一响应结构 (code===200 || success 时拦截器已解包出 data)
+export interface ApiResponse<T = unknown> {
+  code?: number
+  success?: boolean
+  data?: T
+  msg?: string
+  message?: string
+}
+
 // 创建axios实例
-const request = axios.create({
+const request: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
   headers: {
     'Content-Type': 'application/json'
@@ -29,7 +38,7 @@ request.interceptors.request.use(
  * 从后端错误信息中提取用户可读的消息（去掉 Python 堆栈）
  * 规则：只取第一行；如果包含 "Error:" 或 "错误:" 则取其后面的部分
  */
-function extractUserMessage(raw) {
+function extractUserMessage(raw: unknown): string {
   if (!raw) return ''
   const text = String(raw)
   // 取第一行
@@ -89,31 +98,40 @@ request.interceptors.response.use(
   }
 )
 
-// 封装常用的请求方法
-export const http = {
+// http 窄接口: 拦截器已解包响应体, 类型层面返回 Promise<T> (body) 而非 AxiosResponse
+// 行为与迁移前完全一致 (运行时返回 data), 仅类型更诚实
+export interface HttpLike {
+  get<T = unknown>(url: string, params?: Record<string, unknown>): Promise<T>
+  post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+  put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+  delete<T = unknown>(url: string, params?: Record<string, unknown>): Promise<T>
+  upload<T = unknown>(url: string, formData: FormData, onUploadProgress?: (e: unknown) => void): Promise<T>
+}
+
+export const http: HttpLike = {
   get(url, params) {
-    return request.get(url, { params })
+    return request.get(url, { params }) as Promise<never>
   },
-  
+
   post(url, data, config = {}) {
-    return request.post(url, data, config)
+    return request.post(url, data, config) as Promise<never>
   },
-  
+
   put(url, data, config = {}) {
-    return request.put(url, data, config)
+    return request.put(url, data, config) as Promise<never>
   },
-  
+
   delete(url, params) {
-    return request.delete(url, { params })
+    return request.delete(url, { params }) as Promise<never>
   },
-  
+
   upload(url, formData, onUploadProgress) {
     return request.post(url, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       },
       onUploadProgress
-    })
+    }) as Promise<never>
   }
 }
 
