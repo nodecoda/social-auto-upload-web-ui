@@ -9,6 +9,7 @@ import re
 import sqlite3
 import sys
 from pathlib import Path
+from typing import Any
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
@@ -24,7 +25,7 @@ DOUYIN_HASHTAG_RE = _HASHTAG_PATTERN
 XHS_HASHTAG_RE = _HASHTAG_PATTERN
 
 
-def _get_account_by_id(account_id):
+def _get_account_by_id(account_id: Any) -> Any:
     """查 user_info 表，返回 account 对象（id/platform/file_path）或不存在的 None。
 
     user_info schema: (id, type INTEGER, filePath TEXT, userName TEXT, status, avatar)
@@ -64,7 +65,7 @@ DECLARATION_PLATFORMS = {
 }
 
 
-def _first_truthy(*values):
+def _first_truthy(*values: Any) -> Any:
     """返回第一个真值；布尔用 is None 检查除外。"""
     for v in values:
         if v is not None and v != '' and v != []:
@@ -72,7 +73,7 @@ def _first_truthy(*values):
     return values[-1] if values else None
 
 
-def _first_list(*values):
+def _first_list(*values: Any) -> list[Any]:
     """返回第一个非空 list；都是空则返回最后一个。"""
     for v in values:
         if isinstance(v, list) and len(v) > 0:
@@ -80,7 +81,7 @@ def _first_list(*values):
     return values[-1] if values else []
 
 
-def _first_bool(*values):
+def _first_bool(*values: Any) -> bool:
     """布尔合并：用 is None 判定 None 表示"未设置"，False/True 都是有效值。"""
     for v in values:
         if v is not None:
@@ -88,7 +89,7 @@ def _first_bool(*values):
     return False
 
 
-def merge_config(common, platform_default, platform_ov, account_ov):
+def merge_config(common: dict[str, Any], platform_default: dict[str, Any], platform_ov: dict[str, Any], account_ov: dict[str, Any]) -> dict[str, Any]:
     """合并 4 层。3 级字段（大多数）：accountOv > platformOv > platformDefault。
     4 级字段（cover*/video*）：accountOv > platformOv > common（跳过 platformDefault）。"""
     common = common or {}
@@ -148,7 +149,7 @@ def merge_config(common, platform_default, platform_ov, account_ov):
     }
 
 
-def validate_draft_for_publish(draft):
+def validate_draft_for_publish(draft: dict[str, Any]) -> list[str]:
     """dry-run 校验视频草稿。返回错误消息列表。"""
     errors = []
     draft_data = draft.get('draft_data') or {}
@@ -243,7 +244,7 @@ def validate_draft_for_publish(draft):
 _IMAGE_DECLARATION_PLATFORMS = DECLARATION_PLATFORMS
 
 
-def validate_image_draft_for_publish(draft):
+def validate_image_draft_for_publish(draft: dict[str, Any]) -> list[str]:
     """dry-run 校验图集草稿。返回错误消息列表。"""
     errors = []
     image_ids = draft.get('image_ids') or []
@@ -269,7 +270,7 @@ def validate_image_draft_for_publish(draft):
     return errors
 
 
-def _resolve_stored_path(material):
+def _resolve_stored_path(material: Any) -> str:
     """从素材对象取 stored_path，再解析为本地绝对路径。
 
     相对路径（materials/2026/06/...）走 storage.resolve_material_path 解析；
@@ -291,7 +292,7 @@ def _resolve_stored_path(material):
     return ''
 
 
-def build_platform_kwargs(merged, common, account):
+def build_platform_kwargs(merged: dict[str, Any], common: dict[str, Any], account: Any) -> dict[str, Any]:
     """merged dict → platform.publish_video kwargs dict。
     common 兜底素材；account 提供 cookie 路径。"""
     merged = merged or {}

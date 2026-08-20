@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 
 
 class StorageBackend(ABC):
@@ -9,7 +10,7 @@ class StorageBackend(ABC):
         """保存文件（一次性 bytes），返回实际存储路径"""
 
     @abstractmethod
-    def save_stream(self, stream_iter, relative_path: str) -> str:
+    def save_stream(self, stream_iter: Iterable[bytes], relative_path: str) -> str:
         """流式保存文件（每次 yield 一个 bytes chunk），返回实际存储路径
 
         实现要点：
