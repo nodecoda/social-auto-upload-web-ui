@@ -40,7 +40,7 @@
     clearable
     class="cursor-pointer"
   >
-    <el-option v-for="opt in (field.options || [])" :key="opt.value" :label="opt.label" :value="opt.value" />
+    <el-option v-for="opt in (field.options || [])" :key="String(opt.value)" :label="opt.label" :value="opt.value" />
     <el-option v-if="!field.options || field.options.length === 0" label="暂无可选项" :value="''" disabled />
   </el-select>
   <el-date-picker
@@ -59,14 +59,14 @@
     v-else-if="field.type === 'poiSelect' && !field.key.startsWith('vivo')"
     :account-id="selectedAccountId"
     v-model="value"
-    :data="form[field.key + 'Data']"
+    :data="(form[field.key + 'Data'] as PoiSelectData | null)"
     @change="(val) => emit('poi-change', field.key, val)"
   />
   <VivoPositionSelect
     v-else-if="field.type === 'poiSelect' && field.key.startsWith('vivo')"
     :account-id="selectedAccountId"
     v-model="value"
-    :data="form[field.key + 'Data']"
+    :data="(form[field.key + 'Data'] as PoiSelectData | null)"
     @change="(val) => emit('poi-change', field.key, val)"
   />
   <el-cascader
@@ -83,7 +83,7 @@
   <RemoteSearchSelect
     v-else-if="field.type === 'compilationSelect'"
     v-model="value"
-    :data="form.compilationData"
+    :data="(form.compilationData as Record<string, unknown> | null)"
     :fetcher="fetchCompilation"
     :field-map="compilationFieldMap"
     search-mode="backend"
@@ -112,32 +112,42 @@ interface SettingsField {
   description?: string
   placeholder?: string
   fullRow?: boolean
-  options?: any[]
+  options?: Array<{ label: string; value: string | boolean }>
   visibleWhen?: { key: string; value: string | number | boolean }
   disabledWhen?: { key: string; value: string | number | boolean }
-  disabledDate?: (...args: any[]) => boolean
-  disabledHours?: (...args: any[]) => number[]
-  disabledMinutes?: (...args: any[]) => number[]
-  props?: Record<string, any>
-  [key: string]: any
+  disabledDate?: (date: Date) => boolean
+  disabledHours?: () => number[]
+  disabledMinutes?: (h: number) => number[]
+  props?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+// PoiSelect data prop 形状(PoiSelect.PoiItem 未导出,按结构声明用于动态表单数据收窄)
+interface PoiSelectData {
+  poi_id?: string | number
+  name?: string
+  full_address?: string
+  address?: string
+  [key: string]: unknown
 }
 
 const props = defineProps<{
   // 字段配置
   field: SettingsField
   // 字段当前值 (v-model = form[field.key])
+  // 按 field.type 变化:字符串/布尔/数字/数组等多形态,故保持 any 作为多态边界
   modelValue: any
   // 完整发布表单:用于 disabledWhen 联动 / poi Data / compilationData
-  form: Record<string, any>
+  form: Record<string, unknown>
   platformColor: string
   selectedAccountId: string | number | null
   selectedPlatform: string | null
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', val: any): void
-  (e: 'poi-change', key: string, poi: Record<string, any> | null): void
-  (e: 'compilation-change', key: string, comp: Record<string, any> | null): void
+  (e: 'update:modelValue', val: unknown): void
+  (e: 'poi-change', key: string, poi: Record<string, unknown> | null): void
+  (e: 'compilation-change', key: string, comp: Record<string, unknown> | null): void
 }>()
 
 const value = computed({
@@ -153,7 +163,7 @@ const isRadioDisabled = computed(() => {
 
 const radioName = computed(() => `${props.selectedAccountId || props.selectedPlatform || ''}-${props.field.key}`)
 
-function radioTextStyle(opt: any) {
+function radioTextStyle(opt: { label: string; value: string | boolean }) {
   const active = props.modelValue === opt.value && !isRadioDisabled.value
   return active ? { borderColor: props.platformColor, color: props.platformColor } : {}
 }
@@ -172,7 +182,7 @@ function scheduleDisabledDate(date: Date) {
   return date < startOfToday || date > maxDate
 }
 
-function _sameDay(a: any, b: any) {
+function _sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear()
     && a.getMonth() === b.getMonth()
     && a.getDate() === b.getDate()
@@ -238,10 +248,11 @@ async function fetchCompilation(keyword?: string) {
 const compilationFieldMap = {
   label: 'title',
   key: 'compilationId',
-  desc: (item: any) => {
+  desc: (item: Record<string, unknown>) => {
+    const c = item as CompilationItem
     const parts = []
-    if (item.category) parts.push(item.category)
-    if (item.total != null) parts.push(`${item.total} 个内容`)
+    if (c.category) parts.push(c.category)
+    if (c.total != null) parts.push(`${c.total} 个内容`)
     return parts.join(' · ')
   },
   cover: 'coverUrl'
