@@ -186,3 +186,10 @@ export const ElCollapseItem = {
   props: ['title', 'name'],
   template: '<div class="el-collapse-item-stub"><span class="el-collapse-item-title">{{ title }}</span><slot /></div>',
 }
+
+/** ElUpload:文件上传容器(透传 on-change/on-exceed/on-remove 函数 props 便于断言) */
+export const ElUpload = {
+  name: 'ElUpload',
+  props: ['autoUpload', 'limit', 'accept', 'onChange', 'onExceed', 'onRemove', 'listType'],
+  template: '<div class="el-upload-stub"><slot /></div>',
+}
