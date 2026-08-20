@@ -140,7 +140,7 @@ interface JdPickerResponse {
 const props = defineProps({
   modelValue: Boolean,
   accountId: String,
-  initSelected: { type: Array as PropType<Array<JdProduct | string>>, default: (): any[] => [] },
+  initSelected: { type: Array as PropType<Array<JdProduct | string>>, default: (): Array<JdProduct | string> => [] },
 })
 
 const emit = defineEmits<{

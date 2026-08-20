@@ -78,7 +78,7 @@ interface UploadRespData {
 }
 
 const props = defineProps({
-  modelValue: { type: Array as PropType<UploadImageItem[]>, default: (): any[] => [] },
+  modelValue: { type: Array as PropType<UploadImageItem[]>, default: (): UploadImageItem[] => [] },
   maxCount: { type: Number, default: 35 },
   visibleRows: { type: Number, default: 3 },
   columns: { type: Number, default: 5 },
@@ -129,9 +129,9 @@ function initSortable() {
     chosenClass: 'sortable-chosen',
     dragClass: 'sortable-drag',
     filter: '.upload-trigger',
-    onEnd(evt: any) {
+    onEnd(evt: Sortable.SortableEvent) {
       const { oldIndex, newIndex } = evt
-      if (oldIndex === newIndex) return
+      if (oldIndex == null || newIndex == null || oldIndex === newIndex) return
 
       // Reorder the array
       const movedItem = images.value.splice(oldIndex, 1)[0]

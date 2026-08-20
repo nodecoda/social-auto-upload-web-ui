@@ -53,7 +53,7 @@ import { platformList } from '@/config/platforms'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
-  disabledKeys: { type: Array as PropType<string[]>, default: (): any[] => [] }
+  disabledKeys: { type: Array as PropType<string[]>, default: (): string[] => [] }
 })
 
 const emit = defineEmits<{

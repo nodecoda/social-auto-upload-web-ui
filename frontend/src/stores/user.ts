@@ -1,15 +1,20 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+export interface UserInfo {
+  name: string
+  email: string
+}
+
 export const useUserStore = defineStore('user', () => {
-  const userInfo = ref({
+  const userInfo = ref<UserInfo>({
     name: '',
     email: ''
   })
   
   const isLoggedIn = ref(false)
   
-  const setUserInfo = (info: any) => {
+  const setUserInfo = (info: UserInfo) => {
     userInfo.value = info
     isLoggedIn.value = true
   }

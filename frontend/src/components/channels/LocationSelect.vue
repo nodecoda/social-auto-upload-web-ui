@@ -61,14 +61,14 @@ const props = defineProps({
     default: ''
   },
   data: {
-    type: Object as PropType<Record<string, any> | null>,
+    type: Object as PropType<LocationItem | null>,
     default: null
   }
 })
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
-  (e: 'change', payload: Record<string, any> | null): void
+  (e: 'change', payload: LocationItem | null): void
 }>()
 
 const loading = ref(false)
@@ -92,7 +92,7 @@ watch(() => props.accountId, () => {
 watch(() => props.modelValue, (val) => {
   selectedName.value = val
   if (val && props.data && !locationList.value.find(c => c.name === val)) {
-    locationList.value.unshift(props.data as LocationItem)
+    locationList.value.unshift(props.data)
   }
 }, { immediate: true })
 
