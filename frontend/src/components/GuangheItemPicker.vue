@@ -277,18 +277,18 @@ async function openPanel() {
 async function onRuleChange(rule: string) {
   if (rule === activeRule.value || loading.value) return
   activeRule.value = rule
-  await refreshList(async (sid) => guangheApi.pickerFilter(sid, { rule }))
+  await refreshList(async (sid) => guangheApi.pickerFilter(sid, { rule }) as Promise<GuangheResponse>)
 }
 
 async function onCategoryChange(category: string) {
   if (category === activeCategory.value || loading.value) return
   activeCategory.value = category
-  await refreshList(async (sid) => guangheApi.pickerFilter(sid, { category }))
+  await refreshList(async (sid) => guangheApi.pickerFilter(sid, { category }) as Promise<GuangheResponse>)
 }
 
 async function onSearch() {
   if (loading.value) return
-  await refreshList(async (sid) => guangheApi.pickerSearch(sid, searchKeyword.value))
+  await refreshList(async (sid) => guangheApi.pickerSearch(sid, searchKeyword.value) as Promise<GuangheResponse>)
 }
 
 async function onLoadMore() {
