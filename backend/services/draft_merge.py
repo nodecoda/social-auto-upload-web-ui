@@ -40,7 +40,7 @@ def _get_account_by_id(account_id: Any) -> Any:
         if not row:
             return None
         # 复用 app.py 里的 PLATFORM_ID_TO_KEY 映射（导入而非重复定义）
-        from app import PLATFORM_ID_TO_KEY
+        from conf import PLATFORM_ID_TO_KEY
         platform_key = PLATFORM_ID_TO_KEY.get(row[1], '')
         account = type('Account', (), {})()
         account.id = row[0]

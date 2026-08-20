@@ -1231,7 +1231,8 @@ def batch_publish_drafts():
     if not isinstance(draft_ids, list) or not draft_ids or len(draft_ids) > 30:
         return jsonify({"code": 400, "msg": "draft_ids 数量必须 1-30"}), 400
 
-    from app import PLATFORM_ID_TO_KEY, PLATFORM_MAP, _get_db_path
+    from app import _get_db_path
+    from conf import PLATFORM_ID_TO_KEY, PLATFORM_MAP
     db_path = _get_db_path()
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
