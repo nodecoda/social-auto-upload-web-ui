@@ -110,7 +110,7 @@ class ToutiaoPlatform(BasePlatform):
                         img_locator = page.locator(selector).first
                         if await img_locator.count():
                             src = await img_locator.get_attribute("src")
-                            if src and (src.startswith("http") or src.startswith("data:")):
+                            if src and src.startswith(("http", "data:")):
                                 logger.info("[登录] 找到二维码图片，选择器: %s", selector)
                                 break
                             src = None

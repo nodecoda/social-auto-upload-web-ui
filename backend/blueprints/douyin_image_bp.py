@@ -277,7 +277,7 @@ def search_music():
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
     except Exception as e:
-        logger.error(f"[音乐搜索] 异常: {e}", exc_info=True)
+        logger.exception(f"[音乐搜索] 异常: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -538,7 +538,7 @@ def search_miniapp():
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
     except Exception as e:
-        logger.error(f"搜索小程序失败: {e}", exc_info=True)
+        logger.exception(f"搜索小程序失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -573,7 +573,7 @@ def search_game():
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
     except Exception as e:
-        logger.error(f"搜索游戏失败: {e}", exc_info=True)
+        logger.exception(f"搜索游戏失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -607,7 +607,7 @@ def search_mark_spu():
             logger.error(f"[标记万物搜索] 请求失败: {result.get('error')}")
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
     except Exception as e:
-        logger.error(f"搜索标记万物失败: {e}", exc_info=True)
+        logger.exception(f"搜索标记万物失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 

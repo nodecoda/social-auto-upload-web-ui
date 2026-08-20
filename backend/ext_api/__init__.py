@@ -160,7 +160,7 @@ def _resolve_cover_from_path(stored_path) -> str:
     idx = normalized.find('materials/')
     if idx >= 0:
         relative = normalized[idx:]
-    elif normalized.startswith('covers/') or normalized.startswith('videos/'):
+    elif normalized.startswith(('covers/', 'videos/')):
         # 历史数据 / 其它子目录的相对路径(不带 materials/ 前缀),
         # 直接保留原路径, 由 /api/materials/file 路由拼接 base_dir
         relative = normalized

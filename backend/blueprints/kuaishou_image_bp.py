@@ -83,7 +83,7 @@ def search_music():
             return jsonify({"code": 200, "data": result["data"]})
         return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
     except Exception as e:
-        logger.error(f"[音乐搜索] 异常: {e}", exc_info=True)
+        logger.exception(f"[音乐搜索] 异常: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 

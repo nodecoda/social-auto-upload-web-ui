@@ -117,7 +117,7 @@ def picker_open():
         result = run_picker_async(session.open(type_), timeout=180)
         return _ok({"session_id": session.session_id, **result})
     except Exception as e:
-        logger.error(f"[Picker API] open 失败: {e}", exc_info=True)
+        logger.exception(f"[Picker API] open 失败: {e}")
         # 失败时确保 session 已从池中移除(避免脏数据)
         pool.remove(account_id)
         return _err(f"打开选择面板失败: {e}")
@@ -146,7 +146,7 @@ def picker_switch_type():
         result = run_picker_async(session.switch_type(type_), timeout=60)
         return _ok(result)
     except Exception as e:
-        logger.error(f"[Picker API] switch_type 失败: {e}", exc_info=True)
+        logger.exception(f"[Picker API] switch_type 失败: {e}")
         return _err(str(e))
 
 
@@ -167,7 +167,7 @@ def picker_tab():
         result = run_picker_async(session.switch_tab(tab), timeout=30)
         return _ok(result)
     except Exception as e:
-        logger.error(f"[Picker API] tab 失败: {e}", exc_info=True)
+        logger.exception(f"[Picker API] tab 失败: {e}")
         return _err(str(e))
 
 
@@ -189,7 +189,7 @@ def picker_filter():
         result = run_picker_async(session.apply_filter(rule=rule, category=category), timeout=30)
         return _ok(result)
     except Exception as e:
-        logger.error(f"[Picker API] filter 失败: {e}", exc_info=True)
+        logger.exception(f"[Picker API] filter 失败: {e}")
         return _err(str(e))
 
 
@@ -208,7 +208,7 @@ def picker_search():
         result = run_picker_async(session.search(keyword), timeout=30)
         return _ok(result)
     except Exception as e:
-        logger.error(f"[Picker API] search 失败: {e}", exc_info=True)
+        logger.exception(f"[Picker API] search 失败: {e}")
         return _err(str(e))
 
 
@@ -226,7 +226,7 @@ def picker_load_more():
         result = run_picker_async(session.load_more(), timeout=30)
         return _ok(result)
     except Exception as e:
-        logger.error(f"[Picker API] load_more 失败: {e}", exc_info=True)
+        logger.exception(f"[Picker API] load_more 失败: {e}")
         return _err(str(e))
 
 
@@ -246,5 +246,5 @@ def picker_close():
         run_picker_async(session.close(), timeout=20)
         return _ok({"closed": True})
     except Exception as e:
-        logger.error(f"[Picker API] close 失败: {e}", exc_info=True)
+        logger.exception(f"[Picker API] close 失败: {e}")
         return _err(str(e))

@@ -115,7 +115,7 @@ def list_collections():
                 "code": 500, "msg": result.get("error", "请求失败"),
             }), 500
     except Exception as e:
-        logger.error(f"[合集列表] 异常: {e}", exc_info=True)
+        logger.exception(f"[合集列表] 异常: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 

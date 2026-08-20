@@ -20,8 +20,5 @@ ignore = [
     "TRY300",   #  57 处
     "TRY301",   #  20 处
     "TRY400",   #  54 处
-    "PLW1510",  #   5 处 subprocess 未 check
     "PLW2901",  #  21 处循环变量重定义
-    "G201",     #  28 处 logging exc_info 写法 —— 随 B2/B4
-    "PIE810",   #   3 处
 ]
