@@ -180,7 +180,7 @@ class TiktokPlatform(BasePlatform):
                 ).first
                 if await nickname_el.count():
                     nickname = (await nickname_el.inner_text()).strip()
-            except Exception:
+            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                 pass
 
             avatar_url = ""
@@ -190,7 +190,7 @@ class TiktokPlatform(BasePlatform):
                 ).first
                 if await avatar_el.count():
                     avatar_url = (await avatar_el.get_attribute("src")) or ""
-            except Exception:
+            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                 pass
 
             logger.info(
@@ -224,12 +224,12 @@ class TiktokPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -528,7 +528,7 @@ class TiktokPlatform(BasePlatform):
             await got_it_btn.wait_for(state="visible", timeout=3_000)
             await got_it_btn.click()
             logger.info("[关闭引导] Dismissed tutorial tooltip")
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             # Tooltip not shown — fine
             pass
 
@@ -551,7 +551,7 @@ class TiktokPlatform(BasePlatform):
             await enable_btn.wait_for(state="visible", timeout=3_000)
             await enable_btn.click()
             logger.info("[关闭弹窗] Dismissed '开启自动内容检查' modal")
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             # Modal not shown — fine
             pass
 
@@ -578,7 +578,7 @@ class TiktokPlatform(BasePlatform):
             await enable_btn.wait_for(state="visible", timeout=3_000)
             await enable_btn.click()
             logger.info("[关闭弹窗] Dismissed '标记 AI 生成的内容' modal")
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             # Modal not shown — fine
             pass
 
@@ -831,7 +831,7 @@ class TiktokPlatform(BasePlatform):
         if current_month != publish_date.month:
             try:
                 await right_arrow.click(timeout=2_000)
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
         # --- Day selection ---
@@ -941,6 +941,6 @@ class TiktokPlatform(BasePlatform):
                 if href:
                     match = re.search(r"video/(\d+)", href)
                     return match.group(1) if match else None
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             pass
         return None

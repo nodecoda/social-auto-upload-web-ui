@@ -170,7 +170,7 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
                 input_in_frame = upload_frame.locator('input[type="file"]')
                 await input_in_frame.wait_for(state="attached", timeout=5000)
                 file_input = input_in_frame
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             if file_input is None:
                 file_input = page.locator(

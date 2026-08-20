@@ -120,7 +120,7 @@ class IqiyiPlatform(BasePlatform):
                         '[class*="user-info"]', timeout=5000
                     )
                     url_changed_event.set()
-                except Exception:
+                except Exception:  # noqa: S110 -- 信号/队列兜底,失败不影响主流程
                     pass
 
         browser = await self.create_browser(login_mode=True)
@@ -331,12 +331,12 @@ class IqiyiPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -1024,7 +1024,7 @@ class IqiyiPlatform(BasePlatform):
                                         "[iqiyi] 视频上传中 %s,等待完成...",
                                         percent_text,
                                     )
-                        except Exception:
+                        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                             pass
                     except Exception:
                         break

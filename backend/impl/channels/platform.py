@@ -143,7 +143,7 @@ async def _set_short_title(page, title: str, short_title: str | None = None) -> 
             await legacy.fill(value)
             logger.info(f"[填写标题] short title filled (legacy): {value!r}")
             return
-    except Exception:
+    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
         pass
     logger.info("[填写标题] short title input not found, skipping")
 
@@ -497,7 +497,7 @@ async def _fill_shoot_date_in_dialog(dialog, shoot_date: str) -> None:
             month_txt = (await labels.nth(1).inner_text(timeout=1000)).strip() if n > 1 else ""
             if year_txt == target_year and month_txt == target_month:
                 break
-        except Exception:
+        except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
             pass
         nxt = dialog.locator("button.weui-desktop-btn__icon__right").first
         if await nxt.count():
@@ -651,7 +651,7 @@ async def _confirm_mark_tag_dialog(page, dialog=None) -> bool:
         try:
             await target.wait_for(state="hidden", timeout=5000)
             logger.info("[视频标注] 弹窗已关闭")
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             pass
         return True
     except Exception as e:
@@ -896,7 +896,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
             if await fallback.count() and await fallback.is_visible():
                 logger.info("[设置封面] using fallback dialog match")
                 return fallback
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             pass
         return None
 
@@ -910,7 +910,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
             try:
                 try:
                     await cover_entry.hover()
-                except Exception:
+                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                     pass
                 await page.wait_for_timeout(500)
                 await _wait_for_cover_ready(page, action=f"{cover_type}封面入口 hover(第{attempt}轮)")
@@ -1247,13 +1247,13 @@ class ChannelsPlatform(BasePlatform):
             try:
                 # 释放 context 资源
                 await context.close()
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
                 try:
                     await browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -1352,7 +1352,7 @@ class ChannelsPlatform(BasePlatform):
         finally:
             try:
                 await browser.close()
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
 
 
@@ -1419,7 +1419,7 @@ class ChannelsPlatform(BasePlatform):
         try:
             try:
                 await page.goto(TENCENT_PLATFORM_URL, timeout=15000)
-            except Exception:
+            except Exception:  # noqa: S110 -- 页面加载兜底,超时继续后续逻辑
                 pass
             return await self._scrape_channels_stats(page)
         except Exception as exc:
@@ -1443,12 +1443,12 @@ class ChannelsPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -1590,7 +1590,7 @@ class ChannelsPlatform(BasePlatform):
                                 await page.wait_for_url(
                                     TENCENT_UPLOAD_URL, timeout=60000
                                 )
-                            except Exception:
+                            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                                 pass
 
                             # Upload video file
@@ -1654,7 +1654,7 @@ class ChannelsPlatform(BasePlatform):
                                     while browser.is_connected():
                                         await asyncio.sleep(1)
                                     logger.info("[发布调试] 检测到浏览器已关闭,流程结束")
-                                except Exception:
+                                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                                     pass
                                 return
 
@@ -1667,11 +1667,11 @@ class ChannelsPlatform(BasePlatform):
                         finally:
                             try:
                                 await context.close()
-                            except Exception:
+                            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                                 pass
                             try:
                                 await self.close_browser(browser, is_close_by_code=True)
-                            except Exception:
+                            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                                 pass
 
         asyncio.run(_do_upload())

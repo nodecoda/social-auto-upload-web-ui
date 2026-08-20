@@ -230,7 +230,7 @@ class WeixinGzhPlatform(BasePlatform):
                             logger.info("[登录] 检测到页面跳转到首页，登录成功!")
                             logged_in = True
                             break
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                     await asyncio.sleep(1)
 
@@ -338,7 +338,7 @@ class WeixinGzhPlatform(BasePlatform):
                 logger.info("[同步资料] 跳转到首页: %s", home_url)
                 try:
                     await page.goto(home_url, wait_until="domcontentloaded", timeout=30000)
-                except Exception:
+                except Exception:  # noqa: S110 -- 页面加载兜底,超时继续后续逻辑
                     pass
                 await asyncio.sleep(3)
 
@@ -376,7 +376,7 @@ class WeixinGzhPlatform(BasePlatform):
             current_url = ""
             try:
                 current_url = page.url or ""
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             logger.info("[stats] 开始抓取运营数据, 当前页面: %s", current_url)
 
@@ -472,12 +472,12 @@ class WeixinGzhPlatform(BasePlatform):
                 logger.info("[打开创作中心] 创作中心已打开")
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -830,7 +830,7 @@ class WeixinGzhPlatform(BasePlatform):
                 if success_visible:
                     logger.info("[阶段①] 检测到「视频上传成功」")
                     return
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             # 失败信号: 文本「转码失败」且其 mask 容器可见
             try:
@@ -852,7 +852,7 @@ class WeixinGzhPlatform(BasePlatform):
                     raise RuntimeError("[阶段①] 视频转码失败,无法继续")
             except RuntimeError:
                 raise
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             # 进度旁证
             try:
@@ -863,7 +863,7 @@ class WeixinGzhPlatform(BasePlatform):
                 if progress and progress != last_progress:
                     logger.info("[阶段①] 上传进度: %s", progress)
                     last_progress = progress
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(5)
         raise RuntimeError(f"[阶段①] 视频上传等待超时({timeout_s}s)")
@@ -1196,7 +1196,7 @@ class WeixinGzhPlatform(BasePlatform):
         await pm.wait_for(state="visible", timeout=10000)
         try:
             await pm.click()
-        except Exception:
+        except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
             pass
         await pm.press_sequentially(text, delay=30)
         await asyncio.sleep(0.5)
@@ -1763,7 +1763,7 @@ class WeixinGzhPlatform(BasePlatform):
             logger.warning("[阶段②][时间] 关闭面板异常: %s, 尝试 Escape", str(e)[:100])
             try:
                 await page.keyboard.press("Escape")
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
         # 5. 校验 可见 dl 内 input 显示值是否真的变成 HH:MM(选择生效铁证)
@@ -1883,7 +1883,7 @@ class WeixinGzhPlatform(BasePlatform):
                 if _HOME_PATH in url and "token=" in url:
                     logger.info("[阶段②] 已跳转首页,发表成功")
                     return
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(2)
         logger.warning("[阶段②] %ds 内未跳转首页(发表可能仍在处理)", timeout_s)

@@ -322,7 +322,7 @@ async def switch_tab(frame, tab: str) -> None:
             target_text,
             timeout=5000,
         )
-    except Exception:
+    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
         pass
     await asyncio.sleep(1.2)
 
@@ -383,7 +383,7 @@ async def load_more(frame) -> bool:
     if await more_btn.count() > 0:
         try:
             await more_btn.scroll_into_view_if_needed(timeout=3000)
-        except Exception:
+        except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
             pass
         await more_btn.click()
         await asyncio.sleep(2)
@@ -398,7 +398,7 @@ async def load_more(frame) -> bool:
             }"""
         )
         await asyncio.sleep(2)
-    except Exception:
+    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
         pass
     return False
 

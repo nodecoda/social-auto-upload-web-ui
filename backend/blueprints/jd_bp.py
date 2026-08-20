@@ -102,7 +102,7 @@ def picker_open():
         if released is not None:
             try:
                 run_picker_async(released.close(), timeout=10)
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass  # 清理失败不阻塞错误返回
         return _err(f"打开选择面板失败: {e}")
 

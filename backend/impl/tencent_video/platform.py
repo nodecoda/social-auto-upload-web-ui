@@ -197,7 +197,7 @@ class TencentVideoPlatform(BasePlatform):
                     # 等数据接口完成(SPA 页面需要等异步请求)
                     try:
                         await page.wait_for_load_state("networkidle", timeout=15000)
-                    except Exception:
+                    except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                         pass
                     stats = await self._scrape_tencent_video_stats(page)
                 except Exception as exc:
@@ -263,7 +263,7 @@ class TencentVideoPlatform(BasePlatform):
                     title = await page.title()
                     body_text = (await page.evaluate("document.body.innerText") or "")[:300]
                     logger.info(f"[tencent_video stats] title={title!r}, body 预览={body_text!r}")
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
 
             # 2. 用 evaluate 一次性拿所有 (data-name, 数值) 对
@@ -317,9 +317,9 @@ class TencentVideoPlatform(BasePlatform):
                 # 等数据接口完成(SPA 页面需要等异步请求)
                 try:
                     await page.wait_for_load_state("networkidle", timeout=15000)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             return await self._scrape_tencent_video_stats(page)
         except Exception as exc:
@@ -342,12 +342,12 @@ class TencentVideoPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -562,7 +562,7 @@ class TencentVideoPlatform(BasePlatform):
                             "[DEBUG] current_url=%s page_title=%s body_excerpt=%s",
                             current_url, page_title, body_text,
                         )
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                     raise Exception("未找到视频上传入口")
 
@@ -975,7 +975,7 @@ class TencentVideoPlatform(BasePlatform):
                     logger.info("[发布] Publish success text detected!")
                     success = True
                     break
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
             # Also check if URL changed away from publish page
@@ -987,7 +987,7 @@ class TencentVideoPlatform(BasePlatform):
                     )
                     success = True
                     break
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
             # After 5s, if button is still enabled and visible, retry click
@@ -997,7 +997,7 @@ class TencentVideoPlatform(BasePlatform):
                     if still_enabled:
                         logger.info("[发布] Button still enabled after 5s, retrying click...")
                         await publish_btn.click()
-                except Exception:
+                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                     pass
 
             await asyncio.sleep(1)

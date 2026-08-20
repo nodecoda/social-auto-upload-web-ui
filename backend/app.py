@@ -560,7 +560,7 @@ def import_account_start():
                 status_queue.put(json.dumps({
                     "status": "error", "step": 0, "msg": str(e),
                 }))
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
     thread = threading.Thread(target=_run_import, daemon=True)
@@ -1446,7 +1446,7 @@ if __name__ == "__main__":
                 _row = _c.execute("SELECT value FROM settings WHERE key='accountCheckMode'").fetchone()
                 if _row:
                     _check_mode = _row[0]
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             pass
         if _check_mode == "startup":
             logger.info("[Startup] 账号检查模式=启动时检测,开始后台异步检测所有账号...")

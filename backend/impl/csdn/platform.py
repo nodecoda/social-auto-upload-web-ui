@@ -135,11 +135,11 @@ class CsdnPlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             if success:
@@ -163,7 +163,7 @@ class CsdnPlatform(BasePlatform):
                         "domcontentloaded", timeout=10000
                     )
                     await asyncio.sleep(2)
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
                 profile_entry = page.locator(CSDN_LOGIN_SUCCESS_SELECTOR).first
                 if await profile_entry.count() > 0:
@@ -309,7 +309,7 @@ class CsdnPlatform(BasePlatform):
                 ".home-exp-user-card",
                 timeout=8000,
             )
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             pass
 
         result = await page.evaluate(
@@ -381,12 +381,12 @@ class CsdnPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -535,7 +535,7 @@ class CsdnPlatform(BasePlatform):
                     await page.wait_for_load_state(
                         "domcontentloaded", timeout=30000
                     )
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
 
                 # cookie 失效会被重定向到登录页
@@ -572,7 +572,7 @@ class CsdnPlatform(BasePlatform):
                         path=str(log_dir / "csdn_before_submit.png"),
                         full_page=True,
                     )
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
 
                 # 8. 点击发布按钮（页面跳转即成功）
@@ -584,7 +584,7 @@ class CsdnPlatform(BasePlatform):
                             path=str(log_dir / "csdn_after_submit.png"),
                             full_page=True,
                         )
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                 else:
                     logger.info("[上传视频] ✗ 发布失败")
@@ -593,7 +593,7 @@ class CsdnPlatform(BasePlatform):
                             path=str(log_dir / "csdn_submit_failed.png"),
                             full_page=True,
                         )
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
 
                 upload_success = True
@@ -602,16 +602,16 @@ class CsdnPlatform(BasePlatform):
                     try:
                         await context.storage_state(path=account_file)
                         logger.info("[上传视频] cookie 已更新")
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                     try:
                         await context.close()
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                         pass
         finally:
             try:
                 await self.close_browser(browser, is_close_by_code=True)
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
             logger.info("[上传视频] 浏览器已关闭")
 
@@ -633,7 +633,7 @@ class CsdnPlatform(BasePlatform):
             await page.screenshot(
                 path=str(log_dir / "csdn_upload_before.png"), full_page=True
             )
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             pass
 
         file_input = None
@@ -666,7 +666,7 @@ class CsdnPlatform(BasePlatform):
                     path=str(log_dir / "csdn_upload_no_input.png"),
                     full_page=True,
                 )
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             raise RuntimeError(
                 "未找到视频上传 input，请查看 logs/csdn_upload_before.png"
@@ -799,7 +799,7 @@ class CsdnPlatform(BasePlatform):
                     if still_open == 0:
                         logger.info("[设置封面] ✓ 裁剪弹窗已关闭")
                         break
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(1)
             await asyncio.sleep(1)
@@ -810,12 +810,12 @@ class CsdnPlatform(BasePlatform):
                     path=str(log_dir / "csdn_cover_error.png"),
                     full_page=True,
                 )
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             try:
                 await page.keyboard.press("Escape")
                 await asyncio.sleep(0.5)
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
     @staticmethod

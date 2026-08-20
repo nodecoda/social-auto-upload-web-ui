@@ -181,7 +181,7 @@ class YoutubePlatform(BasePlatform):
             if context:
                 try:
                     await context.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -218,7 +218,7 @@ class YoutubePlatform(BasePlatform):
             if browser:
                 try:
                     await browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -246,7 +246,7 @@ class YoutubePlatform(BasePlatform):
             if browser:
                 try:
                     await browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -266,12 +266,12 @@ class YoutubePlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -541,7 +541,7 @@ class YoutubePlatform(BasePlatform):
             try:
                 await context.storage_state(path=account_file)
                 logger.info(_msg("[发布] Cookie状态已更新"))
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
         except Exception as exc:
@@ -551,7 +551,7 @@ class YoutubePlatform(BasePlatform):
             if browser:
                 try:
                     await self.close_browser(browser, is_close_by_code=True)
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -637,7 +637,7 @@ class YoutubePlatform(BasePlatform):
                         off_radio = public_radio.locator("#offRadio").first
                         await off_radio.click(force=True)
                         await asyncio.sleep(1)
-                    except Exception:
+                    except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                         pass
         logger.info(_msg("[设置可见性] 公开单选项已选择"))
 
@@ -673,7 +673,7 @@ class YoutubePlatform(BasePlatform):
                 if await expand_btn.is_visible():
                     await expand_btn.click(force=True)
                     await asyncio.sleep(1)
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
             # Set date
@@ -745,7 +745,7 @@ class YoutubePlatform(BasePlatform):
                 logger.info(_msg(f"[定时发布] 时区设置失败, 使用默认: {exc}"))
                 try:
                     await page.keyboard.press("Escape")
-                except Exception:
+                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                     pass
 
             await asyncio.sleep(1)

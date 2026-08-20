@@ -85,7 +85,7 @@ def _ensure_tables(conn):
         except sqlite3.OperationalError:
             pass  # 列已存在
         conn.commit()
-    except Exception:
+    except Exception:  # noqa: S110 -- DB/查询兜底,失败走默认路径
         pass
     _tables_ensured = True
 
@@ -381,7 +381,7 @@ def _normalize_detail_row(d):
                 conn.close()
                 if row:
                     d['platform'] = _PLATFORM_ID_TO_NAME.get(row[0], plat)
-            except Exception:
+            except Exception:  # noqa: S110 -- DB/查询兜底,失败走默认路径
                 pass
     elif plat in _PLATFORM_KEY_TO_NAME:
         # 是拼音 key,转成中文名

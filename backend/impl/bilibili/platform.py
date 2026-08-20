@@ -303,16 +303,16 @@ class BilibiliPlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             try:
                 await browser.close()
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
 
     async def _login_stats_fn(self, page, account_id) -> list:
@@ -445,12 +445,12 @@ class BilibiliPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -724,7 +724,7 @@ class BilibiliPlatform(BasePlatform):
                         while browser.is_connected():
                             await asyncio.sleep(1)
                         logger.info("[发布调试] 检测到浏览器已关闭,流程结束")
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                     return
 
@@ -817,7 +817,7 @@ class BilibiliPlatform(BasePlatform):
                             ),
                             full_page=True,
                         )
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
 
                 upload_success = True
@@ -826,7 +826,7 @@ class BilibiliPlatform(BasePlatform):
                     try:
                         await context.storage_state(path=account_file)
                         logger.info("[上传视频] cookie updated")
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                 await context.close()
         finally:
@@ -1077,7 +1077,7 @@ class BilibiliPlatform(BasePlatform):
                 await current_input.click()
                 try:
                     await current_input.wait_for(state="editable", timeout=3000)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 # 第一个标签前多等一会(输入框刚展开, React 渲染未稳定)
                 await asyncio.sleep(0.5 if i == 0 else 0.3)
@@ -1330,7 +1330,7 @@ class BilibiliPlatform(BasePlatform):
                     path=str(log_dir / "bilibili_cover_error.png"),
                     full_page=True,
                 )
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             raise RuntimeError(f"cover setting failed: {exc}") from exc
 
@@ -1408,7 +1408,7 @@ class BilibiliPlatform(BasePlatform):
                 await scoped_options.first.wait_for(
                     state="attached", timeout=5000
                 )
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
             count = await scoped_options.count()

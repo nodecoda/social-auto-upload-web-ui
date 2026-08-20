@@ -302,7 +302,7 @@ class BasePlatform(ABC):
             if cookie_path and cookie_path.exists():
                 try:
                     cookie_path.unlink()
-                except Exception:
+                except Exception:  # noqa: S110 -- 文件/资源清理兜底,失败可忽略
                     pass
             status_queue.put(json.dumps({
                 "status": "error", "step": 4,
