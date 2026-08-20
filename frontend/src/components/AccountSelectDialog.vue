@@ -75,46 +75,13 @@
       </div>
 
       <!-- 右:标签筛选 -->
-      <div class="account-section tag-section">
-        <div class="account-section-header">
-          <span class="account-section-title">标签筛选</span>
-          <span class="account-section-count">已选 {{ selectedTagIds.size }}</span>
-          <el-button
-            size="small"
-            link
-            type="primary"
-            class="ml-auto"
-            :disabled="selectedTagIds.size === 0"
-            @click="clearAllTags"
-          >全不选</el-button>
-        </div>
-
-        <div v-if="accountStore.allTags.length > 0" class="tag-search">
-          <el-input
-            v-model="tagKeyword"
-            size="default"
-            placeholder="搜索标签..."
-            clearable
-          />
-        </div>
-
-        <div class="tag-list">
-          <div
-            v-for="tag in filteredTags"
-            :key="tag.id"
-            :class="['tag-chip', { selected: selectedTagIds.has(tag.id) }]"
-            :style="selectedTagIds.has(tag.id)
-              ? { background: tag.color, borderColor: tag.color, color: '#fff' }
-              : { borderColor: tag.color, color: tag.color }"
-            @click="toggleTag(tag.id)"
-          >
-            <el-icon v-if="selectedTagIds.has(tag.id)" class="tag-check"><Check /></el-icon>
-            <span>{{ tag.name }}</span>
-          </div>
-          <div v-if="accountStore.allTags.length === 0" class="empty-hint">暂无标签</div>
-          <div v-else-if="filteredTags.length === 0" class="empty-hint">没有匹配的标签</div>
-        </div>
-      </div>
+      <AccountTagFilter
+        v-model="tagKeyword"
+        :all-tags="(accountStore.allTags as unknown as AccountTag[])"
+        :selected-tag-ids="selectedTagIds"
+        @toggle-tag="toggleTag"
+        @clear-all="clearAllTags"
+      />
     </div>
 
     <template #footer>
@@ -136,6 +103,7 @@ import { useAccountStore } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
 import { accountApi } from '@/api/account'
 import { getDefaultAvatar, proxyAvatar } from '@/utils/avatar'
+import AccountTagFilter from '@/components/AccountTagFilter.vue'
 
 interface AccountSelectPlatform {
   key: string
@@ -199,13 +167,6 @@ const filteredAccounts = computed<SelectableAccount[]>(() => {
 const validFilteredAccounts = computed(() =>
   filteredAccounts.value.filter(a => a.status === '正常')
 )
-
-const filteredTags = computed<AccountTag[]>(() => {
-  const all = (accountStore.allTags as unknown as AccountTag[]) || []
-  if (!tagKeyword.value.trim()) return all
-  const kw = tagKeyword.value.trim().toLowerCase()
-  return all.filter(t => t.name.toLowerCase().includes(kw))
-})
 
 const isAllSelected = computed(() => {
   const ids = validFilteredAccounts.value.map(a => a.id)
@@ -310,11 +271,6 @@ watch(() => props.modelValue, async (visible) => {
 
   .accounts-section {
     flex: 2.2;
-  }
-
-  .tag-section {
-    flex: 1;
-    min-width: 220px;
   }
 
   .account-section-header {
@@ -509,62 +465,6 @@ watch(() => props.modelValue, async (visible) => {
       justify-content: center;
       font-size: 10px;
     }
-  }
-
-  .tag-search {
-    padding: 12px 12px 4px;
-    flex-shrink: 0;
-
-    :deep(.el-input__wrapper) {
-      background: $bg-surface;
-      box-shadow: none;
-      border-radius: $radius-sm;
-      padding: 2px 12px;
-    }
-  }
-
-  .tag-list {
-    flex: 1;
-    padding: 8px 12px 12px;
-    overflow-y: auto;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-content: start;
-  }
-
-  .tag-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border: 1px solid;
-    border-radius: 14px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all $transition-fast;
-    background: transparent;
-    user-select: none;
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    &.selected {
-      font-weight: 600;
-    }
-
-    .tag-check { font-size: 12px; }
-  }
-
-  .empty-hint {
-    width: 100%;
-    text-align: center;
-    padding: 24px 0;
-    color: $text-muted;
-    font-size: 13px;
   }
 
   .dialog-footer {
