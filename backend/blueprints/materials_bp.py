@@ -68,7 +68,7 @@ def _generate_video_thumbnail(material_id: str, source_path: str) -> str | None:
             "-q:v", "4",
             str(abs_thumb),
         ]
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: PLW1510 -- 依赖 returncode 判断,非异常路径
             cmd, capture_output=True, timeout=15,
             stdin=subprocess.DEVNULL,
         )
@@ -76,7 +76,7 @@ def _generate_video_thumbnail(material_id: str, source_path: str) -> str | None:
             return rel_thumb
         # 失败回退到第 0 秒
         cmd[cmd.index("1") + 1:cmd.index("1") + 2] = ["0"]
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: PLW1510 -- 依赖 returncode 判断,非异常路径
             cmd, capture_output=True, timeout=15,
             stdin=subprocess.DEVNULL,
         )

@@ -807,7 +807,7 @@ def _parse_vivo_count(text: str) -> int:
         return 0
     text = text.strip().lower()
     multi = 1
-    if text.endswith("万") or text.endswith("w"):
+    if text.endswith(("万", "w")):
         multi = 10_000
         text = text[:-1]
     elif text.endswith("亿"):

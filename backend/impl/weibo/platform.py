@@ -1856,9 +1856,7 @@ class WeiboPlatform(BasePlatform):
                     page, v2_required, v2_optional
                 )
             except Exception as e:
-                logger.error(
-                    "[内容声明] 版本2 处理异常: %s", e, exc_info=True
-                )
+                logger.exception("[内容声明] 版本2 处理异常: %s", e)
             return
 
         # 否则走版本1(老弹窗)
@@ -1866,9 +1864,7 @@ class WeiboPlatform(BasePlatform):
         try:
             await WeiboPlatform._set_content_statement_v1(page, v1_stmt)
         except Exception as e:
-            logger.error(
-                "[内容声明] 版本1 处理异常: %s", e, exc_info=True
-            )
+            logger.exception("[内容声明] 版本1 处理异常: %s", e)
 
     @staticmethod
     async def _set_content_statement_v1(page, statement: str):

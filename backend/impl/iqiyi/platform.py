@@ -928,7 +928,7 @@ class IqiyiPlatform(BasePlatform):
             else:
                 logger.warning("[设置封面] Step 4: '完成' button not found")
         except Exception as e:
-            logger.warning("[设置封面] 封面上传失败: %s", e, exc_info=True)
+            logger.exception("[设置封面] 封面上传失败: %s", e)
 
     @staticmethod
     async def _set_schedule_time(page, publish_date):

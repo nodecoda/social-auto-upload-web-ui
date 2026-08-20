@@ -204,7 +204,7 @@ class WeixinGzhPlatform(BasePlatform):
                         img_locator = page.locator(selector).first
                         if await img_locator.count():
                             src = await img_locator.get_attribute("src")
-                            if src and (src.startswith("http") or src.startswith("data:")):
+                            if src and src.startswith(("http", "data:")):
                                 logger.info("[登录] 找到二维码图片，选择器: %s", selector)
                                 break
                             src = None
@@ -429,7 +429,7 @@ class WeixinGzhPlatform(BasePlatform):
             logger.info("[stats] 解析得到 %d 项运营数据: %s", len(stats), stats)
             return stats
         except Exception as e:
-            logger.error("[stats] 抓取运营数据异常: %s", e, exc_info=True)
+            logger.exception("[stats] 抓取运营数据异常: %s", e)
             return []
 
     async def _login_stats_fn(self, page, account_id) -> list:
@@ -446,7 +446,7 @@ class WeixinGzhPlatform(BasePlatform):
             logger.info("[登录stats] 补抓完成, 共 %d 项", len(stats))
             return stats
         except Exception as e:
-            logger.error("[登录stats] 补抓异常: %s", e, exc_info=True)
+            logger.exception("[登录stats] 补抓异常: %s", e)
             return []
 
     # ------------------------------------------------------------------

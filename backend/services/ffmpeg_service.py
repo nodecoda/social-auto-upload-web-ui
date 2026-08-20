@@ -22,7 +22,7 @@ from loguru import logger
 def _validate_binary(path: str) -> bool:
     """Check that a binary actually exists and is executable."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: PLW1510 -- 依赖 returncode 判断,非异常路径
             [path, "-version"],
             capture_output=True, timeout=5,
         )
@@ -424,7 +424,7 @@ def get_video_duration_safe(video_path: str) -> float:
         return 0.0
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: PLW1510 -- 依赖 returncode 判断,非异常路径
             [FFMPEG, "-i", video_path],
             capture_output=True, text=True, timeout=10,
             stdin=subprocess.DEVNULL,
@@ -473,7 +473,7 @@ def get_video_dimensions_safe(video_path: str) -> tuple[int, int]:
         return (0, 0)
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: PLW1510 -- 依赖 returncode 判断,非异常路径
             [FFMPEG, "-i", video_path],
             capture_output=True, text=True, timeout=10,
             stdin=subprocess.DEVNULL,
