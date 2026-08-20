@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import BatchTagPicker from './BatchTagPicker.vue'
+import { type ExtractPropTypes } from 'vue'
 
 const ElInput = {
   props: ['modelValue', 'placeholder'],
@@ -26,7 +27,7 @@ const tags = [
   { id: 2, name: '旅游', color: '#00ff00' },
 ]
 
-const mountIt = (over: any = {}) =>
+const mountIt = (over: Partial<ExtractPropTypes<typeof BatchTagPicker['props']>> = {}) =>
   mount(BatchTagPicker, {
     props: { tags, selectedTagIds: new Set([1]), modelValue: '', ...over },
     global: { stubs: { ElInput, ElButton, ElIcon } },

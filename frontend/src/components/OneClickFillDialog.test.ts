@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { ElDialog, ElEmpty, ElIcon, ElPagination } from '../../tests/stubs'
 import OneClickFillDialog from './OneClickFillDialog.vue'
 
@@ -31,7 +31,7 @@ const mountIt = (over = {}) => mount(OneClickFillDialog, {
   },
 })
 
-const open = async (w: any) => { await w.setProps({ modelValue: true }); await flushPromises() }
+const open = async (w: VueWrapper) => { await w.setProps({ modelValue: true }); await flushPromises() }
 
 describe('OneClickFillDialog', () => {
   beforeEach(() => {

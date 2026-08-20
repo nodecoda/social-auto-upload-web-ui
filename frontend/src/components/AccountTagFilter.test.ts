@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import AccountTagFilter from './AccountTagFilter.vue'
+import { type ExtractPropTypes } from 'vue'
 
 const stubs = {
   ElInput: { props: ['modelValue', 'placeholder'], template: '<input :value="modelValue" :placeholder="placeholder" @input="$emit(\'update:modelValue\', $event.target.value)" />' },
@@ -14,7 +15,7 @@ const tags = [
   { id: 3, name: '美食探店', color: '#0000ff' },
 ]
 
-const mountIt = (over: any = {}) =>
+const mountIt = (over: Partial<ExtractPropTypes<typeof AccountTagFilter['props']>> = {}) =>
   mount(AccountTagFilter, {
     props: {
       allTags: tags,

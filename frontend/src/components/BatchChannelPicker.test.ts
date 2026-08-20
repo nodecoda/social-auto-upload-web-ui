@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import BatchChannelPicker from './BatchChannelPicker.vue'
+import { type ExtractPropTypes } from 'vue'
 
 const platforms = [
   { key: 'douyin', name: '抖音', count: 3 },
@@ -8,7 +9,7 @@ const platforms = [
   { key: 'bilibili', name: 'B站', count: 2, logo: '/logo.png' },
 ]
 
-const mountIt = (over: any = {}) =>
+const mountIt = (over: Partial<ExtractPropTypes<typeof BatchChannelPicker['props']>> = {}) =>
   mount(BatchChannelPicker, {
     props: { platforms, checkedKeys: new Set(['douyin']), ...over },
   })

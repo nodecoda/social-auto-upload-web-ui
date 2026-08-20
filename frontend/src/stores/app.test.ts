@@ -10,7 +10,7 @@ vi.mock('@/api/v2', () => ({
 }))
 
 describe('useAppStore', () => {
-  let store: any
+  let store: ReturnType<typeof useAppStore>
 
   beforeEach(() => {
     localStorage.clear()
@@ -87,10 +87,13 @@ describe('useAppStore', () => {
   })
 
   it('setMaterials / removeMaterial: 命中删除, 未命中不变', () => {
-    store.setMaterials([{ id: 1 }, { id: 2 }])
+    store.setMaterials([
+      { id: 1, original_filename: 'a.jpg', file_type: 'image', stored_path: '/a.jpg' },
+      { id: 2, original_filename: 'b.jpg', file_type: 'image', stored_path: '/b.jpg' },
+    ])
     expect(store.materials).toHaveLength(2)
     store.removeMaterial(1)
-    expect(store.materials).toEqual([{ id: 2 }])
+    expect(store.materials).toEqual([expect.objectContaining({ id: 2 })])
     store.removeMaterial(99)
     expect(store.materials).toHaveLength(1)
   })

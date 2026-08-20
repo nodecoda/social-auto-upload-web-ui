@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ImageGridItem from './ImageGridItem.vue'
+import { type ExtractPropTypes } from 'vue'
 
 const ElProgress = {
   props: ['percentage', 'width', 'strokeWidth'],
@@ -17,7 +18,7 @@ const baseImage = {
   progress: 100,
 }
 
-const mountIt = (over: any = {}) =>
+const mountIt = (over: Partial<ExtractPropTypes<typeof ImageGridItem['props']>> = {}) =>
   mount(ImageGridItem, {
     props: { image: { ...baseImage, ...over.image }, index: over.index ?? 0 },
     global: { stubs: { ElProgress, ElIcon } },
