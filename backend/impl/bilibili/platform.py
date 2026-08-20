@@ -170,7 +170,7 @@ class BilibiliPlatform(BasePlatform):
                     if not src:
                         qr_img = page.get_by_role("img").nth(0)
                         src = await qr_img.get_attribute("src")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[bilibili] failed to locate QR code: {e}")
 
                 if src:
@@ -247,7 +247,7 @@ class BilibiliPlatform(BasePlatform):
                     return False
                 logger.info("[bilibili] cookie valid")
                 return True
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[bilibili] cookie check timed out")
                 return False
             finally:
@@ -283,7 +283,7 @@ class BilibiliPlatform(BasePlatform):
                     await page.goto("https://account.bilibili.com/account/home",
                                     wait_until="networkidle", timeout=30000)
                     name, avatar = await scrape_bilibili_profile(page)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[bilibili] 抓 name/avatar 失败: {exc}")
                     name, avatar = "", ""
 
@@ -292,27 +292,27 @@ class BilibiliPlatform(BasePlatform):
                     await page.goto("https://member.bilibili.com/platform/home",
                                     wait_until="networkidle", timeout=30000)
                     stats = await self._scrape_bilibili_stats(page)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[bilibili] 抓 stats 失败(不影响 name/avatar): {exc}")
                     stats = []
 
                 return {"name": name, "avatar": avatar, "stats": stats}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[bilibili] sync profile failed: {e}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
                 try:
                     await page.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             try:
                 await browser.close()
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
     async def _login_stats_fn(self, page, account_id) -> list:
@@ -328,7 +328,7 @@ class BilibiliPlatform(BasePlatform):
                 timeout=30000,
             )
             return await self._scrape_bilibili_stats(page)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[bilibili login] _login_stats_fn 抓取失败: {exc}")
             return []
 
@@ -386,7 +386,7 @@ class BilibiliPlatform(BasePlatform):
             try:
                 try:
                     await page.wait_for_selector(".data-card .value, .fan-num", timeout=10000)
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info("[bilibili stats] 等待 .data-card/.fan-num 超时")
 
                 raw = await page.evaluate(
@@ -422,7 +422,7 @@ class BilibiliPlatform(BasePlatform):
                         icon, sort_no, name = label_map[label]
                         count = _parse_int(item.get('num', '0'))
                         stats.append({"ICON": icon, "COUNT": count, "NAME": name, "SORT": sort_no})
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[bilibili stats] 抓取失败: {exc}")
 
             stats.sort(key=lambda x: x.get("SORT", 999))
@@ -445,12 +445,12 @@ class BilibiliPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -724,7 +724,7 @@ class BilibiliPlatform(BasePlatform):
                         while browser.is_connected():
                             await asyncio.sleep(1)
                         logger.info("[发布调试] 检测到浏览器已关闭,流程结束")
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                     return
 
@@ -789,7 +789,7 @@ class BilibiliPlatform(BasePlatform):
                             ),
                             full_page=True,
                         )
-                    except Exception as exc:
+                    except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         logger.info(
                             f"[上传视频] submit retry {attempt + 1}/10: {exc}"
                         )
@@ -817,7 +817,7 @@ class BilibiliPlatform(BasePlatform):
                             ),
                             full_page=True,
                         )
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
 
                 upload_success = True
@@ -826,7 +826,7 @@ class BilibiliPlatform(BasePlatform):
                     try:
                         await context.storage_state(path=account_file)
                         logger.info("[上传视频] cookie updated")
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                 await context.close()
         finally:
@@ -848,7 +848,7 @@ class BilibiliPlatform(BasePlatform):
             input_in_frame = upload_frame.locator('input[type="file"]')
             await input_in_frame.wait_for(state="attached", timeout=5000)
             file_input = input_in_frame
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] upload iframe not found, trying main page")
 
         if file_input is None:
@@ -890,7 +890,7 @@ class BilibiliPlatform(BasePlatform):
                     )
             except RuntimeError:
                 raise
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 if i % 60 == 0 and i > 0:
                     logger.info("[上传视频] 上传状态检查: %s", exc)
             await asyncio.sleep(0.5)
@@ -979,7 +979,7 @@ class BilibiliPlatform(BasePlatform):
                 await page.locator(".drop-list-v2-container").first.wait_for(
                     state="visible", timeout=5000
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 # 兜底：可能已经开了但选择器未匹配，再点一次
                 logger.warning("[设置分区] 下拉未出现，尝试再点一次")
                 await select_controller.click(force=True)
@@ -1002,7 +1002,7 @@ class BilibiliPlatform(BasePlatform):
                 )
 
             await asyncio.sleep(1)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[设置分区] category setting failed (non-fatal): {exc}")
 
     @staticmethod
@@ -1045,7 +1045,7 @@ class BilibiliPlatform(BasePlatform):
                     tag_input = loc
                     logger.info(f"[填写标签] found tag input: {sel}")
                     break
-            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+            except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                 continue
 
         if tag_input is None:
@@ -1066,7 +1066,7 @@ class BilibiliPlatform(BasePlatform):
                         if await loc.count() > 0 and await loc.is_visible():
                             current_input = loc
                             break
-                    except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+                    except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                         continue
                 if current_input is None:
                     logger.info("[填写标签] tag input lost, stopping")
@@ -1077,7 +1077,7 @@ class BilibiliPlatform(BasePlatform):
                 await current_input.click()
                 try:
                     await current_input.wait_for(state="editable", timeout=3000)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 # 第一个标签前多等一会(输入框刚展开, React 渲染未稳定)
                 await asyncio.sleep(0.5 if i == 0 else 0.3)
@@ -1093,7 +1093,7 @@ class BilibiliPlatform(BasePlatform):
                     f"[上传视频] added tag ({i + 1}/{min(len(tags), 10)}): "
                     f"{tag}"
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[填写标签] failed to add tag '{tag}': {exc}")
 
     @staticmethod
@@ -1204,7 +1204,7 @@ class BilibiliPlatform(BasePlatform):
                             strategy, sel,
                         )
                         break
-                    except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+                    except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                         continue
                 if dialog_opened:
                     break
@@ -1233,7 +1233,7 @@ class BilibiliPlatform(BasePlatform):
                     await cand.wait_for(state="visible", timeout=5000)
                     dialog = cand
                     break
-                except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+                except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                     continue
             if dialog is None:
                 # 兜底:弹窗容器选择器都没命中,但若页面已出现图片上传 input,
@@ -1330,7 +1330,7 @@ class BilibiliPlatform(BasePlatform):
                     path=str(log_dir / "bilibili_cover_error.png"),
                     full_page=True,
                 )
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             raise RuntimeError(f"cover setting failed: {exc}") from exc
 
@@ -1391,7 +1391,7 @@ class BilibiliPlatform(BasePlatform):
                 await list_wrap.first.wait_for(
                     state="attached", timeout=5000
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                 # 兜底：bcc-select 容器加 'is-open'/'is-focus' 类
                 fallback = page.locator(
                     '.bcc-select.is-open, .bcc-select.is-focus, '
@@ -1408,7 +1408,7 @@ class BilibiliPlatform(BasePlatform):
                 await scoped_options.first.wait_for(
                     state="attached", timeout=5000
                 )
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
             count = await scoped_options.count()
@@ -1456,12 +1456,12 @@ class BilibiliPlatform(BasePlatform):
                         f"{repost_source}"
                     )
                     await asyncio.sleep(0.5)
-                except Exception as repost_exc:
+                except Exception as repost_exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(
                         f"[上传视频] repost source fill failed (non-fatal): "
                         f"{repost_exc}"
                     )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(
                 f"[上传视频] creation declaration failed (non-fatal): "
                 f"{exc}"
@@ -1512,7 +1512,7 @@ class BilibiliPlatform(BasePlatform):
                     parent = option_items.nth(i).locator("xpath=ancestor::div[contains(@class,'season-item')][1]")
                     try:
                         await parent.first.click(timeout=3000)
-                    except Exception:
+                    except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         await option_items.nth(i).click()
                     logger.info("[设置合集] 已选择合集: %s", collection_name)
                     await asyncio.sleep(1)
@@ -1521,7 +1521,7 @@ class BilibiliPlatform(BasePlatform):
             logger.warning("[设置合集] 未找到合集: %s", collection_name)
             # 关闭下拉
             await page.keyboard.press("Escape")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[设置合集] 合集设置失败(非致命): %s", e)
 
     @staticmethod
@@ -1606,5 +1606,5 @@ class BilibiliPlatform(BasePlatform):
             await asyncio.sleep(0.5)
 
             logger.info("[定时发布] schedule time set")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[定时发布] schedule time setting failed: {exc}")

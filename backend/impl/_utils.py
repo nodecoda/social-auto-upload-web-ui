@@ -44,7 +44,7 @@ def get_account_name_by_cookie_file(cookie_filename: str) -> str:
                 (cookie_filename,),
             ).fetchone()
         return row[0] if row else ""
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("查询账号昵称失败 (%s): %s", cookie_filename, e)
         return ""
 
@@ -233,7 +233,7 @@ async def scrape_user_profile(page):
     try:
         await page.wait_for_load_state('domcontentloaded', timeout=5000)
         await asyncio.sleep(3)
-    except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+    except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
         pass
 
     try:
@@ -246,7 +246,7 @@ async def scrape_user_profile(page):
             logger.info(f"[scrape] found profile - name: {name}, avatar: {avatar[:50] if avatar else 'N/A'}")
         else:
             logger.info("[scrape] could not find user name, will use default")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[scrape] failed to scrape user profile: {e}")
 
     return name, avatar
@@ -278,7 +278,7 @@ async def scrape_bilibili_profile(page):
             logger.info(f"[bilibili] profile scraped - name: {name}, avatar: {avatar[:50] if avatar else 'N/A'}")
         else:
             logger.info("[bilibili] profile scrape failed, will use default name")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[bilibili] profile scrape error: {e}")
     return name, avatar
 
@@ -302,7 +302,7 @@ async def scrape_tencent_profile(page):
             await page.locator('div.finder-card').first.wait_for(
                 state="visible", timeout=15000,
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[channels] finder-card 未就绪, 当前 url={page.url}")
         # 头像: div.finder-card img.avatar
         avatar_el = page.locator('div.finder-card img.avatar').first
@@ -316,7 +316,7 @@ async def scrape_tencent_profile(page):
             logger.info(f"[channels] profile scraped - name: {name}, avatar: {avatar[:50] if avatar else 'N/A'}")
         else:
             logger.info("[channels] profile scrape failed, will use default name")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[channels] profile scrape error: {e}")
     return name, avatar
 
@@ -347,7 +347,7 @@ async def scrape_baijiahao_profile(page):
             await page.locator('div[class*="userName"]').first.wait_for(
                 state="visible", timeout=12000,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             # 未在 12s 内出现：可能 cookie 失效跳转到了登录页，记录后继续
             logger.info(f"[baijiahao] userName 元素等待超时: {e}; 当前 url={page.url}")
 
@@ -367,7 +367,7 @@ async def scrape_baijiahao_profile(page):
                 name = (await name_el.text_content() or '').strip()
 
         logger.info(f"[baijiahao] profile scraped - name={name!r} avatar={avatar[:50] if avatar else 'None'}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[baijiahao] profile scrape error: {e}")
     return name, avatar
 
@@ -431,7 +431,7 @@ async def scrape_youtube_profile(page):
                     name = candidate
 
         logger.info(f"[youtube] profile scraped - name={name!r} avatar={avatar[:50] if avatar else 'None'}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[youtube] profile scrape error: {e}")
     return name, avatar
 
@@ -482,7 +482,7 @@ async def scrape_alipay_profile(page):
                 if found:
                     info_ready = True
                     break
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(0.5)
 
@@ -592,7 +592,7 @@ async def scrape_alipay_profile(page):
             f"[alipay] profile scraped - name={name!r} "
             f"avatar={avatar[:80] if avatar else 'None'}"
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[alipay] profile scrape error: {e}")
 
     return name, avatar
@@ -634,7 +634,7 @@ async def scrape_weibo_profile(page):
         name = (result.get("name") or "").strip()
         avatar = (result.get("avatar") or "").strip()
         logger.info(f"[weibo] profile scraped - name={name!r} avatar={avatar[:80] if avatar else 'None'} (result={result})")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[weibo] profile scrape error: {e}")
 
     return name, avatar
@@ -714,7 +714,7 @@ async def scrape_toutiao_profile(page):
             f"[toutiao] profile scraped - name={name!r} "
             f"avatar={avatar[:80] if avatar else 'None'}"
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[toutiao] profile scrape error: {e}")
 
     return name, avatar
@@ -783,7 +783,7 @@ async def scrape_vivo_profile(page):
             try:
                 # 处理 "1.2万" / "1.2w" / 纯数字 三种格式
                 number = _parse_vivo_count(number_text)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                 number = 0
             if title == "粉丝":
                 fans = number
@@ -795,7 +795,7 @@ async def scrape_vivo_profile(page):
             f"avatar={avatar[:80] if avatar else 'None'} "
             f"fans={fans} likes={likes}"
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[vivo] profile scrape error: {e}")
 
     return name, avatar, fans, likes, follows
@@ -850,7 +850,7 @@ async def scrape_zhihu_profile(page):
             await avatar_btn.wait_for(state="visible", timeout=8000)
             await avatar_btn.click()
             await asyncio.sleep(1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[zhihu] 点击头像下拉失败 (可能已在主页): {e}")
 
         # 2. 点击「我的主页」链接
@@ -868,18 +868,18 @@ async def scrape_zhihu_profile(page):
             await profile_link.click()
             logger.info(f"[zhihu] 点击「我的主页」成功，href={href}")
             navigated = True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[zhihu] 点击「我的主页」失败: {e}")
 
         # 3. 等待跳转完成（URL 应包含 /people/）
         if navigated:
             try:
                 await page.wait_for_url("**/people/**", timeout=15000)
-            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+            except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
         try:
             await page.wait_for_load_state("domcontentloaded", timeout=10000)
-        except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+        except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
             pass
 
         # 4. 抓取昵称和头像
@@ -891,11 +891,11 @@ async def scrape_zhihu_profile(page):
             ).first
             try:
                 await name_el.wait_for(state="visible", timeout=10000)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[zhihu] 昵称容器等待超时 (url={page.url}): {e}")
             if await name_el.count() > 0:
                 name = (await name_el.text_content() or "").strip()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[zhihu] 昵称抓取失败: {e}")
 
         # 兜底：从 URL / 页面 title 提取昵称
@@ -908,7 +908,7 @@ async def scrape_zhihu_profile(page):
                     if cand and cand != "知乎":
                         name = cand
                         logger.info(f"[zhihu] 从 title 兜底昵称: {name!r}")
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
         try:
@@ -918,18 +918,18 @@ async def scrape_zhihu_profile(page):
             ).first
             try:
                 await avatar_el.wait_for(state="attached", timeout=8000)
-            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+            except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
             if await avatar_el.count() > 0:
                 avatar = (await avatar_el.get_attribute("src") or "").strip()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[zhihu] 头像抓取失败: {e}")
 
         logger.info(
             f"[zhihu] profile scraped - name={name!r} "
             f"avatar={avatar[:80] if avatar else 'None'}"
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[zhihu] profile scrape error: {e}")
 
     return name, avatar
@@ -952,13 +952,13 @@ async def scrape_csdn_profile(page):
     try:
         try:
             await page.wait_for_load_state("domcontentloaded", timeout=10000)
-        except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+        except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
             pass
         try:
             await page.locator("div.user-info-box").first.wait_for(
                 state="visible", timeout=15000
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[csdn] 用户信息卡未出现 (可能未登录): {e}")
         await asyncio.sleep(2)
 
@@ -969,7 +969,7 @@ async def scrape_csdn_profile(page):
                 name = (await name_el.get_attribute("title") or "").strip()
                 if not name:
                     name = (await name_el.text_content() or "").strip()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[csdn] 昵称抓取失败: {e}")
 
         # 头像
@@ -979,14 +979,14 @@ async def scrape_csdn_profile(page):
             ).first
             if await avatar_el.count() > 0:
                 avatar = (await avatar_el.get_attribute("src") or "").strip()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[csdn] 头像抓取失败: {e}")
 
         logger.info(
             f"[csdn] profile scraped - name={name!r} "
             f"avatar={avatar[:80] if avatar else 'None'}"
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[csdn] profile scrape error: {e}")
 
     return name, avatar
@@ -1012,7 +1012,7 @@ async def scrape_weixin_gzh_profile(page):
             await page.locator(".weui-desktop_name").first.wait_for(
                 state="visible", timeout=12000
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[weixin_gzh] 昵称容器等待超时 (url={page.url}): {e}")
         await asyncio.sleep(1)
 
@@ -1021,7 +1021,7 @@ async def scrape_weixin_gzh_profile(page):
             avatar_el = page.locator(".weui-desktop-account__img").first
             if await avatar_el.count() > 0:
                 avatar = (await avatar_el.get_attribute("src") or "").strip()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[weixin_gzh] 头像抓取失败: {e}")
 
         # 昵称：.weui-desktop_name（优先 title 兜底 text）
@@ -1031,14 +1031,14 @@ async def scrape_weixin_gzh_profile(page):
                 name = (await name_el.get_attribute("title") or "").strip()
                 if not name:
                     name = (await name_el.text_content() or "").strip()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[weixin_gzh] 昵称抓取失败: {e}")
 
         logger.info(
             f"[weixin_gzh] profile scraped - name={name!r} "
             f"avatar={avatar[:80] if avatar else 'None'}"
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[weixin_gzh] profile scrape error: {e}")
 
     return name, avatar
@@ -1103,7 +1103,7 @@ async def scrape_taobao_guanghe_profile(page):
             f"[taobao_guanghe] profile scraped - name={name!r} "
             f"avatar={avatar[:80] if avatar else 'None'}"
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[taobao_guanghe] profile scrape error: {e}")
 
     return name, avatar
@@ -1136,7 +1136,7 @@ async def scrape_jingmai_profile(page):
                 avatar = (await avatar_el.get_attribute("src") or "").strip()
                 if avatar.startswith("//"):
                     avatar = "https:" + avatar
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[jingmai] 头像抓取失败: {e}")
 
         # 昵称
@@ -1148,14 +1148,14 @@ async def scrape_jingmai_profile(page):
                 name = (await name_el.get_attribute("title") or "").strip()
                 if not name:
                     name = (await name_el.text_content() or "").strip()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[jingmai] 昵称抓取失败: {e}")
 
         logger.info(
             f"[jingmai] profile scraped - name={name!r} "
             f"avatar={avatar[:80] if avatar else 'None'}"
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[jingmai] profile scrape error: {e}")
 
     return name, avatar
@@ -1211,7 +1211,7 @@ def parse_schedule_time(schedule_time_str, total_files, enableTimer,
                 except ValueError:
                     continue
             logger.info(f"[schedule] cannot parse time '{schedule_time_str}', falling back to auto-generation")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[schedule] error parsing time: {e}, falling back to auto-generation")
 
     # No user-specified time: auto-generate
@@ -1350,7 +1350,7 @@ async def save_login_result(
                 logger.info(f"[login] account {account_id} stats 已补抓({len(stats)} 项)")
             else:
                 logger.info(f"[login] account {account_id} stats 抓取为空,跳过")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[login] 补抓 stats 失败(不影响登录成功): {exc}")
 
     # 5. Send SSE status (放在 stats 之后,确保前端刷新时 DB 已有运营数据)
@@ -1443,7 +1443,7 @@ async def clear_input(page, element=None):
             if tag in ("input", "textarea"):
                 await element.fill("")
                 return
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             pass
         # contenteditable 或其他:点击聚焦 + 全选 + 删除
         await element.click()

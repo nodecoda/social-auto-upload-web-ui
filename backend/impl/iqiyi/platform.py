@@ -61,21 +61,21 @@ async def _scrape_iqiyi_profile(page) -> tuple[str, str]:
 
     try:
         await page.wait_for_selector('[class*="user-info"]', timeout=10000)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("user-info section not found")
 
     try:
         name_el = page.locator('span[class*="emoji-wrap"]').first
         if await name_el.count() > 0:
             name = (await name_el.text_content() or "").strip()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("Failed to scrape nickname: %s", e)
 
     try:
         avatar_el = page.locator('[class*="user-info"] img').first
         if await avatar_el.count() > 0:
             avatar = (await avatar_el.get_attribute("src") or "").strip()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("Failed to scrape avatar: %s", e)
 
     return name, avatar
@@ -120,7 +120,7 @@ class IqiyiPlatform(BasePlatform):
                         '[class*="user-info"]', timeout=5000
                     )
                     url_changed_event.set()
-                except Exception:  # noqa: S110 -- 信号/队列兜底,失败不影响主流程
+                except Exception:  # noqa: S110, BLE001 -- 信号/队列兜底,失败不影响主流程
                     pass
 
         browser = await self.create_browser(login_mode=True)
@@ -182,11 +182,11 @@ class IqiyiPlatform(BasePlatform):
                         '[class*="user-info"]', timeout=5000
                     )
                     return True
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                     return False
             finally:
                 await context.close()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("check_cookie failed: %s", e)
             return False
         finally:
@@ -211,7 +211,7 @@ class IqiyiPlatform(BasePlatform):
                 return {"name": name, "avatar": avatar, "stats": stats}
             finally:
                 await context.close()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("sync_profile failed: %s", e)
             return {"name": "", "avatar": "", "stats": []}
         finally:
@@ -253,7 +253,7 @@ class IqiyiPlatform(BasePlatform):
         try:
             try:
                 await page.wait_for_selector(".user-info__row--stats", timeout=10000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[iqiyi stats] 等待 .user-info__row--stats 超时")
 
             raw = await page.evaluate(
@@ -298,7 +298,7 @@ class IqiyiPlatform(BasePlatform):
                     except (ValueError, TypeError):
                         count = 0
                     stats.append({"ICON": icon, "COUNT": count, "NAME": name, "SORT": sort_no})
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[iqiyi stats] 抓取失败: {exc}")
 
         stats.sort(key=lambda x: x.get("SORT", 999))
@@ -311,7 +311,7 @@ class IqiyiPlatform(BasePlatform):
         """
         try:
             return await self._scrape_iqiyi_stats(page)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[iqiyi login] _login_stats_fn 抓取失败: {exc}")
             return []
 
@@ -331,12 +331,12 @@ class IqiyiPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -715,7 +715,7 @@ class IqiyiPlatform(BasePlatform):
                 logger.warning(
                     "Creation declaration label not found for value=%s", value
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(
                 "Failed to set creation declaration (non-blocking): %s", e
             )
@@ -752,7 +752,7 @@ class IqiyiPlatform(BasePlatform):
                 await asyncio.sleep(0.5)
             else:
                 logger.warning("[风险提示] Risk warning option not found: %s", warning)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(
                 "Failed to set risk warning (non-blocking): %s", e
             )
@@ -771,7 +771,7 @@ class IqiyiPlatform(BasePlatform):
                 await asyncio.sleep(0.5)
             else:
                 logger.info("[现金活动] Cash activity already checked or not found")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[现金活动] Failed to click cash activity (non-blocking): %s", e)
 
     @staticmethod
@@ -970,7 +970,7 @@ class IqiyiPlatform(BasePlatform):
                 await asyncio.sleep(1)
             else:
                 logger.warning("[定时发布] Schedule date input not found")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(
                 "Schedule time setup failed (non-blocking): %s", e
             )
@@ -1024,9 +1024,9 @@ class IqiyiPlatform(BasePlatform):
                                         "[iqiyi] 视频上传中 %s,等待完成...",
                                         percent_text,
                                     )
-                        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                             pass
-                    except Exception:
+                    except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                         break
                     await asyncio.sleep(5)
                 else:
@@ -1037,7 +1037,7 @@ class IqiyiPlatform(BasePlatform):
                 await asyncio.sleep(3)
             else:
                 logger.info("[iqiyi] 未检测到上传区域(可能已上传完),直接点发布")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(
                 "[iqiyi] 等待上传区域异常(忽略,继续点发布): %s", e
             )
@@ -1060,7 +1060,7 @@ class IqiyiPlatform(BasePlatform):
                     '!window.location.href.includes("/publish/video/wemedia")',
                     timeout=60000,
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning(
                     "Publish failed — still on publish page after 60s timeout. "
                     "URL: %s", page.url
@@ -1085,7 +1085,7 @@ class IqiyiPlatform(BasePlatform):
                         logger.info("页面文本命中成功关键词: %r", kw)
                         logger.info("[发布] Video published successfully")
                         return True
-                except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+                except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                     continue
 
             # 所有判定都不满足 → 视为跳转到了非成功页（如内容管理页）

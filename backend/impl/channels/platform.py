@@ -143,7 +143,7 @@ async def _set_short_title(page, title: str, short_title: str | None = None) -> 
             await legacy.fill(value)
             logger.info(f"[填写标题] short title filled (legacy): {value!r}")
             return
-    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
         pass
     logger.info("[填写标题] short title input not found, skipping")
 
@@ -231,7 +231,7 @@ async def _apply_location(page, location_name: str = "") -> None:
             continue
         try:
             name = (await name_el.inner_text()).strip()
-        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+        except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
             continue
         if name == location_name:
             await opt.click()
@@ -300,7 +300,7 @@ async def _apply_activity(page, activity_name: str = "", activity_id: str = "") 
     ).first
     try:
         await real_option.wait_for(state="visible", timeout=8000)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[设置活动] 等待下拉数据超时: %s", exc)
         # 不直接 return —— 继续走下面的匹配,可能是真的 0 结果
     await asyncio.sleep(0.3)  # 给最后一项的 DOM 一点点缓冲
@@ -321,7 +321,7 @@ async def _apply_activity(page, activity_name: str = "", activity_id: str = "") 
             continue
         try:
             name = (await name_el.inner_text()).strip()
-        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+        except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
             continue
         if name != activity_name:
             continue
@@ -329,7 +329,7 @@ async def _apply_activity(page, activity_name: str = "", activity_id: str = "") 
         if target_creator:
             try:
                 creator_text = (await creator_el.inner_text()).strip().rstrip("· ").strip() if await creator_el.count() > 0 else ""
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 creator_text = ""
             if creator_text == target_creator:
                 await opt.click()
@@ -363,7 +363,7 @@ async def _apply_original_statement(page, category: str | None = None) -> None:
         label_visible = await page.locator(
             'label:has-text("我已阅读并同意 《视频号原创声明使用条款》")'
         ).is_visible()
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
         label_visible = False
 
     if label_visible:
@@ -440,7 +440,7 @@ async def _select_mark_tag_option(page, tag_name: str) -> bool:
     # 点击 display 展开下拉(若已展开, 再点一次会收起, 故按状态决定)
     try:
         is_open = "is-open" in (await select.get_attribute("class") or "")
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
         is_open = False
     if not is_open:
         await select.locator(".select-display").first.click()
@@ -451,7 +451,7 @@ async def _select_mark_tag_option(page, tag_name: str) -> bool:
     for i in range(count):
         try:
             main_text = (await options.nth(i).locator(".option-main").first.inner_text(timeout=1000)).strip()
-        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+        except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
             continue
         if main_text == tag_name:
             await options.nth(i).click()
@@ -498,7 +498,7 @@ async def _fill_shoot_date_in_dialog(dialog, shoot_date: str) -> None:
             month_txt = (await labels.nth(1).inner_text(timeout=1000)).strip() if n > 1 else ""
             if year_txt == target_year and month_txt == target_month:
                 break
-        except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+        except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
             pass
         nxt = dialog.locator("button.weui-desktop-btn__icon__right").first
         if await nxt.count():
@@ -522,7 +522,7 @@ async def _fill_shoot_date_in_dialog(dialog, shoot_date: str) -> None:
                 logger.info("[视频标注] 拍摄时间已填入: %s", shoot_date)
                 await asyncio.sleep(0.3)
                 return
-        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+        except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
             continue
     logger.warning("[视频标注] 未在日历中找到可选日期: %s", shoot_date)
 
@@ -555,7 +555,7 @@ async def _fill_shoot_region_in_dialog(dialog, region_path: list[str]) -> None:
     try:
         await trigger.click()
         await asyncio.sleep(0.8)  # 等第一级(240 国)渲染
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[视频标注] 无法展开拍摄地点级联, 跳过")
         return
 
@@ -570,13 +570,13 @@ async def _fill_shoot_region_in_dialog(dialog, region_path: list[str]) -> None:
         # 子级懒加载, 最多等 ~3s 让目标项出现
         try:
             await item.wait_for(state="visible", timeout=3000)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[视频标注] 拍摄地点第 %d 级未找到: %s", level + 1, target_name)
             return
         try:
             await item.click()
             logger.info("[视频标注] 拍摄地点第 %d 级已选: %s", level + 1, target_name)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[视频标注] 拍摄地点第 %d 级点击失败: %s (%s)", level + 1, target_name, e)
             return
         await asyncio.sleep(0.5)  # 等下一级懒加载/面板关闭
@@ -589,7 +589,7 @@ async def _fill_shoot_region_in_dialog(dialog, region_path: list[str]) -> None:
             if await menu.count() == 0 or not await menu.is_visible():
                 logger.info("[视频标注] 拍摄地点级联已收起, 选择完成: %s", " / ".join(map(str, region_path)))
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             return
         await asyncio.sleep(0.1)
     logger.info("[视频标注] 拍摄地点级联仍未收起(已选 %s), 继续执行", " / ".join(map(str, region_path)))
@@ -626,7 +626,7 @@ async def _confirm_mark_tag_dialog(page, dialog=None) -> bool:
                 btn = cand
                 logger.info("[视频标注] 定位到确定按钮: %s", selector)
                 break
-        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+        except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
             continue
     if btn is None:
         logger.warning("[视频标注] 未找到弹窗确定按钮")
@@ -638,7 +638,7 @@ async def _confirm_mark_tag_dialog(page, dialog=None) -> bool:
             cls = await btn.get_attribute("class") or ""
             if "weui-desktop-btn_disabled" not in cls:
                 break
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             break
         await asyncio.sleep(0.2)
     else:
@@ -652,10 +652,10 @@ async def _confirm_mark_tag_dialog(page, dialog=None) -> bool:
         try:
             await target.wait_for(state="hidden", timeout=5000)
             logger.info("[视频标注] 弹窗已关闭")
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             pass
         return True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[视频标注] 点击确定按钮失败: %s", e)
         return False
 
@@ -665,7 +665,7 @@ async def _fill_shoot_info_dialog(page, shoot_date: str, shoot_region: list[str]
     dialog = page.locator("div.weui-desktop-dialog").filter(has_text="添加拍摄时间和地点").first
     try:
         await dialog.wait_for(state="visible", timeout=5000)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[视频标注] 自行拍摄弹窗未出现, 跳过子字段填写")
         return
     logger.info("[视频标注] 自行拍摄弹窗已出现, 开始填写拍摄信息")
@@ -687,7 +687,7 @@ async def _fill_repost_source_dialog(page, repost_source: str) -> None:
     dialog = page.locator("div.weui-desktop-dialog").filter(has_text="添加转载来源").first
     try:
         await dialog.wait_for(state="visible", timeout=5000)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
         # 兜底: 用第一个可见 dialog
         dialog = page.locator("div.weui-desktop-dialog").first
         if not await dialog.count():
@@ -714,7 +714,7 @@ async def _fill_repost_source_dialog(page, repost_source: str) -> None:
                     filled = True
                     await asyncio.sleep(0.5)  # 等「完成」按钮解锁
                     break
-            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+            except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                 continue
         if not filled:
             logger.warning("[视频标注] 未找到转载来源输入框, 仅确认弹窗")
@@ -780,7 +780,7 @@ async def _wait_for_upload_complete(page, file_path: str) -> None:
                 ).click()
                 await page.get_by_role("button", name="删除", exact=True).click()
                 await _upload_video_file(page, file_path)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] uploading video...")
             await asyncio.sleep(2)
 
@@ -813,12 +813,12 @@ async def _wait_for_cover_ready(page, *, action: str = "") -> None:
         for i in range(count):
             try:
                 text = (await popover.nth(i).inner_text(timeout=1000)).strip()
-            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+            except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                 continue
             if any(kw in text for kw in _COVER_BLOCKING_KEYWORDS):
                 blocking = text
                 break
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         blocking = None
 
     if not blocking:
@@ -835,12 +835,12 @@ async def _wait_for_cover_ready(page, *, action: str = "") -> None:
             for i in range(count):
                 try:
                     text = (await popover.nth(i).inner_text(timeout=1000)).strip()
-                except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+                except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                     continue
                 if any(kw in text for kw in _COVER_BLOCKING_KEYWORDS):
                     still_blocking = text
                     break
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             still_blocking = None
         if not still_blocking:
             logger.info(f"[设置封面] 封面阻塞提示已消失，等待耗时 {waited}s，继续执行({action})")
@@ -872,7 +872,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
         if await cover_preview.count():
             await cover_preview.wait_for(state="visible", timeout=5000)
             logger.info("[设置封面] found cover preview area")
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info("[设置封面] no cover preview area found, trying direct cover detection")
 
     cover_dialog_selectors = [
@@ -890,14 +890,14 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
                 if await dialog.count() and await dialog.is_visible():
                     logger.info(f"[设置封面] found cover dialog (text: {text_hint})")
                     return dialog
-            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+            except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                 continue
         try:
             fallback = page.locator("div.weui-desktop-dialog").first
             if await fallback.count() and await fallback.is_visible():
                 logger.info("[设置封面] using fallback dialog match")
                 return fallback
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             pass
         return None
 
@@ -911,7 +911,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
             try:
                 try:
                     await cover_entry.hover()
-                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
                 await page.wait_for_timeout(500)
                 await _wait_for_cover_ready(page, action=f"{cover_type}封面入口 hover(第{attempt}轮)")
@@ -932,11 +932,11 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
                             await popover_edit_btn.click()
                             await page.wait_for_timeout(800)
                             await _wait_for_cover_ready(page, action=f"{cover_type}封面 popover「直接编辑」后")
-                    except Exception as pop_exc:
+                    except Exception as pop_exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         logger.info(f"[设置封面] {cover_type} popover 处理异常(第{attempt}轮): {pop_exc}")
 
                 cover_dialog = await _find_cover_dialog()
-            except Exception as retry_exc:
+            except Exception as retry_exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[设置封面] {cover_type}封面入口重试异常(第{attempt}轮): {retry_exc}")
             if cover_dialog is None:
                 if attempt == 1 or attempt % 5 == 0:
@@ -958,7 +958,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
                     file_input = locator
                     logger.info(f"[设置封面] found file input: {selector}")
                     break
-            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+            except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                 continue
         if not file_input:
             try:
@@ -966,7 +966,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
                 if not await file_input.count():
                     logger.info(f"[设置封面] WARNING: no file input for {cover_type} cover, skipping")
                     return
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                 return
 
         await file_input.wait_for(state="attached", timeout=10000)
@@ -993,9 +993,9 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
                             logger.info(f"[设置封面] {cover_type} crop confirmed: {selector}")
                             await page.wait_for_timeout(1000)
                             break
-                    except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+                    except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                         continue
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[设置封面] WARNING: {cover_type} crop confirm error: {exc}")
 
         # 确认封面
@@ -1015,7 +1015,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
                     confirmed = True
                     await page.wait_for_timeout(1000)
                     break
-            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+            except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                 continue
         if not confirmed:
             logger.info(f"[设置封面] WARNING: {cover_type} cover confirm button not found")
@@ -1042,7 +1042,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
             await candidate.wait_for(state="visible", timeout=3000)
             visible_entries.append((candidate, ctype, thumb))
             logger.info(f"[设置封面] cover entry found: {selector} ({ctype})")
-        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+        except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
             continue
 
     if not visible_entries:
@@ -1113,7 +1113,7 @@ async def _dismiss_i_know_dialog(page) -> bool:
                 logger.info("[发布] 检测到「我知道了」弹窗,已点击关闭")
                 await asyncio.sleep(0.5)  # 等弹窗动画消失
                 return True
-        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+        except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
             continue
     return False
 
@@ -1147,7 +1147,7 @@ async def _submit_publish(page, is_draft: bool = False) -> None:
                 await page.wait_for_url(TENCENT_MANAGE_URL, timeout=30000)
                 logger.info("[发布] video published successfully")
             break
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             current_url = page.url
             if is_draft:
                 if "post/list" in current_url or "draft" in current_url:
@@ -1220,7 +1220,7 @@ class ChannelsPlatform(BasePlatform):
                     if not page.url.rstrip("/").endswith("channels.weixin.qq.com/platform"):
                         try:
                             await page.goto(TENCENT_PLATFORM_URL, timeout=15000)
-                        except Exception as nav_e:
+                        except Exception as nav_e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                             logger.info(f"[发布] 导航到创作中心首页失败(继续尝试抓取): {nav_e}")
                     await save_login_result(
                         context,
@@ -1238,7 +1238,7 @@ class ChannelsPlatform(BasePlatform):
                     return
 
                 await asyncio.sleep(poll_interval)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[发布] login error: {exc}")
             status_queue.put(json.dumps({
                 "status": "failed",
@@ -1248,13 +1248,13 @@ class ChannelsPlatform(BasePlatform):
             try:
                 # 释放 context 资源
                 await context.close()
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
                 try:
                     await browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -1306,7 +1306,7 @@ class ChannelsPlatform(BasePlatform):
                 # 如果页面停留(没有重定向到登录页),说明 cookie 有效
                 logger.info("check_cookie: [SUCCESS] 页面停留未重定向，Cookie 有效 | URL: %s", final_url)
                 return True
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.error("check_cookie: [EXCEPTION] 发生异常: %s", exc)
                 import traceback
                 logger.error("check_cookie: traceback: %s", traceback.format_exc())
@@ -1314,7 +1314,7 @@ class ChannelsPlatform(BasePlatform):
             finally:
                 logger.info("check_cookie: 正在关闭 context")
                 await context.close()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("check_cookie: [EXCEPTION] browser/context 创建失败: %s", e)
             import traceback
             logger.error("check_cookie: traceback: %s", traceback.format_exc())
@@ -1347,13 +1347,13 @@ class ChannelsPlatform(BasePlatform):
             await page.close()
             await context.close()
             return {"name": name, "avatar": avatar, "stats": stats}
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[发布] sync_profile error: {exc}")
             return {"name": "", "avatar": "", "stats": []}
         finally:
             try:
                 await browser.close()
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
 
@@ -1377,7 +1377,7 @@ class ChannelsPlatform(BasePlatform):
 
             try:
                 await page.wait_for_selector(".finder-info-num", timeout=8000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[channels stats] 等待 .finder-info-num 超时")
 
             try:
@@ -1405,7 +1405,7 @@ class ChannelsPlatform(BasePlatform):
                         except (ValueError, TypeError):
                             count = 0
                         stats.append({"ICON": icon, "COUNT": count, "NAME": name, "SORT": sort_no})
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[channels stats] 抓取失败: {exc}")
 
             stats.sort(key=lambda x: x.get("SORT", 999))
@@ -1420,10 +1420,10 @@ class ChannelsPlatform(BasePlatform):
         try:
             try:
                 await page.goto(TENCENT_PLATFORM_URL, timeout=15000)
-            except Exception:  # noqa: S110 -- 页面加载兜底,超时继续后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- 页面加载兜底,超时继续后续逻辑
                 pass
             return await self._scrape_channels_stats(page)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[channels login] _login_stats_fn 抓取失败: {exc}")
             return []
 
@@ -1444,12 +1444,12 @@ class ChannelsPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -1591,7 +1591,7 @@ class ChannelsPlatform(BasePlatform):
                                 await page.wait_for_url(
                                     TENCENT_UPLOAD_URL, timeout=60000
                                 )
-                            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                                 pass
 
                             # Upload video file
@@ -1655,7 +1655,7 @@ class ChannelsPlatform(BasePlatform):
                                     while browser.is_connected():
                                         await asyncio.sleep(1)
                                     logger.info("[发布调试] 检测到浏览器已关闭,流程结束")
-                                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                                     pass
                                 return
 
@@ -1668,11 +1668,11 @@ class ChannelsPlatform(BasePlatform):
                         finally:
                             try:
                                 await context.close()
-                            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                                 pass
                             try:
                                 await self.close_browser(browser, is_close_by_code=True)
-                            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                                 pass
 
         asyncio.run(_do_upload())

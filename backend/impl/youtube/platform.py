@@ -107,14 +107,14 @@ class YoutubePlatform(BasePlatform):
                         continue
                     logger.info(_msg(f"login detected, current page: {current_url}"))
                     break
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(_msg("login poll exception (ignored)"))
 
             # Verify by navigating to YouTube Studio
             try:
                 await page.goto(YOUTUBE_STUDIO_URL, timeout=15000)
                 logger.info(_msg("YouTube Studio page opened"))
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(_msg("navigation to YouTube Studio failed, cookie may still be saved"))
 
             # Scrape profile
@@ -172,7 +172,7 @@ class YoutubePlatform(BasePlatform):
                 "avatar": avatar_url,
             }))
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(_msg(f"login failed: {type(e).__name__}: {e}"))
             status_queue.put(json.dumps({
                 "status": "500",
@@ -182,7 +182,7 @@ class YoutubePlatform(BasePlatform):
             if context:
                 try:
                     await context.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -212,14 +212,14 @@ class YoutubePlatform(BasePlatform):
             logger.info(_msg("cookie valid"))
             return True
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(_msg(f"cookie check error: {exc}"))
             return False
         finally:
             if browser:
                 try:
                     await browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -240,14 +240,14 @@ class YoutubePlatform(BasePlatform):
             user_name, avatar_url = await scrape_youtube_profile(page)
             return user_name, avatar_url
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(_msg(f"sync_profile error: {e}"))
             return "", ""
         finally:
             if browser:
                 try:
                     await browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -267,12 +267,12 @@ class YoutubePlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -451,7 +451,7 @@ class YoutubePlatform(BasePlatform):
             try:
                 thumb_input = page.locator("ytcp-thumbnail-uploader input#file-loader").first
                 await thumb_input.wait_for(state="attached", timeout=60000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(_msg("[设置封面] 未找到封面上传组件, 继续"))
 
             # Check for upload failure
@@ -511,9 +511,9 @@ class YoutubePlatform(BasePlatform):
                             await asyncio.sleep(0.3)
                             await tag_input.press("Enter")
                             await asyncio.sleep(0.3)
-                        except Exception as exc:
+                        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                             logger.info(_msg(f"[填写标签] 标签 '{tag}' 失败: {exc}"))
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(_msg(f"[填写标签] 未找到标签输入框: {exc}"))
 
             # ---- Step 5-7: Click Next 3 times (video elements, checks, visibility) ----
@@ -542,7 +542,7 @@ class YoutubePlatform(BasePlatform):
             try:
                 await context.storage_state(path=account_file)
                 logger.info(_msg("[发布] Cookie状态已更新"))
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
         except Exception as exc:
@@ -552,7 +552,7 @@ class YoutubePlatform(BasePlatform):
             if browser:
                 try:
                     await self.close_browser(browser, is_close_by_code=True)
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -590,7 +590,7 @@ class YoutubePlatform(BasePlatform):
                 logger.info(_msg(f"[单选项] {label} 重试"))
                 await radio.click(force=True)
                 await asyncio.sleep(0.5)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(_msg(f"[单选项] {label} 设置失败: {exc}"))
 
     async def _open_upload_dialog(self, page):
@@ -638,7 +638,7 @@ class YoutubePlatform(BasePlatform):
                         off_radio = public_radio.locator("#offRadio").first
                         await off_radio.click(force=True)
                         await asyncio.sleep(1)
-                    except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                    except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                         pass
         logger.info(_msg("[设置可见性] 公开单选项已选择"))
 
@@ -674,7 +674,7 @@ class YoutubePlatform(BasePlatform):
                 if await expand_btn.is_visible():
                     await expand_btn.click(force=True)
                     await asyncio.sleep(1)
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
             # Set date
@@ -698,7 +698,7 @@ class YoutubePlatform(BasePlatform):
                 await asyncio.sleep(0.3)
                 await page.keyboard.press("Enter")
                 await asyncio.sleep(1)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                 await page.keyboard.press("Escape")
                 await asyncio.sleep(0.5)
                 dropdown_text = date_trigger.locator(".dropdown-trigger-text").first
@@ -742,15 +742,15 @@ class YoutubePlatform(BasePlatform):
                 await tz_option.wait_for(state="visible", timeout=5000)
                 await tz_option.click()
                 logger.info(_msg("[定时发布] 时区已设为 GMT+8"))
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(_msg(f"[定时发布] 时区设置失败, 使用默认: {exc}"))
                 try:
                     await page.keyboard.press("Escape")
-                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
 
             await asyncio.sleep(1)
             logger.info(_msg("[定时发布] 定时发布已配置完成"))
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(_msg(f"[定时发布] 定时发布失败: {exc}"))

@@ -154,7 +154,7 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
                 await page.goto(_BILI_UPLOAD_URL, timeout=30000)
                 await page.wait_for_load_state("domcontentloaded", timeout=15000)
                 await asyncio.sleep(2)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[合集列表] 页面加载(非致命): {e}")
 
             # 2. 上传测试视频触发页面跳转到发布表单(不等上传完成)
@@ -170,7 +170,7 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
                 input_in_frame = upload_frame.locator('input[type="file"]')
                 await input_in_frame.wait_for(state="attached", timeout=5000)
                 file_input = input_in_frame
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             if file_input is None:
                 file_input = page.locator(

@@ -73,7 +73,7 @@ def _update_image_publish_detail(detail_id, status, error_message=""):
                 (bs, succ, fail, total, datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(),
                  datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), batch_id)
             )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[image_publish] 更新失败: {e}")
 
 
@@ -138,7 +138,7 @@ def publish_images():
         )
         conn.commit()
         conn.close()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": f"写入失败: {e}"}), 500
 
     # ---------- 实际发布执行（保留原有逻辑） ----------
@@ -240,7 +240,7 @@ def publish_images():
             err = "无图片或缺平台/cookie 配置，跳过实际发布"
             logger.info(f"[image_publish] {err}")
             success = True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"发布失败: {e}")
         err = str(e)
         success = False
@@ -326,7 +326,7 @@ def save_draft():
             draft_id = cursor.lastrowid
             conn.close()
         return jsonify({"code": 200, "msg": "草稿保存成功", "data": {"id": draft_id}})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"保存草稿失败: {e}")
         return jsonify({"code": 500, "msg": f"保存失败: {e!s}"}), 500
 
@@ -420,7 +420,7 @@ def _extract_image_channels_summary(draft_data):
 
         return [{"platform": key, "name": info['name'], "count": info['count']}
                 for key, info in counts.items()]
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return []
 
 
@@ -437,7 +437,7 @@ def delete_draft(draft_id):
             return jsonify({"code": 404, "msg": "草稿不存在"}), 404
 
         return jsonify({"code": 200, "msg": "草稿已删除"})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"删除草稿失败: {e}")
         return jsonify({"code": 500, "msg": f"删除失败: {e!s}"}), 500
 
@@ -509,7 +509,7 @@ def execute_publish():
         )
         conn.commit()
         conn.close()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": f"写入失败: {e}"}), 500
 
     # ---------- 实际发布执行（保留原有逻辑） ----------
@@ -567,7 +567,7 @@ def execute_publish():
         else:
             result = publish_fn(**publish_kwargs)
         success = bool(result)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"执行发布失败: {e}")
         err = str(e)
         success = False
@@ -648,7 +648,7 @@ def batch_publish_image_drafts():
                     succeeded.append(r[0])
                 else:
                     failed.append({'draft_id': r[0], 'reason': body.get('msg') or f'HTTP {status}'})
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
             failed.append({'draft_id': r[0], 'reason': f'发布失败: {e}'})
 
     return jsonify({"code": 200, "succeeded": succeeded, "failed": failed}), 200

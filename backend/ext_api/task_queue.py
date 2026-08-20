@@ -203,7 +203,7 @@ class TaskQueue:
                 task.status = TaskStatus.SUCCESS
             except asyncio.CancelledError:
                 task.status = TaskStatus.CANCELLED
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                 # 重试逻辑已禁用 — 长耗时任务(如视频上传)失败立即标记 FAILED,
                 # 避免误触发「同一任务再次开浏览器重新上传」
                 task.status = TaskStatus.FAILED
@@ -353,7 +353,7 @@ class TaskQueue:
         for cb in self._status_callbacks:
             try:
                 cb(task)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[TaskQueue] 回调错误: {e}")
 
     # ========== 数据库操作 ==========
@@ -387,7 +387,7 @@ class TaskQueue:
                      task.account_name, task.platform,
                      json.dumps(cfg, ensure_ascii=False), task.status, task.created_at)
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[TaskQueue] 插入数据库失败: {e}")
 
     def _update_db(self, task: PublishTask):
@@ -426,7 +426,7 @@ class TaskQueue:
                        WHERE id=?""",
                     (bs, succ, fail, total, task.finished_at or now, now, batch_id)
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[TaskQueue] 更新数据库失败: {e}")
 
 

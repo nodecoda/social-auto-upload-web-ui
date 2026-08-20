@@ -290,7 +290,7 @@ async def wait_search_results(frame, timeout: float = 10):
             timeout=timeout * 1000,
             state="visible",
         )
-    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
         pass  # 兜底:超时也继续(让 scrape 抓当前状态)
     await sleep(0.3)
 
@@ -370,7 +370,7 @@ async def wait_page_change(frame, timeout: float = 10):
             timeout=timeout * 1000,
             state="visible",
         )
-    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
         pass
 
 
@@ -454,7 +454,7 @@ async def locate_and_check(frame, target_ids: list[str]) -> LocateResult:
                 await card.click()
                 result.checked.append(pid)
                 await sleep(0.5)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
             result.missing.append(pid)
 
     return result
@@ -490,7 +490,7 @@ async def close_panel(frame):
         else:
             await _page_of(frame).keyboard.press("Escape")
         await sleep(0.5)
-    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
         pass
 
 
@@ -550,7 +550,7 @@ async def scrape_novels(frame) -> list[dict]:
                 "category": category,
                 "read_count": read_count,
             })
-        except Exception:  # noqa: S112 -- 单条链接解析失败,跳过继续
+        except Exception:  # noqa: S112, BLE001 -- 单条链接解析失败,跳过继续
             continue
     return items
 
@@ -600,7 +600,7 @@ async def search_novels(frame, keyword: str) -> list[dict]:
             timeout=5_000,
             state="visible",
         )
-    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
         pass  # 兜底:超时也继续,让 scrape 抓当前
     await sleep(0.3)
 

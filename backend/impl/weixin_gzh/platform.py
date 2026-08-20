@@ -96,7 +96,7 @@ class WeixinGzhPlatform(BasePlatform):
         """从 page.url 解析 token，返回 token 字符串（解析失败返回空串）。"""
         try:
             url = page.url or ""
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
             return ""
         m = _TOKEN_RE.search(url)
         return m.group(1) if m else ""
@@ -208,7 +208,7 @@ class WeixinGzhPlatform(BasePlatform):
                                 logger.info("[登录] 找到二维码图片，选择器: %s", selector)
                                 break
                             src = None
-                    except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+                    except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                         continue
 
                 if src:
@@ -230,7 +230,7 @@ class WeixinGzhPlatform(BasePlatform):
                             logger.info("[登录] 检测到页面跳转到首页，登录成功!")
                             logged_in = True
                             break
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                     await asyncio.sleep(1)
 
@@ -244,7 +244,7 @@ class WeixinGzhPlatform(BasePlatform):
                 logger.info("[登录] 跳转到首页: %s", home_url)
                 try:
                     await page.goto(home_url, wait_until="domcontentloaded", timeout=30000)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info("[登录] 跳转首页超时(忽略，继续抓取): %s", e)
                 await asyncio.sleep(3)
 
@@ -338,7 +338,7 @@ class WeixinGzhPlatform(BasePlatform):
                 logger.info("[同步资料] 跳转到首页: %s", home_url)
                 try:
                     await page.goto(home_url, wait_until="domcontentloaded", timeout=30000)
-                except Exception:  # noqa: S110 -- 页面加载兜底,超时继续后续逻辑
+                except Exception:  # noqa: S110, BLE001 -- 页面加载兜底,超时继续后续逻辑
                     pass
                 await asyncio.sleep(3)
 
@@ -376,14 +376,14 @@ class WeixinGzhPlatform(BasePlatform):
             current_url = ""
             try:
                 current_url = page.url or ""
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             logger.info("[stats] 开始抓取运营数据, 当前页面: %s", current_url)
 
             try:
                 await page.wait_for_selector(".weui-desktop-user_sum", timeout=8000)
                 logger.info("[stats] .weui-desktop-user_sum 元素已就绪")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[stats] 等待 .weui-desktop-user_sum 超时: %s", e)
 
             result = await page.evaluate(
@@ -472,12 +472,12 @@ class WeixinGzhPlatform(BasePlatform):
                 logger.info("[打开创作中心] 创作中心已打开")
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -790,7 +790,7 @@ class WeixinGzhPlatform(BasePlatform):
                 logger.info("[阶段①] 已关闭上传成功通知「知道了」")
             else:
                 logger.info("[阶段①] 未发现上传成功通知（或已自动消失）")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[阶段①] 关闭上传通知异常(非致命): %s", str(e)[:80])
 
     @staticmethod
@@ -830,7 +830,7 @@ class WeixinGzhPlatform(BasePlatform):
                 if success_visible:
                     logger.info("[阶段①] 检测到「视频上传成功」")
                     return
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             # 失败信号: 文本「转码失败」且其 mask 容器可见
             try:
@@ -852,7 +852,7 @@ class WeixinGzhPlatform(BasePlatform):
                     raise RuntimeError("[阶段①] 视频转码失败,无法继续")
             except RuntimeError:
                 raise
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             # 进度旁证
             try:
@@ -863,7 +863,7 @@ class WeixinGzhPlatform(BasePlatform):
                 if progress and progress != last_progress:
                     logger.info("[阶段①] 上传进度: %s", progress)
                     last_progress = progress
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(5)
         raise RuntimeError(f"[阶段①] 视频上传等待超时({timeout_s}s)")
@@ -987,13 +987,13 @@ class WeixinGzhPlatform(BasePlatform):
         ).first
         try:
             await cb.wait_for(state="attached", timeout=10000)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[阶段①] 未找到服务规则 checkbox,跳过")
             return
         # 仅在未勾选时勾选
         try:
             checked = await cb.is_checked()
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             checked = False
         if not checked:
             # checkbox 常被 label 遮挡,用 JS 直接勾选
@@ -1030,7 +1030,7 @@ class WeixinGzhPlatform(BasePlatform):
         def _on_new_page(new_page):
             try:
                 url = new_page.url or ""
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 url = ""
             logger.info("[阶段①] 检测到新 tab: %s", url or "(about:blank)")
             # 只认发布编辑页;about:blank/广告页忽略(发布页 URL 含 appmsg_edit)
@@ -1084,7 +1084,7 @@ class WeixinGzhPlatform(BasePlatform):
                             target_page = p
                             candidate_holder["page"] = p
                             break
-                    except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+                    except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                         continue
                 if target_page is not None:
                     break
@@ -1117,7 +1117,7 @@ class WeixinGzhPlatform(BasePlatform):
                             break
                     else:
                         await asyncio.sleep(1)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     # 旧页面导航/context 销毁(点了继续提交后跳转),不是错误,
                     # 转去等目标新 tab 导航到 appmsg_edit
                     logger.info("[阶段①] 弹窗处理后页面已导航(预期行为): %s", str(e)[:80])
@@ -1135,7 +1135,7 @@ class WeixinGzhPlatform(BasePlatform):
                                 target_page = p
                                 candidate_holder["page"] = p
                                 break
-                        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+                        except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                             continue
                     if target_page is not None:
                         break
@@ -1151,7 +1151,7 @@ class WeixinGzhPlatform(BasePlatform):
                 await target_page.wait_for_url(
                     "**/appmsg_edit*", timeout=30000,
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[阶段①] 新 tab URL 等待(非致命): %s, 当前: %s", e, target_page.url)
             await target_page.bring_to_front()
             return target_page
@@ -1182,7 +1182,7 @@ class WeixinGzhPlatform(BasePlatform):
         textarea_visible = False
         try:
             textarea_visible = await title_textarea.is_visible()
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             textarea_visible = False
 
         if textarea_visible:
@@ -1196,7 +1196,7 @@ class WeixinGzhPlatform(BasePlatform):
         await pm.wait_for(state="visible", timeout=10000)
         try:
             await pm.click()
-        except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+        except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
             pass
         await pm.press_sequentially(text, delay=30)
         await asyncio.sleep(0.5)
@@ -1255,7 +1255,7 @@ class WeixinGzhPlatform(BasePlatform):
         try:
             await select_input.wait_for(state="visible", timeout=10000)
             await select_input.click()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[阶段②] 未找到合集选择输入框: %s", e)
             return
         await asyncio.sleep(1)
@@ -1570,7 +1570,7 @@ class WeixinGzhPlatform(BasePlatform):
             await dropdown.wait_for(state="visible", timeout=5000)
             await dropdown.click()
             await asyncio.sleep(0.5)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[阶段②] 未找到日期下拉: %s", e)
             return
         # 点匹配的选项
@@ -1760,11 +1760,11 @@ class WeixinGzhPlatform(BasePlatform):
                 logger.info("[阶段②][时间] 点(10,10)未关闭面板,补按 Escape")
                 await page.keyboard.press("Escape")
                 await asyncio.sleep(0.3)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[阶段②][时间] 关闭面板异常: %s, 尝试 Escape", str(e)[:100])
             try:
                 await page.keyboard.press("Escape")
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
         # 5. 校验 可见 dl 内 input 显示值是否真的变成 HH:MM(选择生效铁证)
@@ -1852,7 +1852,7 @@ class WeixinGzhPlatform(BasePlatform):
             try:
                 await page.mouse.click(center["x"], center["y"])
                 await asyncio.sleep(0.3)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[阶段②][时间] %s 鼠标点击异常: %s", kind, str(e)[:100])
         else:
             logger.warning("[阶段②][时间] %s 无法取到 li 中心坐标(可能未展开)", kind)
@@ -1884,7 +1884,7 @@ class WeixinGzhPlatform(BasePlatform):
                 if _HOME_PATH in url and "token=" in url:
                     logger.info("[阶段②] 已跳转首页,发表成功")
                     return
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(2)
         logger.warning("[阶段②] %ds 内未跳转首页(发表可能仍在处理)", timeout_s)
@@ -2093,7 +2093,7 @@ class WeixinGzhPlatform(BasePlatform):
         def _on_new_page(new_page):
             try:
                 url = new_page.url or ""
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 url = ""
             logger.info("[发布图集] 检测到新 tab: %s", url or "(about:blank)")
             if "appmsg_edit" in url:
@@ -2130,7 +2130,7 @@ class WeixinGzhPlatform(BasePlatform):
                             target_page = p
                             new_page_holder["page"] = p
                             break
-                    except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+                    except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                         continue
                 if target_page is not None:
                     break
@@ -2140,7 +2140,7 @@ class WeixinGzhPlatform(BasePlatform):
                 raise RuntimeError("[发布图集] 点击「贴图」后未捕获到编辑页新 tab")
             try:
                 await target_page.wait_for_url("**/appmsg_edit*", timeout=30000)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[发布图集] 新 tab URL 等待(非致命): %s, 当前: %s", e, target_page.url)
             await target_page.bring_to_front()
             return target_page
@@ -2175,7 +2175,7 @@ class WeixinGzhPlatform(BasePlatform):
                 img_input = loc
                 logger.info("[发布图集] 找到图片上传 input, 选择器: %s", sel)
                 break
-            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+            except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                 continue
         if img_input is None:
             raise RuntimeError("[发布图集] 未找到图片上传 input")

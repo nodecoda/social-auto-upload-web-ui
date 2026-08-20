@@ -86,7 +86,7 @@ def _ensure_tables(conn):
         except sqlite3.OperationalError:
             pass  # 列已存在
         conn.commit()
-    except Exception:  # noqa: S110 -- DB/查询兜底,失败走默认路径
+    except Exception:  # noqa: S110, BLE001 -- DB/查询兜底,失败走默认路径
         pass
     _tables_ensured = True
 
@@ -127,7 +127,7 @@ def _resolve_cover_url(material_id: str) -> str:
         if not row:
             return ''
         return f"/api/materials/file/{urllib.parse.quote(row['stored_path'], safe='')}"
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return ''
 
 
@@ -212,7 +212,7 @@ def get_tasks():
 
         conn.close()
         return jsonify({"code": 200, "data": {"list": tasks, "total": total, "page": page, "pageSize": page_size}})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -276,7 +276,7 @@ def get_task(detail_id):
         except json.JSONDecodeError:
             d['account_configs'] = {}
         return jsonify({"code": 200, "data": d})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -383,7 +383,7 @@ def _normalize_detail_row(d):
                 conn.close()
                 if row:
                     d['platform'] = _PLATFORM_ID_TO_NAME.get(row[0], plat)
-            except Exception:  # noqa: S110 -- DB/查询兜底,失败走默认路径
+            except Exception:  # noqa: S110, BLE001 -- DB/查询兜底,失败走默认路径
                 pass
     elif plat in _PLATFORM_KEY_TO_NAME:
         # 是拼音 key,转成中文名
@@ -523,7 +523,7 @@ def get_history():
             "code": 200,
             "data": {"items": items, "total": total, "page": page, "pageSize": page_size}
         })
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -555,7 +555,7 @@ def get_history_batch(batch_id):
 
         data = _serialize_batch_with_items(b, items)
         return jsonify({"code": 200, "data": data})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -591,14 +591,14 @@ def batch_delete_history():
                     conn.execute("DELETE FROM publish_details WHERE batch_id = ?", (bid,))
                     conn.execute("DELETE FROM publish_batches WHERE id = ?", (bid,))
                     deleted.append(bid)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                     failed.append({'batch_id': bid, 'reason': str(e)})
             else:
                 failed.append({'batch_id': bid, 'reason': '记录不存在'})
 
         conn.commit()
         return jsonify({"code": 200, "deleted": deleted, "failed": failed}), 200
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         conn.rollback()
         return jsonify({"code": 500, "msg": str(e)}), 500
     finally:
@@ -627,7 +627,7 @@ def delete_history_batch(batch_id):
         conn.execute("DELETE FROM publish_batches WHERE id = ?", (batch_id,))
         conn.commit()
         return jsonify({"code": 200, "msg": "已删除"}), 200
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         conn.rollback()
         return jsonify({"code": 500, "msg": str(e)}), 500
     finally:
@@ -694,7 +694,7 @@ def get_stats():
             "accounts": {"total": account_count, "normal": account_normal},
             "materials": {"total": material_count},
         }})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -746,7 +746,7 @@ def get_settings():
             defaults['proxyUrl'] = ''
 
         return jsonify({"code": 200, "data": defaults})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -780,7 +780,7 @@ def update_settings():
             reset_storage()
 
         return jsonify({"code": 200, "msg": "设置已更新"})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -829,7 +829,7 @@ def _extract_image_channels_from_draft(conn, draft_data):
                 counts[key] = {'name': name, 'count': 0}
             counts[key]['count'] += 1
         return [{"platform": k, "name": v['name'], "count": v['count']} for k, v in counts.items()]
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return []
 
 
@@ -874,7 +874,7 @@ def get_drafts():
             drafts.append(d)
         conn.close()
         return jsonify({"code": 200, "data": drafts})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -906,7 +906,7 @@ def create_draft():
         draft_id = cursor.lastrowid
         conn.close()
         return jsonify({"code": 200, "data": {"id": draft_id, "title": title}})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -931,7 +931,7 @@ def get_draft(draft_id):
         d['created_at'] = _to_beijing_time(d.get('created_at'))
         d['updated_at'] = _to_beijing_time(d.get('updated_at'))
         return jsonify({"code": 200, "data": d})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -963,7 +963,7 @@ def update_draft(draft_id):
         if changes == 0:
             return jsonify({"code": 404, "msg": "草稿不存在"}), 404
         return jsonify({"code": 200, "data": {"id": draft_id, "title": title}})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -978,7 +978,7 @@ def delete_draft(draft_id):
         if changes == 0:
             return jsonify({"code": 404, "msg": "草稿不存在"}), 404
         return jsonify({"code": 200, "msg": "草稿已删除"})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -1051,7 +1051,7 @@ def _extract_channels_summary(draft_data):
 
         return [{"platform": k, "name": platform_map.get(k, k), "count": v}
                 for k, v in platform_counts.items()]
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return []
 
 
@@ -1363,9 +1363,9 @@ def batch_publish_drafts():
                 try:
                     task_queue.add_task(task)
                     task_ids.append(task_id)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                     failed.append({'draft_id': r['id'], 'reason': f'入队失败: {e}'})
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
             failed.append({'draft_id': r['id'], 'reason': str(e)})
 
     return jsonify({"code": 200, "task_ids": task_ids, "failed": failed}), 200
@@ -1403,7 +1403,7 @@ def batch_delete_drafts():
             try:
                 conn.execute("DELETE FROM drafts WHERE id = ?", (did,))
                 deleted.append(did)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                 failed.append({'draft_id': did, 'reason': str(e)})
         else:
             failed.append({'draft_id': did, 'reason': '草稿不存在'})

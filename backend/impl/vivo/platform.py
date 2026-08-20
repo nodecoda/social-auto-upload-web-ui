@@ -75,7 +75,7 @@ class VivoPlatform(BasePlatform):
                 logger.info("[登录] 正在打开VIVO创作中心: %s", _VIVO_HOME_URL)
                 try:
                     await page.goto(_VIVO_HOME_URL, wait_until="domcontentloaded", timeout=30000)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                     logger.warning("[登录] 打开页面异常(继续等待用户操作): %s", e)
                 logger.info("[登录] 页面已打开,当前 URL: %s", page.url)
                 logger.info("[登录] 等待用户在浏览器中扫码登录...")
@@ -92,7 +92,7 @@ class VivoPlatform(BasePlatform):
                             logger.info("[登录] 检测到用户资料卡,登录成功! URL: %s", page.url)
                             logged_in = True
                             break
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                         logger.warning("[登录] 轮询异常(继续等待): %s", e)
                     await asyncio.sleep(poll_interval)
 
@@ -124,9 +124,9 @@ class VivoPlatform(BasePlatform):
             finally:
                 try:
                     await context.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[登录] 异常: %s", exc)
             import traceback
             logger.error("[登录] traceback: %s", traceback.format_exc())
@@ -139,7 +139,7 @@ class VivoPlatform(BasePlatform):
             if success:
                 try:
                     await browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -197,7 +197,7 @@ class VivoPlatform(BasePlatform):
                         wait_until="domcontentloaded",
                         timeout=30000,
                     )
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(3)
                 name, avatar, fans, likes, follows = await scrape_vivo_profile(page)
@@ -228,7 +228,7 @@ class VivoPlatform(BasePlatform):
         try:
             try:
                 await page.goto(_VIVO_HOME_URL, wait_until="domcontentloaded", timeout=30000)
-            except Exception:  # noqa: S110 -- 页面加载兜底,超时继续后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- 页面加载兜底,超时继续后续逻辑
                 pass
             await asyncio.sleep(3)
             _name, _avatar, fans, likes, follows = await scrape_vivo_profile(page)
@@ -237,7 +237,7 @@ class VivoPlatform(BasePlatform):
                 {"ICON": "like",   "COUNT": likes,   "NAME": "获赞", "SORT": 2},
                 {"ICON": "follow", "COUNT": follows, "NAME": "关注", "SORT": 3},
             ]
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[vivo login] _login_stats_fn 抓取失败: {exc}")
             return []
 
@@ -259,12 +259,12 @@ class VivoPlatform(BasePlatform):
                 logger.info("[打开创作中心] 创作中心已打开")
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -447,7 +447,7 @@ class VivoPlatform(BasePlatform):
                             if current_progress and current_progress != last_progress:
                                 logger.info("[上传视频] 进度: %s", current_progress)
                                 last_progress = current_progress
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                     await asyncio.sleep(2)
 
@@ -684,7 +684,7 @@ class VivoPlatform(BasePlatform):
                 logger.warning("[封面] 未找到「确定」按钮")
 
             logger.info("[封面] 封面设置完成")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[封面] 设置封面失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -752,7 +752,7 @@ class VivoPlatform(BasePlatform):
             )
             await position_items.first.click()
             await asyncio.sleep(1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[设置位置] 设置位置失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -793,7 +793,7 @@ class VivoPlatform(BasePlatform):
                 await asyncio.sleep(0.5)
             else:
                 logger.info("[作品同步] 状态已是目标状态")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[作品同步] 设置失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -831,7 +831,7 @@ class VivoPlatform(BasePlatform):
                 logger.warning("[自主声明] 未找到选项: %s", declaration)
                 # 关闭下拉(点空白处)
                 await page.keyboard.press("Escape")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[自主声明] 设置失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -883,7 +883,7 @@ class VivoPlatform(BasePlatform):
                 await asyncio.sleep(0.5)
             else:
                 logger.info("[%s] 已是目标状态: %s", field_label, value)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[%s] 设置失败: %s", field_label, e)
 
     # ------------------------------------------------------------------
@@ -976,7 +976,7 @@ class VivoPlatform(BasePlatform):
                 logger.warning("[定时发布] 未找到确定按钮")
 
             logger.info("[定时发布] 定时发布设置完成")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[定时发布] 设置失败: %s", e)
             import traceback
             logger.error("[定时发布] traceback: %s", traceback.format_exc())

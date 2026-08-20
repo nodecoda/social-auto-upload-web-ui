@@ -25,7 +25,7 @@ def init():
     try:
         _download_binary()
         logger.info("CloakBrowser 隐匿浏览器已就绪")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("CloakBrowser 隐匿浏览器不可用(%s)", e)
 
 
@@ -92,7 +92,7 @@ async def create_browser(
 
         try:
             browser.on("disconnected", _on_browser_closed)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[浏览器] 关闭事件注册失败，改用轮询兜底: %s", e)
 
         # watchdog: 后台轮询 is_connected(), 断开且非代码关闭则 cancel 发布 task。
@@ -109,7 +109,7 @@ async def create_browser(
                             logger.info("[浏览器] 轮询检测到用户关闭了浏览器，取消当前发布任务")
                             task.cancel()
                             return
-                    except Exception:
+                    except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         # is_connected 自身异常(对象已释放)也视为断开
                         if _should_cancel():
                             logger.info("[浏览器] 轮询检测到浏览器异常断开，取消当前发布任务")
@@ -165,11 +165,11 @@ async def close_browser(browser, is_close_by_code: bool = True) -> None:
     """
     try:
         browser._is_close_by_code = is_close_by_code
-    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
         pass
     try:
         await browser.close()
-    except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+    except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
         pass
 
 

@@ -58,7 +58,7 @@ def _get_log_level() -> int:
         from impl.settings import read_settings
         settings = read_settings()
         return getattr(logging, settings.get("logLevel", "DEBUG").upper(), logging.DEBUG)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return logging.DEBUG
 
 

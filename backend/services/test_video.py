@@ -91,6 +91,6 @@ def get_test_video() -> str:
                 )
             logger.info(f"test video generated: {_TEST_VIDEO_PATH}")
             return str(_TEST_VIDEO_PATH)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(f"generate test video failed: {e}")
             return ""

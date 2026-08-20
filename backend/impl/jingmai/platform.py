@@ -91,7 +91,7 @@ class JingmaiPlatform(BasePlatform):
                 logger.info("[登录] 等待首页运营卡片加载（确保登录态完整）")
                 try:
                     await page.goto(_JINGMAI_HOME_URL, wait_until="domcontentloaded", timeout=30000)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[登录] 首页导航超时(忽略，继续抓取): {e}")
                 try:
                     await page.wait_for_selector(
@@ -99,7 +99,7 @@ class JingmaiPlatform(BasePlatform):
                         timeout=20000,
                     )
                     logger.info("[登录] 运营卡片已加载")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[登录] 运营卡片等待超时(忽略，继续保存): {e}")
                 await asyncio.sleep(2)
 
@@ -117,11 +117,11 @@ class JingmaiPlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             if success:
@@ -144,7 +144,7 @@ class JingmaiPlatform(BasePlatform):
                     await page.wait_for_load_state(
                         "domcontentloaded", timeout=20000
                     )
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(3)
                 current_url = page.url or ""
@@ -159,11 +159,11 @@ class JingmaiPlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             await browser.close()
@@ -191,7 +191,7 @@ class JingmaiPlatform(BasePlatform):
                 await page.goto(_JINGMAI_HOME_URL, wait_until="domcontentloaded", timeout=30000)
                 try:
                     await page.wait_for_load_state("domcontentloaded", timeout=20000)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 await asyncio.sleep(3)
 
@@ -211,17 +211,17 @@ class JingmaiPlatform(BasePlatform):
                     logger.info(f"[jingmai] sync_profile 抓取为空, url={page.url}")
 
                 return {"name": name, "avatar": avatar, "stats": stats}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[jingmai] 同步资料失败: {e}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
                 try:
                     await page.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             await browser.close()
@@ -268,7 +268,7 @@ class JingmaiPlatform(BasePlatform):
                 try:
                     await page.wait_for_selector(selector, timeout=1000)
                     return page
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 # 2) 子 frame（现布局：卡片在 iframe.micro-iframe 内）
                 for frame in list(page.frames):
@@ -277,7 +277,7 @@ class JingmaiPlatform(BasePlatform):
                     try:
                         await frame.wait_for_selector(selector, timeout=500)
                         return frame
-                    except Exception:  # noqa: S112 -- frame 可能正被 SPA 重建,跳过后下轮重枚举
+                    except Exception:  # noqa: S112, BLE001 -- frame 可能正被 SPA 重建,跳过后下轮重枚举
                         # frame 可能正被 SPA 重建（detached），跳过后下轮重枚举
                         continue
                 await asyncio.sleep(0.5)
@@ -314,7 +314,7 @@ class JingmaiPlatform(BasePlatform):
                     return out;
                 }'''
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[jingmai] _scrape_stats evaluate 失败: {e}")
             return []
 
@@ -368,12 +368,12 @@ class JingmaiPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)

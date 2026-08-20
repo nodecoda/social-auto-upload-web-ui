@@ -31,7 +31,7 @@ def read_settings() -> dict:
             except (json.JSONDecodeError, TypeError):
                 result[row["key"]] = val
         return result
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return {}
 
 

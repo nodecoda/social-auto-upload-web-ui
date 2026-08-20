@@ -102,7 +102,7 @@ def picker_open():
         if released is not None:
             try:
                 run_picker_async(released.close(), timeout=10)
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass  # 清理失败不阻塞错误返回
         return _err(f"打开选择面板失败: {e}")
 
@@ -182,6 +182,6 @@ def picker_close():
     try:
         run_picker_async(session.close(), timeout=20)
         return _ok({"closed": True})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"picker close 失败: {e}")
         return _err(str(e))

@@ -87,7 +87,7 @@ class S3Storage(StorageBackend):
         try:
             self.client.head_object(Bucket=self.bucket, Key=relative_path)
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
             return False
 
     def get_local_path(self, relative_path: str) -> str | None:
@@ -105,7 +105,7 @@ class S3Storage(StorageBackend):
             tmp.write(data)
             tmp.close()
             return tmp.name
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
             return None
 
     def serve(self, relative_path: str):

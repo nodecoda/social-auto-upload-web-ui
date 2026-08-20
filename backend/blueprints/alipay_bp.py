@@ -135,7 +135,7 @@ async def _search_compilation_via_browser(cookie_file: str, keyword: str) -> dic
     if not empty_video.exists():
         try:
             _create_minimal_mp4(empty_video)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error(f"[合集搜索] 创建空视频失败: {e}")
             return {"success": False, "error": f"创建空视频失败: {e}"}
 
@@ -162,7 +162,7 @@ async def _search_compilation_via_browser(cookie_file: str, keyword: str) -> dic
                             f"stat={data.get('stat')}, "
                             f"total={data.get('result', {}).get('total')}"
                         )
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                         logger.error(f"[浏览器拦截] 解析响应失败: {e}")
 
             page.on("response", handle_response)
@@ -185,7 +185,7 @@ async def _search_compilation_via_browser(cookie_file: str, keyword: str) -> dic
             ).first
             try:
                 await title_input.wait_for(state="visible", timeout=120000)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                 return {
                     "success": False,
                     "error": f"等待表单渲染超时: {e}",
@@ -200,7 +200,7 @@ async def _search_compilation_via_browser(cookie_file: str, keyword: str) -> dic
                 await compilation_input.wait_for(
                     state="visible", timeout=10000
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                 return {
                     "success": False,
                     "error": f"未找到合集搜索框: {e}",
@@ -386,7 +386,7 @@ async def _fetch_music_list_via_browser(cookie_file: str) -> dict:
     if not test_image.exists():
         try:
             _create_test_jpeg(test_image)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(f"[音乐列表] 创建测试图失败(继续尝试): {e}")
 
     browser = await create_browser(headless=True)
@@ -407,7 +407,7 @@ async def _fetch_music_list_via_browser(cookie_file: str) -> dict:
                     return
                 try:
                     data = await response.json()
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     return
                 stat = data.get("stat") if isinstance(data, dict) else None
                 logger.info(
@@ -429,7 +429,7 @@ async def _fetch_music_list_via_browser(cookie_file: str) -> dict:
             try:
                 await add_music_btn.wait_for(state="visible", timeout=3000)
                 logger.info("[音乐列表] 「添加音乐」按钮已可见")
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(
                     "[音乐列表] 「添加音乐」按钮未直接出现,"
                     "上传测试图触发表单渲染..."
@@ -446,7 +446,7 @@ async def _fetch_music_list_via_browser(cookie_file: str) -> dict:
                     await img_input.wait_for(state="attached", timeout=10000)
                     await img_input.set_input_files(str(test_image))
                     logger.info("[音乐列表] 已上传测试图,等表单渲染")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                     return {
                         "success": False,
                         "error": f"上传测试图失败: {e}",
@@ -457,7 +457,7 @@ async def _fetch_music_list_via_browser(cookie_file: str) -> dict:
                         state="visible", timeout=20000
                     )
                     logger.info("[音乐列表] 上传后「添加音乐」按钮已可见")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                     return {
                         "success": False,
                         "error": f"上传测试图后仍未出现「添加音乐」按钮: {e}",
@@ -472,7 +472,7 @@ async def _fetch_music_list_via_browser(cookie_file: str) -> dict:
                 await page.locator(
                     'div.antd5-modal[aria-modal="true"]:has-text("选择音乐")'
                 ).first.wait_for(state="visible", timeout=10000)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                 return {
                     "success": False,
                     "error": f"音乐 modal 未打开: {e}",

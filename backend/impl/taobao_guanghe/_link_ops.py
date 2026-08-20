@@ -131,7 +131,7 @@ async def scrape_products(frame) -> tuple[list, bool]:
             }"""
         )
         return data.get("items", []), data.get("has_more", False)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return [], False
 
 
@@ -204,7 +204,7 @@ async def scrape_shops(frame) -> tuple[list, bool]:
             }"""
         )
         return data.get("items", []), data.get("has_more", False)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return [], False
 
 
@@ -254,7 +254,7 @@ async def scrape_filters(frame) -> dict:
             }"""
         )
         return data or {"rules": [], "categories": []}
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return {"rules": [], "categories": []}
 
 
@@ -304,7 +304,7 @@ async def switch_tab(frame, tab: str) -> None:
     try:
         tab_el = frame.locator(f'.next-tabs-tab:has-text("{target_text}")').first
         await tab_el.wait_for(state="visible", timeout=5000)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return
 
     is_active = await tab_el.evaluate("el => el.classList.contains('active')")
@@ -322,7 +322,7 @@ async def switch_tab(frame, tab: str) -> None:
             target_text,
             timeout=5000,
         )
-    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
         pass
     await asyncio.sleep(1.2)
 
@@ -383,7 +383,7 @@ async def load_more(frame) -> bool:
     if await more_btn.count() > 0:
         try:
             await more_btn.scroll_into_view_if_needed(timeout=3000)
-        except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+        except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
             pass
         await more_btn.click()
         await asyncio.sleep(2)
@@ -398,7 +398,7 @@ async def load_more(frame) -> bool:
             }"""
         )
         await asyncio.sleep(2)
-    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
         pass
     return False
 

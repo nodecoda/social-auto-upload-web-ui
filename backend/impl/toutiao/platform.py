@@ -114,7 +114,7 @@ class ToutiaoPlatform(BasePlatform):
                                 logger.info("[登录] 找到二维码图片，选择器: %s", selector)
                                 break
                             src = None
-                    except Exception:  # noqa: S112 -- 单个候选源探测失败,跳过继续
+                    except Exception:  # noqa: S112, BLE001 -- 单个候选源探测失败,跳过继续
                         continue
 
                 if src:
@@ -138,7 +138,7 @@ class ToutiaoPlatform(BasePlatform):
                         if await user_panel.count():
                             logger.info("[登录] 检测到用户面板，登录成功!")
                             break
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                     await asyncio.sleep(1)
 
@@ -224,7 +224,7 @@ class ToutiaoPlatform(BasePlatform):
                         wait_until="domcontentloaded",
                         timeout=30000,
                     )
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(3)
                 # 抓 name/avatar(用原有 scraper)
@@ -237,7 +237,7 @@ class ToutiaoPlatform(BasePlatform):
                 # 抓 stats(3 项 .data-board-item)
                 try:
                     await page.wait_for_selector(".data-board-item", timeout=8000)
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info("[toutiao stats] 等待 .data-board-item 超时")
 
                 result = await page.evaluate(
@@ -299,7 +299,7 @@ class ToutiaoPlatform(BasePlatform):
         """
         try:
             await page.wait_for_selector(".data-board-item", timeout=8000)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[toutiao login] 等待 .data-board-item 超时")
 
         result = await page.evaluate(
@@ -355,12 +355,12 @@ class ToutiaoPlatform(BasePlatform):
                 logger.info("[打开创作中心] 创作中心已打开")
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -556,7 +556,7 @@ class ToutiaoPlatform(BasePlatform):
                             if current_progress and current_progress != last_progress:
                                 logger.info("[上传视频] %s", current_progress)
                                 last_progress = current_progress
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                     await asyncio.sleep(2)
 
@@ -575,7 +575,7 @@ class ToutiaoPlatform(BasePlatform):
                         logger.info("[视频类型] 检测到竖版视频")
                     else:
                         logger.info("[视频类型] 检测到横版视频")
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info("[视频类型] 默认为横版视频")
 
                 # Fill title (max 30 chars)
@@ -612,7 +612,7 @@ class ToutiaoPlatform(BasePlatform):
                                     desc_filled = True
                                     logger.info("[填写简介] 视频简介填写成功!")
                                     break
-                            except Exception as e:
+                            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                                 logger.debug("[填写简介] 选择器 %s 失败: %s", selector, e)
                                 continue
 
@@ -624,7 +624,7 @@ class ToutiaoPlatform(BasePlatform):
                                     await desc_by_placeholder.fill(desc[:400])
                                     logger.info("[填写简介] 通过 placeholder 填写成功")
                                     desc_filled = True
-                            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                                 pass
 
                         if not desc_filled:
@@ -762,14 +762,14 @@ class ToutiaoPlatform(BasePlatform):
                     else:
                         await page.keyboard.press("Enter")
                         logger.info("[标签] 按 Enter 确认标签")
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     await page.keyboard.press("Enter")
                     logger.info("[标签] 按 Enter 确认标签 (fallback)")
 
                 await asyncio.sleep(0.5)
 
             logger.info("[标签] 所有标签填写完成")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[标签] 填写标签失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -866,7 +866,7 @@ class ToutiaoPlatform(BasePlatform):
                             await loc.click(timeout=wait_timeout_ms)
                             logger.info("[封面] 已点击「%s」(选择器=%s)", text, sel)
                             return True
-                    except Exception:  # noqa: S112 -- 单个候选源探测失败,跳过继续
+                    except Exception:  # noqa: S112, BLE001 -- 单个候选源探测失败,跳过继续
                         continue
                 logger.info("[封面] 未找到「%s」按钮,跳过", text)
                 return False
@@ -927,7 +927,7 @@ class ToutiaoPlatform(BasePlatform):
                 if await dialog_ok_btn.count() > 0:
                     try:
                         await dialog_ok_btn.wait_for(state="visible", timeout=5000)
-                    except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                    except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                         # 弹窗动画中可能 is_visible=False,继续 force click
                         pass
                     await dialog_ok_btn.click(force=True, timeout=5000)
@@ -935,11 +935,11 @@ class ToutiaoPlatform(BasePlatform):
                     await asyncio.sleep(1)
                 else:
                     logger.info("[封面] 未出现二次确认弹窗,流程结束")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[封面] 二次确认弹窗处理失败: %s", e)
 
             logger.info("[封面] 封面设置完成")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[封面] 设置封面失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -983,7 +983,7 @@ class ToutiaoPlatform(BasePlatform):
                     logger.warning("[声明] 未找到声明选项: %s", decl)
 
             logger.info("[声明] 作品声明设置完成")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[声明] 设置作品声明失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -1010,7 +1010,7 @@ class ToutiaoPlatform(BasePlatform):
                         logger.info("[生成图文] 视频生成图文状态已是目标状态")
             else:
                 logger.warning("[生成图文] 未找到生成图文选项!")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[生成图文] 设置视频生成图文失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -1049,7 +1049,7 @@ class ToutiaoPlatform(BasePlatform):
                     logger.info("[合集] 已点击确定")
             else:
                 logger.warning("[合集] 未找到选择合集按钮!")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[合集] 设置合集失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -1106,7 +1106,7 @@ class ToutiaoPlatform(BasePlatform):
             else:
                 logger.warning("[扩展链接] 未找到链接输入框!")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[扩展链接] 设置扩展链接失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -1172,5 +1172,5 @@ class ToutiaoPlatform(BasePlatform):
                     logger.info("[定时发布] 定时发布设置完成")
             else:
                 logger.warning("[定时发布] 未找到定时发布按钮!")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[定时发布] 设置定时发布时间失败: %s", e)

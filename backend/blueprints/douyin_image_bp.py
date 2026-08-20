@@ -190,7 +190,7 @@ def get_mix_list():
         else:
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"获取合集列表失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
@@ -213,7 +213,7 @@ def get_activity_list():
         else:
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"获取活动列表失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
@@ -238,7 +238,7 @@ def search_hotspot():
         else:
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"搜索热点失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
@@ -314,7 +314,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
                         data = await response.json()
                         captured_response = data
                         logger.info(f"[浏览器拦截] 响应数据: status_code={data.get('status_code')}, music_count={len(data.get('music', []))}")
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                         logger.error(f"[浏览器拦截] 解析响应失败: {e}")
 
             page.on("response", handle_response)
@@ -341,7 +341,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
                         uploaded = True
                         logger.info(f"图片上传成功，选择器: {selector}")
                         break
-                except Exception:  # noqa: S112 -- 单个选项解析失败,跳过该项继续
+                except Exception:  # noqa: S112, BLE001 -- 单个选项解析失败,跳过该项继续
                     continue
 
             if not uploaded:
@@ -360,7 +360,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
                     if await publish_btn.is_visible():
                         await publish_btn.click()
                         await page.wait_for_timeout(3000)
-                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
 
             # 4. 点击"选择音乐"按钮
@@ -382,7 +382,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
                         music_clicked = True
                         logger.info(f"点击选择音乐按钮成功，选择器: {selector}")
                         break
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.debug(f"选择器 {selector} 失败: {e}")
                     continue
 
@@ -394,7 +394,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
                         await music_text.click()
                         music_clicked = True
                         logger.info("通过文字定位点击选择音乐成功")
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
 
             if not music_clicked:
@@ -430,7 +430,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
                         search_filled = True
                         logger.info(f"搜索框输入成功，选择器: {selector}")
                         break
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.debug(f"搜索框选择器 {selector} 失败: {e}")
                     continue
 
@@ -464,7 +464,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
         try:
             if test_image.exists():
                 test_image.unlink()
-        except Exception:  # noqa: S110 -- 文件/资源清理兜底,失败可忽略
+        except Exception:  # noqa: S110, BLE001 -- 文件/资源清理兜底,失败可忽略
             pass
 
 
@@ -493,7 +493,7 @@ def search_poi():
         else:
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"搜索位置失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
@@ -639,6 +639,6 @@ def search_medium():
             logger.error(f"[影视演绎搜索] 请求失败: {result.get('error')}")
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"[影视演绎搜索] 异常: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
