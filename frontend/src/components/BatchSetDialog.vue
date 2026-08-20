@@ -58,28 +58,11 @@
         />
       </el-form-item>
       <el-form-item label="渠道">
-        <div class="channel-grid">
-          <div
-            v-for="p in platforms"
-            :key="p.key"
-            :class="['channel-card', {
-              'is-checked': checkedKeys.has(p.key),
-              'is-disabled': p.count === 0
-            }]"
-            role="checkbox"
-            :aria-checked="checkedKeys.has(p.key)"
-            :aria-disabled="p.count === 0"
-            :tabindex="p.count === 0 ? -1 : 0"
-            @click="toggleKey(p)"
-            @keydown.enter.prevent="toggleKey(p)"
-            @keydown.space.prevent="toggleKey(p)"
-          >
-            <img v-if="p.logo" :src="p.logo" :alt="p.name" class="channel-logo" />
-            <div v-else class="channel-logo channel-logo-fallback">{{ p.name?.charAt(0) }}</div>
-            <div class="channel-name">{{ p.name }}</div>
-            <div class="channel-count">{{ p.count }}</div>
-          </div>
-        </div>
+        <BatchChannelPicker
+          :platforms="platforms"
+          :checked-keys="checkedKeys"
+          @toggle="toggleKey"
+        />
       </el-form-item>
     </el-form>
 
@@ -107,6 +90,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, type PropType } from 'vue'
 import { ElMessage } from 'element-plus'
+import BatchChannelPicker from '@/components/BatchChannelPicker.vue'
 
 const MAX_TAGS = 10
 
@@ -195,86 +179,6 @@ function handleApply(mode: 'full' | 'partial' = 'full') {
 
 <style lang="scss" scoped>
 @use '@/styles/variables.scss' as *;
-
-.channel-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 6px;
-  width: 100%;
-}
-
-.channel-card {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border: 1px solid $border;
-  border-radius: 8px;
-  background: $bg-elevated;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  user-select: none;
-  min-height: 36px;
-
-  &:hover:not(.is-disabled) {
-    border-color: $brand-start;
-    background: rgba($brand-start, 0.04);
-  }
-
-  &.is-checked {
-    border-color: $brand-start;
-    background: rgba($brand-start, 0.1);
-    box-shadow: 0 0 0 1px $brand-start inset;
-  }
-
-  &.is-disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .channel-logo {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    object-fit: contain;
-    flex-shrink: 0;
-  }
-  .channel-logo-fallback {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: $bg-surface;
-    color: $text-muted;
-    font-size: 11px;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .channel-name {
-    flex: 1;
-    font-size: 12px;
-    font-weight: 500;
-    color: $text-primary;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .channel-count {
-    flex-shrink: 0;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: $bg-surface;
-    color: $text-muted;
-    font-size: 11px;
-    font-weight: 500;
-  }
-}
 
 .tag-input-wrap {
   display: flex;
