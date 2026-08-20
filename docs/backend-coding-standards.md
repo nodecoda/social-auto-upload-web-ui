@@ -134,7 +134,7 @@ except ApiTimeoutError as e:
 
 ## 10. 治理清单（ruff 基线 2026-08-20）
 
-`ruff check . --exclude .venv` 基线 **1623 个违规**。分批处置（当前已降为 **156**，剩余为风格/低优先项 E402/F841/B904/F541/SIM117/TRY*/SIM105/E501/PLW2901 等，不阻断治理）：
+`ruff check . --exclude .venv` 基线 **1623 个违规**。分批处置（当前已降为 **99**，剩余为风格/低优先项 E402/SIM117/TRY*/SIM105/E501 等，不阻断治理）：
 
 | 批 | 规则 | 数量 | 处置 | 状态 |
 |---|---|---|---|---|
@@ -146,6 +146,10 @@ except ApiTimeoutError as e:
 | B4 | BLE001 盲 except | 880 | 原因注释 + noqa + 规则解禁（51 处带 exc_info 日志自动豁免） | ✅ 2026-08-20 |
 | B5 | 类型标注试点 | 4/139 文件 | services/draft_merge.py 9 函数 + storage/ 全模块补齐标注 | ✅ 2026-08-20 |
 | B6 | G201/PIE810/PLW1510 零散 | 38 | G201 改 exception()、PIE810 合并 tuple、PLW1510 注释 | ✅ 2026-08-20 |
+| C1 | F841 未使用变量 | 19 | 逐处审查删除（含 jd 同模式误删修复） | ✅ 2026-08-21 |
+| C2 | B904 异常链 | 13 | 包装型 `from e` / 裸捕获 `from None`；顺带移除 9 处冗余 BLE001 noqa | ✅ 2026-08-21 |
+| C3 | PLW0603 global | 8 | 惰性单例/缓存逐组审查确认竞态安全 + noqa 注释 | ✅ 2026-08-21 |
+| C4 | F541/F401 | 17 | f-string 无占位符 safe-fix + 未用导入删除 | ✅ 2026-08-21 |
 
 > 规则从 `pyproject.toml` ignore 列表移除 = 该批完成（ruff 重新报错即回归）。
 
