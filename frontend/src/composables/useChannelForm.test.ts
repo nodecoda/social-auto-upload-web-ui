@@ -110,13 +110,13 @@ describe('useChannelForm', () => {
     const publishFn = vi.fn().mockResolvedValue(undefined)
     const { publicApi, accountOverrides } = setup(8, { publishFn })
     accountOverrides[8] = { title: '覆盖标题' }
-    await publicApi.publish(8, '账号名', { common: 1 }, { extra: 2 })
-    expect(publishFn).toHaveBeenCalledWith(8, '账号名', { common: 1 }, expect.objectContaining({ title: '覆盖标题' }), { extra: 2 })
+    await publicApi.publish(8, '账号名', { images: [{ id: 1 }] }, { batchId: 'b1' })
+    expect(publishFn).toHaveBeenCalledWith(8, '账号名', { images: [{ id: 1 }] }, expect.objectContaining({ title: '覆盖标题' }), { batchId: 'b1' })
   })
 
   it('publicApi.publish: 无 publishFn 时不抛错', async () => {
     const { publicApi } = setup()
-    await expect(publicApi.publish(1, 'n', {}, {})).resolves.toBeUndefined()
+    await expect(publicApi.publish(1, 'n', { images: [] }, {})).resolves.toBeUndefined()
   })
 
   it('publicApi.getConfigs: 返回序列化深拷贝', () => {

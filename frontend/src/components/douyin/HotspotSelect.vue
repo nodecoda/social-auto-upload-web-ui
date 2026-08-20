@@ -82,7 +82,7 @@ const emit = defineEmits<{
   (e: 'change', payload: HotspotItem | null): void
 }>()
 
-interface HotspotItem {
+export interface HotspotItem {
   sentence_id?: string | number
   word: string
   hot_value?: number

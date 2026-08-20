@@ -30,12 +30,12 @@
 
     <div class="setting-card">
       <div class="setting-label">选择音乐</div>
-      <DouyinMusicSelect :account-id="accountId" v-model="form.selectedMusic" :data="form.selectedMusicData" @change="handleMusicSelect" />
+      <DouyinMusicSelect :account-id="accountId" v-model="form.selectedMusic" :data="form.selectedMusicData as MusicItem | null" @change="handleMusicSelect" />
     </div>
 
     <div class="setting-card">
       <div class="setting-label">关联热点</div>
-      <DouyinHotspotSelect v-model="form.hotspotId" :data="form.hotspotData" @change="handleHotspotChange" />
+      <DouyinHotspotSelect v-model="form.hotspotId" :data="form.hotspotData as HotspotItem | null" @change="handleHotspotChange" />
     </div>
 
     <div class="setting-card">
@@ -52,7 +52,7 @@
 
     <div v-if="accountId" class="setting-card">
       <div class="setting-label">添加合集</div>
-      <DouyinMixSelect :account-id="accountId" v-model="form.mixId" :data="form.mixData" @change="handleMixChange" />
+      <DouyinMixSelect :account-id="accountId" v-model="form.mixId" :data="form.mixData as MixItem | null" @change="handleMixChange" />
     </div>
   </div>
 </template>
@@ -65,10 +65,10 @@ import { imagePublishApi } from '@/api/imagePublish'
 import { PLATFORMS } from '@/config/platforms'
 import { useChannelForm } from '@/composables/useChannelForm'
 import DouyinActivitySelect from './ActivitySelect.vue'
-import DouyinMusicSelect from './MusicSelect.vue'
-import DouyinHotspotSelect from './HotspotSelect.vue'
+import DouyinMusicSelect, { type MusicItem } from './MusicSelect.vue'
+import DouyinHotspotSelect, { type HotspotItem } from './HotspotSelect.vue'
 import DouyinTagSelect from './TagSelect.vue'
-import DouyinMixSelect from './MixSelect.vue'
+import DouyinMixSelect, { type MixItem } from './MixSelect.vue'
 import { useAutoExtractHashtags } from '@/utils/hashtag'
 import { getErrorMessage } from '@/utils/error'
 
@@ -91,25 +91,11 @@ const declarationOptions = computed(() => {
   return field?.options || []
 })
 
-// 公共数据/附加参数接口(见 publishFn 标注)
-// 公共数据/附加参数接口(见 publishFn 标注)
-interface PublishCommonData {
-  images: Array<{ id: number | string }>
-  coverImage?: { stored_path?: string } | null
-}
-
-// 批量发布场景的附加参数(均可选)
-interface PublishExtra {
-  batchId?: string
-  landscapeCoverMaterialId?: string
-  portraitCoverMaterialId?: string
-}
-
 const { form, hasAccountOverride, resetOverride, publicApi } = useChannelForm(
   DOUYIN_DEFAULTS,
   { props, emit },
   {
-    publishFn: async (accountId, accountName, commonData: PublishCommonData, merged, extra?: PublishExtra) => {
+    publishFn: async (accountId, accountName, commonData, merged, extra?) => {
       const account = accountStore.accounts.find(a => a.id === accountId)
       if (!account) {
         emit('publish-result', { accountName, status: 'fail', message: '账号不存在' })
@@ -119,7 +105,7 @@ const { form, hasAccountOverride, resetOverride, publicApi } = useChannelForm(
       const tagTypeMap: Record<string, string> = { poi: 'location', miniapp: 'miniapp', game: 'gamepad', mark: 'mark' }
       let tagValue = '', miniLink = ''
       if (selectedTag) {
-        tagValue = selectedTag.name || selectedTag.id || ''
+        tagValue = selectedTag.name || (selectedTag.id ? String(selectedTag.id) : '')
         if (selectedTag.type === 'miniapp') miniLink = selectedTag._searchKeyword || ''
       }
       try {
@@ -174,7 +160,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(index: number) { form.tags.splice(index, 1) }
+function removeTag(index: number) { form.tags?.splice(index, 1) }
 
 // 自动提取描述中的 #xxx 到标签数组,抖音活动+标签上限 5
 useAutoExtractHashtags({
@@ -205,8 +191,8 @@ interface SelectedHotspot {
 
 interface SelectedTag {
   id?: string | number
-  name?: string
-  type?: string
+  name: string
+  type: string
   [key: string]: unknown
 }
 
@@ -250,7 +236,7 @@ function handleTagSelect(tag: SelectedTag | null) {
     form.selectedTag = tag
     const m: Record<string, string> = { poi: 'location', miniapp: 'miniapp', game: 'gamepad', mark: 'mark' }
     form.tagType = m[tag.type ?? ''] || ''
-    form.tagValue = tag.name || tag.id || ''
+    form.tagValue = tag.name || (tag.id ? String(tag.id) : '')
     ElMessage.success(`标签已选择: ${tag.name}`)
   } else {
     form.selectedTag = null; form.tagType = ''; form.tagValue = ''

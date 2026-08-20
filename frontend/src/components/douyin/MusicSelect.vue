@@ -81,7 +81,7 @@ const emit = defineEmits<{
   (e: 'change', payload: MusicItem | null): void
 }>()
 
-interface MusicItem {
+export interface MusicItem {
   id: string | number
   title: string
   author?: string

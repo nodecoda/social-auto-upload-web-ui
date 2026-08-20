@@ -10,17 +10,76 @@ import { ref, reactive, watch } from 'vue'
  * @param {function}  publishFn       (accountId, accountName, commonData, merged, extra) => Promise
  * @param {function}  validateFn       (accountId) => { valid, errors }
  */
-interface ChannelFormOptions {
-  publishFn?: (accountId: string | number, accountName: string, commonData: any, merged: Record<string, any>, extra?: any) => Promise<any>
-  validateFn?: (accountId: string | number, merged: Record<string, any>) => { valid: boolean; errors: string[] }
+
+/**
+ * 渠道表单字段字典:各面板已知字段类型化,其余平台特有字段走宽松索引。
+ * 上传/选择类载荷为动态对象,用 Record<string, unknown> 兜底(消费方自行收窄)。
+ */
+export interface ChannelFormData {
+  title?: string
+  description?: string
+  tags?: string[]
+  activityId?: string[]
+  aiContent?: string | boolean
+  isOriginal?: boolean
+  scheduleTime?: string
+  selectedMusic?: string
+  selectedMusicData?: Record<string, unknown> | null
+  /** 支付宝图集音乐(整对象载荷,字段与 MusicDrawer select 事件一致) */
+  music?: {
+    musicId?: string | number
+    title?: string
+    coverUrl?: string
+    audioUrl?: string
+    duration?: number
+    [key: string]: unknown
+  } | null
+  musicTitle?: string
+  selectedMusicId?: string
+  hotspotId?: string
+  hotspotData?: Record<string, unknown> | null
+  mixId?: string
+  mixData?: Record<string, unknown> | null
+  selectedTag?: {
+    name: string
+    type: string
+    id?: string | number
+    _searchKeyword?: string
+    [key: string]: unknown
+  } | null
+  tagType?: string
+  tagValue?: string
+  authorStatement?: string
+  gzhClaimSource?: string
+  gzhCollectionName?: string
+  gzhCollectionData?: Record<string, unknown> | null
+  [key: string]: unknown
 }
 
-export function useChannelForm(defaults: Record<string, any>, { props, emit }: { props: Record<string, any>; emit: (...args: any[]) => void }, options: ChannelFormOptions = {}) {
+/** 批量发布公共区传入的通用数据(图集 images 必含 id,coverImage 可选) */
+export interface ChannelPublishCommonData {
+  images: Array<{ id: number | string }>
+  coverImage?: { stored_path?: string } | null
+}
+
+/** 批量发布场景的附加参数(均可选) */
+export interface ChannelPublishExtra {
+  batchId?: string
+  landscapeCoverMaterialId?: string
+  portraitCoverMaterialId?: string
+}
+
+interface ChannelFormOptions {
+  publishFn?: (accountId: string | number, accountName: string, commonData: ChannelPublishCommonData, merged: ChannelFormData, extra?: ChannelPublishExtra) => Promise<unknown>
+  validateFn?: (accountId: string | number, merged: ChannelFormData) => { valid: boolean; errors: string[] }
+}
+
+export function useChannelForm(defaults: ChannelFormData, { props, emit }: { props: { accountId: string | number | null }; emit: (event: 'config-changed') => void }, options: ChannelFormOptions = {}) {
   const { publishFn, validateFn } = options
   // ===== 内部状态 =====
-  const platformConfig = reactive({ ...defaults })
-  const accountOverrides = reactive<Record<string, Record<string, any>>>({})
-  const form = reactive({ ...platformConfig })
+  const platformConfig = reactive<ChannelFormData>({ ...defaults })
+  const accountOverrides = reactive<Record<string, ChannelFormData>>({})
+  const form = reactive<ChannelFormData>({ ...platformConfig })
 
   let syncing = false
 
@@ -35,9 +94,9 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
     return override && Object.values(override).some(hasValues)
   }
 
-  function getMergedConfig(accountId: string | number): Record<string, any> {
-    const override: Record<string, any> = accountOverrides[accountId] || {}
-    const merged: Record<string, any> = {}
+  function getMergedConfig(accountId: string | number): ChannelFormData {
+    const override: ChannelFormData = accountOverrides[accountId] || {}
+    const merged: ChannelFormData = {}
     // 深拷贝 platformConfig，数组字段必须断开引用，否则 form 和 platformConfig 共享同一数组
     for (const [k, v] of Object.entries(platformConfig)) {
       merged[k] = Array.isArray(v) ? [...v] : v
@@ -48,7 +107,7 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
     return merged
   }
 
-  function applyToForm(source: Record<string, any>) {
+  function applyToForm(source: ChannelFormData) {
     syncing = true
     // 清除 form 中存在但 source 不存在的动态字段（如 mixData, selectedMusicData 等），
     // 这些是账号级专属字段，不存在于 platformConfig 默认值中，切换账号时必须清空
@@ -76,13 +135,13 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
         }
       }
     } else {
-      const diff: Record<string, any> = {}
+      const diff: ChannelFormData = {}
       for (const key of Object.keys(form)) {
         const cur = form[key]
         const fallback = platformConfig[key]
         if (typeof cur === 'object' && cur !== null) {
           if (JSON.stringify(cur) !== JSON.stringify(fallback)) {
-            diff[key] = Array.isArray(cur) ? [...cur] : { ...cur }
+            diff[key] = Array.isArray(cur) ? [...cur] : { ...(cur as Record<string, unknown>) }
           }
         } else if (cur !== fallback) {
           diff[key] = cur
@@ -113,7 +172,7 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
 
   // ===== 暴露给父组件的接口 =====
   const publicApi = {
-    async publish(accountId: string | number, accountName: string, commonData: Record<string,any>, extra: Record<string,any>) {
+    async publish(accountId: string | number, accountName: string, commonData: ChannelPublishCommonData, extra?: ChannelPublishExtra) {
       if (publishFn) {
         await publishFn(accountId, accountName, commonData, getMergedConfig(accountId), extra)
       }
@@ -126,7 +185,7 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
       }
     },
 
-    restoreConfigs(config: Record<string,any>, overrides: Record<string,any> | undefined) {
+    restoreConfigs(config: ChannelFormData, overrides: Record<string, ChannelFormData> | undefined) {
       Object.keys(platformConfig).forEach(k => delete platformConfig[k])
       Object.assign(platformConfig, defaults, config)
       Object.keys(accountOverrides).forEach(k => delete accountOverrides[k])
@@ -157,7 +216,7 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
       return { valid: errors.length === 0, errors }
     },
 
-    setPlatformConfig(partial: Record<string,any>) {
+    setPlatformConfig(partial: Record<string, unknown>) {
       for (const [k, v] of Object.entries(partial)) {
         if (v === undefined) continue
         platformConfig[k] = Array.isArray(v) ? [...v] : v
@@ -166,7 +225,7 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
       emit('config-changed')
     },
 
-    setAccountOverride(accountId: string | number, partial: Record<string,any>) {
+    setAccountOverride(accountId: string | number, partial: Record<string, unknown>) {
       const existing = accountOverrides[accountId] || {}
       const next = { ...existing }
       for (const [k, v] of Object.entries(partial)) {

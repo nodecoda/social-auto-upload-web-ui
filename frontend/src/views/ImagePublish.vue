@@ -308,7 +308,7 @@ interface MediaOverride {
   scheduleTime?: string
   aiContent?: string
   isOriginal?: boolean
-  music?: unknown
+  music?: Record<string, unknown> | null
   authorStatement?: string
 }
 
@@ -321,9 +321,10 @@ interface PanelOverrideEntry {
   scheduleTime?: string
   aiContent?: string
   isOriginal?: boolean
-  music?: unknown
+  music?: Record<string, unknown> | null
   authorStatement?: string
   coverImage?: CoverImage | null
+  [key: string]: unknown
 }
 
 /** panel 渠道默认配置（仅声明本页读取的标准字段，平台特定字段走 unknown 索引） */
@@ -337,7 +338,7 @@ interface PanelDefaultConfig {
   scheduleTime?: string
   aiContent?: string
   isOriginal?: boolean
-  music?: unknown
+  music?: Record<string, unknown> | null
   authorStatement?: string
   [key: string]: unknown
 }
@@ -353,7 +354,7 @@ interface MergedConfig {
   scheduleTime: string
   aiContent: string
   isOriginal: boolean
-  music: unknown
+  music: Record<string, unknown> | null
   authorStatement: string
 }
 
