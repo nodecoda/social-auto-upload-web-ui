@@ -1,0 +1,55 @@
+# Frontend Coding Rules — Vue 3 + TypeScript (social-auto-upload-web-ui)
+
+Scope: `frontend/` (Vue 3.5 · TypeScript strict · Vite · Pinia · Element Plus · Vitest)
+Full reference: `docs/frontend-coding-standards.md`
+
+## 1. Composition API only
+- Always `<script setup lang="ts">`. No Options API, no `defineComponent`, no `data()/methods`, no `this.`.
+- An extra plain `<script lang="ts">` block is allowed only for non-reactive constants consumed via `$options`; prefer `defineOptions` or a top-level `const` instead.
+- When touching a legacy component, migrate it to `<script setup>` in the same change.
+
+## 2. `<script setup>` declaration order
+imports → `defineProps` / `defineEmits` (do not import them) → state (ref/reactive) → computed → functions → watch/lifecycle.
+
+## 3. Typed props & emits
+- `defineProps<{ name: Type }>()` + `withDefaults()` for defaults. Never fall back with `0 || x` or `||` in templates (e.g. `0 || 10 === 10`). Never mutate props.
+- `defineEmits<{ (e: 'event', payload: T): void }>()` — **never the array form** `defineEmits([...])`.
+- Function props typed as `(arg: T) => void`, never bare `Function`.
+
+## 4. Composables
+- Name with `use*`; return refs (not `.value`); clean up with `onScopeDispose`; only call at top level; no side effects at import time.
+
+## 5. Pinia (setup syntax)
+- `defineStore('id', () => { ... })`, store id = file name.
+- Consume with `storeToRefs(store)` for state/getters, destructure actions directly. Never destructure reactive store fields directly.
+
+## 6. v-for keys
+- Always a stable `:key` (prefer `item.id`), written on its own line (multi-line attribute style used in this repo).
+- Never use `index` unless the list is append-only or static; document the exception in a comment.
+- `<template v-for>` → put `:key` on the `<template>` element itself.
+
+## 7. Template hygiene
+- Template ≤ 100 lines, nesting ≤ 3 levels, functions ≤ 30 lines (extract composables/components when exceeded).
+- One root element per component unless a fragment is intentional.
+
+## 8. Async components
+- `defineAsyncComponent` only for route-level or heavy lazy-loaded components, with loading/error states and delay/timeout.
+- `<Suspense>` only for components with a top-level await.
+
+## 9. TypeScript strict
+- Keep `"strict": true`. Use `import type` for type-only imports.
+- Public functions need explicit return types.
+- Error handling: use `getErrorMessage(e)` from `src/utils/error.ts` — never access `.message` on an `unknown` error.
+- `any` is only allowed at API boundaries (`src/api/*`, `src/utils/request.ts`); business code must be typed.
+
+## 10. Naming & structure
+- Components: PascalCase files, multi-word names.
+- Composables: `use*` in `src/composables/`. Stores: file name = store id.
+- API calls in `src/api/`, pure helpers in `src/utils/`, shared config in `src/config/`.
+
+## 11. Tests (Vitest)
+- One mount per test (no shared wrapper in `beforeEach`).
+- Assert rendered DOM and emitted events; never assert `wrapper.vm` internals; no HTML snapshots.
+
+## 12. Verify before done
+Run in `frontend/`: `npx vue-tsc --noEmit` && `npx vitest run` && `npx vite build`.
