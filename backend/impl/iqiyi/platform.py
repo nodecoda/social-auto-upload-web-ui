@@ -12,8 +12,8 @@ from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
-
 from util._logger import bind_account_name, get_channel_logger
+
 from .._browser import create_browser_sync, create_context_sync
 from .._utils import clear_and_type, get_account_name_by_cookie_file, parse_schedule_time, save_login_result
 from ..base_platform import BasePlatform
@@ -141,7 +141,7 @@ class IqiyiPlatform(BasePlatform):
                 try:
                     await asyncio.wait_for(url_changed_event.wait(), timeout=300)
                     logger.info("Login detected — user-info found")
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.warning("Login timed out (300 s)")
                     status_queue.put("500")
                     return
@@ -616,7 +616,7 @@ class IqiyiPlatform(BasePlatform):
             logger.info(
                 "检测到 /upload/record 请求，视频上传完成"
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(
                 "[上传视频] 4 小时内未检测到 /upload/record, "
                 "可能上传失败/网络异常/用户关浏览器, 继续后续步骤"

@@ -3,7 +3,6 @@ import hashlib
 import hmac
 import json
 import os
-import random
 import sqlite3
 import sys
 import threading
@@ -30,9 +29,9 @@ if str(BACKEND_DIR) not in sys.path:
 from conf import (
     BASE_DIR,
     FEEDBACK_API_BASE_URL,
+    FEEDBACK_API_TIMEOUT,
     FEEDBACK_APP_KEY,
     FEEDBACK_APP_SECRET,
-    FEEDBACK_API_TIMEOUT,
 )
 from util._logger import get_channel_logger
 
@@ -110,72 +109,89 @@ def sse_stream(status_queue):
 # 注册阶段二扩展 API Blueprint
 logger.info("[Startup] Importing ext_api...")
 from ext_api import ext_api  # noqa: E402
+
 app.register_blueprint(ext_api)
 logger.info("[Startup] ext_api registered OK")
 
 from routes.frames import frames_bp  # noqa: E402
+
 app.register_blueprint(frames_bp)
 logger.info("[Startup] frames_bp registered OK")
 
 from blueprints.account_bp import account_bp  # noqa: E402
 from blueprints.image_publish_bp import image_publish_bp  # noqa: E402
+
 app.register_blueprint(account_bp)
 app.register_blueprint(image_publish_bp)
 logger.info("[Startup] image_publish_bp registered OK")
 
 from blueprints.douyin_image_bp import douyin_image_bp  # noqa: E402
+
 app.register_blueprint(douyin_image_bp)
 logger.info("[Startup] douyin_image_bp registered OK")
 
 from blueprints.alipay_bp import alipay_bp  # noqa: E402
+
 app.register_blueprint(alipay_bp)
 logger.info("[Startup] alipay_bp registered OK")
 
 from blueprints.toutiao_bp import toutiao_bp  # noqa: E402
+
 app.register_blueprint(toutiao_bp)
 logger.info("[Startup] toutiao_bp registered OK")
 
 from blueprints.vivo_bp import vivo_bp  # noqa: E402
+
 app.register_blueprint(vivo_bp)
 logger.info("[Startup] vivo_bp registered OK")
 
 from blueprints.xiaohongshu_bp import xiaohongshu_bp  # noqa: E402
+
 app.register_blueprint(xiaohongshu_bp)
 logger.info("[Startup] xiaohongshu_bp registered OK")
 
 from blueprints.bilibili_bp import bilibili_bp  # noqa: E402
+
 app.register_blueprint(bilibili_bp)
 logger.info("[Startup] bilibili_bp registered OK")
 
 from blueprints.weibo_bp import weibo_bp  # noqa: E402
+
 app.register_blueprint(weibo_bp)
 logger.info("[Startup] weibo_bp registered OK")
 
 from blueprints.channels_bp import channels_bp  # noqa: E402
+
 app.register_blueprint(channels_bp)
 logger.info("[Startup] channels_bp registered OK")
 
 from blueprints.weixin_gzh_bp import weixin_gzh_bp  # noqa: E402
+
 app.register_blueprint(weixin_gzh_bp)
 logger.info("[Startup] weixin_gzh_bp registered OK")
 
 from blueprints.materials_bp import materials_bp  # noqa: E402
+
 app.register_blueprint(materials_bp)
 logger.info("[Startup] materials_bp registered OK")
 
 from blueprints.kuaishou_image_bp import kuaishou_image_bp  # noqa: E402
+
 app.register_blueprint(kuaishou_image_bp)
 logger.info("[Startup] kuaishou_image_bp registered OK")
 
 from blueprints.uploads_bp import uploads_bp  # noqa: E402
+
 app.register_blueprint(uploads_bp)
 logger.info("[Startup] uploads_bp registered OK")
 
 from blueprints.taobao_guanghe_bp import taobao_guanghe_bp  # noqa: E402
+
 app.register_blueprint(taobao_guanghe_bp)
 logger.info("[Startup] taobao_guanghe_bp registered OK")
 
 from blueprints.jd_bp import bp as jd_bp  # noqa: E402
+
 app.register_blueprint(jd_bp)
 logger.info("[Startup] jd_picker registered OK")
 
@@ -714,7 +730,7 @@ def postVideo():
         return jsonify({"code": 400, "msg": err}), 400
 
     # 标题长度校验（如小红书 ≤ 20 字，B 站 ≤ 80 字，emoji 按 3 算）
-    from util.video_limits import validate_title_for_platform, validate_desc_for_platform
+    from util.video_limits import validate_desc_for_platform, validate_title_for_platform
     ok, err = validate_title_for_platform(platform.platform_key, data.get('title', '') or '')
     if not ok:
         logger.info(f"发布标题校验失败: {err}")
@@ -859,8 +875,8 @@ def postVideo():
                 schedule_time=data.get('scheduleTime', ''),
         )
     except Exception as e:
-        logger.info(f"发布视频时出错: {str(e)}")
-        return jsonify({"code": 500, "msg": f"发布失败: {str(e)}", "data": None}), 500
+        logger.info(f"发布视频时出错: {e!s}")
+        return jsonify({"code": 500, "msg": f"发布失败: {e!s}", "data": None}), 500
 
     # 异步发布：入队后台串行执行器，立即返回 taskId。根治「大视频上传
     # 期间 HTTP 长连接被传输层掐断 → 前端判失败继续发下一账号 → 多个
@@ -1256,7 +1272,7 @@ def _feedback_sign(timestamp_ms: str, app_key: str = None, app_secret: str = Non
         app_key = FEEDBACK_APP_KEY
     if app_secret is None:
         app_secret = FEEDBACK_APP_SECRET
-    msg = f"{app_key}{timestamp_ms}{app_secret}".encode('utf-8')
+    msg = f"{app_key}{timestamp_ms}{app_secret}".encode()
     return hmac.new(app_secret.encode('utf-8'), msg, hashlib.sha256).hexdigest()
 
 

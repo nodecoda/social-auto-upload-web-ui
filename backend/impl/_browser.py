@@ -8,7 +8,7 @@
 
 import asyncio
 
-from conf import LOGIN_HEADLESS, LOCAL_CHROME_HEADLESS
+from conf import LOCAL_CHROME_HEADLESS, LOGIN_HEADLESS
 from util._logger import get_channel_logger
 
 logger = get_channel_logger("browser")

@@ -1,13 +1,13 @@
 """PublishTask 扩展字段测试。"""
-import sys
 import asyncio
+import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 
-from ext_api.task_queue import PublishTask, TaskStatus, TaskQueue, aggregate_batch_status
+from ext_api.task_queue import PublishTask, TaskQueue, TaskStatus, aggregate_batch_status
 
 
 def test_publish_task_default_new_fields():
@@ -59,7 +59,6 @@ def test_publish_task_from_row_round_trip():
 def test_execute_splats_payload_to_platform_publish_video():
     """_execute 当 task.payload 非空时调 platform.publish_video(**payload)。"""
     from ext_api import task_queue as tq
-    from ext_api.task_queue import TaskStatus
 
     # 构造一个最小 task
     t = PublishTask(
@@ -321,7 +320,7 @@ def test_worker_no_double_task_done():
         async def main():
             try:
                 await asyncio.wait_for(q._worker("test"), timeout=0.5)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
         asyncio.run(main())
 
@@ -370,7 +369,7 @@ def test_worker_max_retries_zero_fails_without_retry():
         async def main():
             try:
                 await asyncio.wait_for(q._worker("test"), timeout=0.5)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
         asyncio.run(main())
 

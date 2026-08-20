@@ -24,7 +24,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
 
 from conf import BASE_DIR
 from util._logger import get_channel_logger

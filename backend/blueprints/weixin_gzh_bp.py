@@ -12,15 +12,15 @@
 import asyncio
 import re
 import sqlite3
+import sys
 from pathlib import Path
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
 
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-from util._logger import get_channel_logger
 from impl._browser import create_browser, create_context
+from util._logger import get_channel_logger
 
 logger = get_channel_logger("weixin_gzh")
 
@@ -163,7 +163,7 @@ async def _fetch_collections_via_browser(cookie_file: str, collection_type: str 
 
             # 2. 打开合集管理页
             album_url = _ALBUM_MGR_PATH.format(token=token)
-            logger.info(f"[合集列表] 打开合集管理页...")
+            logger.info("[合集列表] 打开合集管理页...")
             try:
                 await page.goto(album_url, wait_until="domcontentloaded", timeout=30000)
                 await asyncio.sleep(3)

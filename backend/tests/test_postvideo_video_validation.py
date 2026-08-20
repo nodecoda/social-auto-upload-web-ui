@@ -1,7 +1,7 @@
 """postVideo 视频时长/大小校验测试"""
 import os
-import sys
 import sqlite3
+import sys
 import tempfile
 import unittest
 from pathlib import Path

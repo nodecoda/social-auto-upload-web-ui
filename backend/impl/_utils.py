@@ -16,7 +16,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from conf import BASE_DIR
-
 from util._logger import get_channel_logger
 
 logger = get_channel_logger("utils")
@@ -807,10 +806,7 @@ def _parse_vivo_count(text: str) -> int:
         return 0
     text = text.strip().lower()
     multi = 1
-    if text.endswith("万"):
-        multi = 10_000
-        text = text[:-1]
-    elif text.endswith("w"):
+    if text.endswith("万") or text.endswith("w"):
         multi = 10_000
         text = text[:-1]
     elif text.endswith("亿"):

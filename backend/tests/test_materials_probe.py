@@ -1,11 +1,10 @@
 """POST /api/materials/<id>/probe 测试"""
 import os
-import sys
 import sqlite3
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
-from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -14,6 +13,7 @@ os.environ['SAU_DATA_DIR'] = _tmpdir
 
 # Use real BASE_DIR (so materials_bp._get_db() resolves to our tmpdir)
 from conf import BASE_DIR  # noqa: E402
+
 DB_PATH = BASE_DIR / "db" / "database.db"
 
 _SCHEMA = """

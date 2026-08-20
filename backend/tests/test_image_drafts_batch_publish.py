@@ -1,9 +1,8 @@
 """POST /api/image-publish/drafts/batch-publish 端点集成测试。"""
 import json
-import sys
 import sqlite3
+import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))

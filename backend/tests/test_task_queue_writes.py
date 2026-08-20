@@ -1,7 +1,7 @@
 """测试 TaskQueue.add_task 写入新表的行为"""
 import os
-import sys
 import sqlite3
+import sys
 import tempfile
 import unittest
 from pathlib import Path

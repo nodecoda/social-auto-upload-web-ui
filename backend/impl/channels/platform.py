@@ -14,7 +14,6 @@ from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
-
 from util._logger import bind_account_name, get_channel_logger
 
 logger = get_channel_logger("channels")

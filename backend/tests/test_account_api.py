@@ -2,6 +2,7 @@
 import sqlite3
 
 import pytest
+
 from app import app
 
 
@@ -107,7 +108,7 @@ def test_set_account_tags_put(client):
         r = client.post('/api/tags', json={'name': '打标标签'})
         tag_id = r.get_json()['data']['id']
         try:
-            r = client.put(f'/api/accounts/9003/tags', json={'tag_ids': [tag_id]})
+            r = client.put('/api/accounts/9003/tags', json={'tag_ids': [tag_id]})
             assert r.status_code == 200
             r = client.get('/api/accounts/9003/tags')
             tags = r.get_json()['data']

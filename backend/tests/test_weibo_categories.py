@@ -1,8 +1,5 @@
 """weibo/categories.py 纯静态数据查找测试（频道 → 子分类）。"""
-import json
-from pathlib import Path
 
-import pytest
 
 from impl.weibo.categories import CHANNELS, find_channel, lookup_sub_channel
 

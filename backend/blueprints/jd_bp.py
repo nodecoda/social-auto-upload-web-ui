@@ -8,13 +8,11 @@
 """
 
 import asyncio
-import logging
 import threading
-from typing import Optional
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
 
-from impl.jd.picker import pool, JdPickerSession
+from impl.jd.picker import pool
 from util._logger import get_channel_logger
 
 logger = get_channel_logger("jingmai")
@@ -23,8 +21,8 @@ bp = Blueprint("jd_picker", __name__)
 
 # ---------- 后台 event loop ----------
 
-_loop: Optional[asyncio.AbstractEventLoop] = None
-_loop_thread: Optional[threading.Thread] = None
+_loop: asyncio.AbstractEventLoop | None = None
+_loop_thread: threading.Thread | None = None
 _loop_lock = threading.Lock()
 _loop_ready = threading.Event()
 

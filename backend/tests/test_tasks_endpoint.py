@@ -1,7 +1,7 @@
 """测试 /api/v2/tasks 读新表的行为（TaskCenter 用）"""
 import os
-import sys
 import sqlite3
+import sys
 import tempfile
 import unittest
 from pathlib import Path

@@ -5,17 +5,17 @@
 
 import json
 import sqlite3
+import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-from util._logger import get_channel_logger
 from storage import resolve_material_path
+from util._logger import get_channel_logger
 
 logger = get_channel_logger("image_publish")
 
@@ -80,6 +80,7 @@ def _update_image_publish_detail(detail_id, status, error_message=""):
 def publish_images():
     """发布图集内容到各平台（单账号 + batchId 模式，前端循环调用）"""
     import asyncio
+
     from impl.registry import get_platform
 
     data = request.get_json()
@@ -107,7 +108,7 @@ def publish_images():
     images_dbg = config.get('images') or []
     image_ids_dbg = [(img.get('id') if isinstance(img, dict) else None) for img in images_dbg]
     cover_id_dbg = (config.get('coverImage') or {}).get('id') if isinstance(config.get('coverImage'), dict) else None
-    print(f"[image-publish REQUEST] batchId={batch_id} account={account_name} platform={platform} title={title} image_ids={image_ids[:5]}...({len(image_ids)} total) images_in_config={image_ids_dbg[:3]} coverImage_id={cover_id_dbg} creationDeclaration={config.get('creationDeclaration','')} aiContent={config.get('aiContent','')}", flush=True)
+    logger.debug(f"batchId={batch_id} account={account_name} platform={platform} title={title} image_ids={image_ids[:5]}...({len(image_ids)} total) images_in_config={image_ids_dbg[:3]} coverImage_id={cover_id_dbg} creationDeclaration={config.get('creationDeclaration','')} aiContent={config.get('aiContent','')}")
 
     # account_configs JSON：除了封面字段外的所有配置
     excluded = {'landscapeCoverMaterialId', 'portraitCoverMaterialId', 'filePath'}
@@ -256,10 +257,10 @@ def publish_images():
 @image_publish_bp.route('/drafts', methods=['GET'])
 def get_drafts():
     """获取图集草稿列表（重定向到统一接口）"""
-    import asyncio
-    from ext_api import get_drafts as v2_get_drafts
     # 直接调用 v2 接口，传递 type=image 参数
     from flask import request as req
+
+    from ext_api import get_drafts as v2_get_drafts
     # 修改请求参数
     req.args = req.args.copy()
     req.args['type'] = 'image'
@@ -326,7 +327,7 @@ def save_draft():
         return jsonify({"code": 200, "msg": "草稿保存成功", "data": {"id": draft_id}})
     except Exception as e:
         logger.error(f"保存草稿失败: {e}")
-        return jsonify({"code": 500, "msg": f"保存失败: {str(e)}"}), 500
+        return jsonify({"code": 500, "msg": f"保存失败: {e!s}"}), 500
 
 
 def _extract_image_draft_title(draft_data):
@@ -437,7 +438,7 @@ def delete_draft(draft_id):
         return jsonify({"code": 200, "msg": "草稿已删除"})
     except Exception as e:
         logger.error(f"删除草稿失败: {e}")
-        return jsonify({"code": 500, "msg": f"删除失败: {str(e)}"}), 500
+        return jsonify({"code": 500, "msg": f"删除失败: {e!s}"}), 500
 
 
 # ========== 实际发布执行 ==========
@@ -446,6 +447,7 @@ def delete_draft(draft_id):
 def execute_publish():
     """执行图集发布任务 - 调用平台API（单账号 + batchId 模式）"""
     import asyncio
+
     from impl.registry import get_platform
 
     data = request.get_json()
@@ -582,7 +584,9 @@ def batch_publish_image_drafts():
     """图集草稿批量发布：每个 draft 调一次 publish_images 走单账号链路。"""
     import json
     import sqlite3
-    from flask import request, jsonify, current_app
+
+    from flask import current_app, jsonify, request
+
     from services.draft_merge import validate_image_draft_for_publish
 
     data = request.get_json() or {}

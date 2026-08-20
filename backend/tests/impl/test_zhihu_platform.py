@@ -4,17 +4,16 @@
 platform_cookie_domain,不触发 __init__/浏览器)与模块级纯函数
 _extract_year / _extract_month。不含 sqlite 依赖的 _get_video_orientation。
 """
+import inspect
 import sys
 import time
-import inspect
 from pathlib import Path
 
 # 把 backend 目录加进 sys.path（与项目其他测试一致）
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from impl.registry import is_supported, get_platform  # noqa: E402
-from app import PLATFORM_MAP, PLATFORM_ID_TO_KEY  # noqa: E402
-
+from app import PLATFORM_ID_TO_KEY, PLATFORM_MAP
+from impl.registry import get_platform, is_supported
 
 # ----- 注册表 / 类属性 / app 映射(weibo 范本) -----
 

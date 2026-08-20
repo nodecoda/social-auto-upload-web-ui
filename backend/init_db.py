@@ -1,7 +1,7 @@
-import sqlite3
-from pathlib import Path
-import sys
 import json
+import sqlite3
+import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from conf import BASE_DIR

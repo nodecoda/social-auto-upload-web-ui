@@ -8,15 +8,14 @@
 """
 
 import asyncio
-import logging
 import sqlite3
 from pathlib import Path
-from typing import Optional
 
-from .._browser import create_browser, create_context, close_browser
-from . import _jd_link_ops as link_ops
 from conf import BASE_DIR
 from util._logger import get_channel_logger
+
+from .._browser import close_browser, create_browser, create_context
+from . import _jd_link_ops as link_ops
 
 logger = get_channel_logger("jingmai")
 
@@ -138,7 +137,7 @@ class JdPickerSession:
                 f"[JdPicker] 页面可见文本前800字:\n{page_state.get('texts', '')}"
             )
             logger.error(
-                f"[JdPicker] 关键 class:\n" + "\n".join(page_state.get('classes', []))
+                "[JdPicker] 关键 class:\n" + "\n".join(page_state.get('classes', []))
             )
 
             # iframe 等待失败时的诊断:遍历所有 frame,确认 iframe 是否存在、
@@ -353,7 +352,7 @@ class _SessionPool:
         self._sessions[account_id] = new_session
         return new_session
 
-    def get(self, account_id: str) -> Optional[JdPickerSession]:
+    def get(self, account_id: str) -> JdPickerSession | None:
         return self._sessions.get(account_id)
 
     def release(self, account_id: str):

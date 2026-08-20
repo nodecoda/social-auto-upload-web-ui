@@ -9,8 +9,8 @@ DELETE /api/v2/history/batch 批量删除端点。
 - 批量删除入参校验（空 / 超过 50 / 非列表）
 """
 import os
-import sys
 import sqlite3
+import sys
 import tempfile
 import unittest
 from pathlib import Path

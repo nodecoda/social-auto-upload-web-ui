@@ -9,7 +9,7 @@ from pathlib import Path
 # 把 backend 目录加进 sys.path（与项目其他测试一致）
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from impl.registry import get_platform  # noqa: E402
+from impl.registry import get_platform
 
 # 拥有自有 _parse_cookie_to_storage_state 实现的平台(registry id, 期望 domain)
 _COOKIE_PLATFORMS = [
@@ -226,8 +226,9 @@ def test_jd_ensure_cover_min_size_missing_and_ok(tmp_path):
 
 def test_jd_ensure_cover_min_size_small_image_returns_temp(tmp_path):
     """小封面经 PIL 重编码后返回临时文件(原文件不被改动)。"""
-    from impl.jd.platform import _ensure_cover_min_size
     from PIL import Image
+
+    from impl.jd.platform import _ensure_cover_min_size
     small = tmp_path / "small.jpg"
     Image.new("RGB", (64, 64), "red").save(small, "JPEG", quality=90)
     before = small.read_bytes()

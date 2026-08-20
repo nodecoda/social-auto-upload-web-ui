@@ -47,7 +47,7 @@ def test_default_config_points_to_repo_data(monkeypatch):
 def test_sau_data_dir_overrides_base_dir(monkeypatch, tmp_path):
     target = tmp_path / 'custom_data'
     c = _reload(monkeypatch, {'SAU_DATA_DIR': str(target)})
-    assert c.BASE_DIR == target
+    assert target == c.BASE_DIR
 
 
 def test_sau_data_dir_creates_required_subdirs(monkeypatch, tmp_path):

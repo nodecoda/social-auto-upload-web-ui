@@ -4,24 +4,27 @@
 """
 
 import json
-import sqlite3
 import queue
+import sqlite3
+import sys
 import threading
 import urllib.parse
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from flask import Blueprint, request, jsonify, Response
 
-import sys
+from flask import Blueprint, Response, jsonify, request
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-
-from .task_queue import get_task_queue, PublishTask, TaskStatus
-from ._personalized import compute_personalized
 from services.draft_merge import (
-    merge_config, validate_draft_for_publish, build_platform_kwargs,
+    build_platform_kwargs,
+    merge_config,
+    validate_draft_for_publish,
 )
+
+from ._personalized import compute_personalized
+from .task_queue import PublishTask, TaskStatus, get_task_queue
 
 ext_api = Blueprint('ext_api', __name__, url_prefix='/api/v2')
 
@@ -1228,7 +1231,7 @@ def batch_publish_drafts():
     if not isinstance(draft_ids, list) or not draft_ids or len(draft_ids) > 30:
         return jsonify({"code": 400, "msg": "draft_ids 数量必须 1-30"}), 400
 
-    from app import _get_db_path, PLATFORM_ID_TO_KEY, PLATFORM_MAP
+    from app import PLATFORM_ID_TO_KEY, PLATFORM_MAP, _get_db_path
     db_path = _get_db_path()
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -1413,6 +1416,7 @@ def batch_delete_drafts():
 # 测试代码（test_publish_templates.py）通过 `ext_api.app.test_request_context()` 推请求上下文调用
 # 路由函数。这个独立 Flask app 让 Blueprint 可独立测试，不污染 backend/app.py 的主 app。
 from flask import Flask
+
 app = Flask(__name__)
 app.register_blueprint(ext_api)
 
@@ -1424,4 +1428,5 @@ app.register_blueprint(ext_api)
 # __globals__ 仍指向 `ext_api`，而 patch 修改的是 `ext_api.__init__`）。
 # 这里把 `ext_api.__init__` 重定向到 `ext_api`，让两种 import 路径拿到同一个对象。
 import sys as _sys
+
 _sys.modules.setdefault('ext_api.__init__', _sys.modules[__name__])

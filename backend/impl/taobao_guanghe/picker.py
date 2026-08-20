@@ -20,7 +20,6 @@ DOM 选择器策略(避免 CSS Modules 哈希 class 模糊匹配):
 import asyncio
 import sqlite3
 import threading
-import urllib.parse
 from pathlib import Path
 
 from conf import BASE_DIR

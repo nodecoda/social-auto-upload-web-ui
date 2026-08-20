@@ -23,9 +23,8 @@ import time
 from pathlib import Path
 from queue import Queue
 
-from util._logger import bind_account_name, get_channel_logger
-
 from conf import BASE_DIR
+from util._logger import bind_account_name, get_channel_logger
 
 from .._browser import create_browser_sync, create_context_sync
 from .._utils import (
@@ -1937,9 +1936,9 @@ class WeixinGzhPlatform(BasePlatform):
         schedule_time_str = kwargs.get("schedule_time_str", "")
 
         # 忽略字段(公众号图集不支持)
-        _ = kwargs.get("cover_path")  # noqa
-        _ = kwargs.get("music_name")  # noqa
-        _ = kwargs.get("ai_content")  # noqa
+        _ = kwargs.get("cover_path")
+        _ = kwargs.get("music_name")
+        _ = kwargs.get("ai_content")
 
         logger.info("[发布参数] 标题: %s", title)
         logger.info("[发布参数] 图片数量: %d", len(files))

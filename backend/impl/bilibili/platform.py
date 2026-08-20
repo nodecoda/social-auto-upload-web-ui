@@ -15,7 +15,6 @@ from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
-
 from util._logger import bind_account_name, get_channel_logger
 
 logger = get_channel_logger("bilibili")
@@ -923,7 +922,7 @@ class BilibiliPlatform(BasePlatform):
 
         # Resolve Chinese name from tid OR Chinese name
         if isinstance(category, int):
-            cn_name = _TID_CN_NAME.get(category, None)
+            cn_name = _TID_CN_NAME.get(category)
         elif isinstance(category, str):
             s = category.strip()
             # 反向映射：中文名 → 找是否在 _TID_CN_NAME 里
@@ -1528,7 +1527,6 @@ class BilibiliPlatform(BasePlatform):
     @staticmethod
     async def _set_schedule_time(page, publish_date):
         """Set scheduled publish time via calendar and time picker."""
-        from datetime import datetime
 
         if isinstance(publish_date, int) and publish_date == 0:
             return

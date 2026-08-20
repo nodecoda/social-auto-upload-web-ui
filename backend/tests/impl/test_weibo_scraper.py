@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 # 把 backend 目录加进 sys.path（与项目其他测试一致）
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from impl._utils import scrape_weibo_profile  # noqa: E402
+from impl._utils import scrape_weibo_profile
 
 
 def _make_page(evaluate_result=None, evaluate_raises=False):

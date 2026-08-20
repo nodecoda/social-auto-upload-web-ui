@@ -1,10 +1,13 @@
 """视频校验规则单元测试"""
 import math
-from util.video_limits import (
-    VIDEO_LIMITS, validate_video_for_platform, validate_title_for_platform,
-    _format_size, _format_duration,
-)
 
+from util.video_limits import (
+    VIDEO_LIMITS,
+    _format_duration,
+    _format_size,
+    validate_title_for_platform,
+    validate_video_for_platform,
+)
 
 # ----- 平台规则完整性 -----
 

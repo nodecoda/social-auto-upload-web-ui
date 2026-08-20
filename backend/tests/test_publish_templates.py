@@ -232,9 +232,8 @@ def test_image_templates_returns_image_with_first_image_id():
 
 def test_publish_templates_invalid_type_returns_400():
     """type 参数不是 video/image 返 400。"""
-    from ext_api import get_publish_templates
-
     import ext_api as ext
+    from ext_api import get_publish_templates
     with ext.app.test_request_context("/api/v2/publish-templates?type=foo"):
         resp = get_publish_templates()
         assert resp[1] == 400

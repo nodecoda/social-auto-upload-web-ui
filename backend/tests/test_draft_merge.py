@@ -7,12 +7,11 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 from services.draft_merge import (
     DECLARATION_PLATFORMS,
+    build_platform_kwargs,
     merge_config,
     validate_draft_for_publish,
     validate_image_draft_for_publish,
-    build_platform_kwargs,
 )
-
 
 # ===== DECLARATION_PLATFORMS =====
 

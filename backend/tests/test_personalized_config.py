@@ -1,13 +1,13 @@
 """测试个性化配置：视频/封面/全 per-platform form 字段持久化到 account_configs"""
-import os
-import sys
 import json
+import os
 import sqlite3
+import sys
 import tempfile
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

@@ -11,8 +11,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from impl.base_platform import BasePlatform
 from impl.baijiahao.platform import BaijiahaoPlatform
+from impl.base_platform import BasePlatform
 
 
 @pytest.fixture()

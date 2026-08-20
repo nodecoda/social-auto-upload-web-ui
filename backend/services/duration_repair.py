@@ -26,9 +26,8 @@ import sqlite3
 import threading
 from pathlib import Path
 
+from services.ffmpeg_service import calculate_orientation, get_video_dimensions_safe, get_video_duration_safe
 from util._logger import get_channel_logger
-
-from services.ffmpeg_service import get_video_duration_safe, get_video_dimensions_safe, calculate_orientation
 
 # 使用项目统一的日志体系（标准库 logging，按 channel 分文件），
 # 日志会写入 data/logs/{日期}/backend.log。

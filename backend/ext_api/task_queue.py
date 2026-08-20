@@ -6,19 +6,18 @@
 import asyncio
 import json
 import sqlite3
+import sys
 import threading
 import uuid
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from pathlib import Path
 from enum import Enum
-from dataclasses import dataclass, field, asdict
-from typing import Optional
+from pathlib import Path
 
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-from util._logger import get_channel_logger
 from impl.registry import get_platform
+from util._logger import get_channel_logger
 
 logger = get_channel_logger("task_queue")
 
@@ -74,8 +73,8 @@ class PublishTask:
     error_message: str = ""
     publish_url: str = ""
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
+    started_at: str | None = None
+    finished_at: str | None = None
 
     # 新增：个性化配置字段
     video_landscape: dict | None = None
@@ -239,9 +238,11 @@ class TaskQueue:
 
         # 旧逻辑：保留原代码不动
         from myUtils.postVideo import (
-            post_video_DouYin, post_video_ks,
-            post_video_tencent, post_video_xhs,
-            post_video_bilibili
+            post_video_bilibili,
+            post_video_DouYin,
+            post_video_ks,
+            post_video_tencent,
+            post_video_xhs,
         )
 
         file_list = [task.video_path]

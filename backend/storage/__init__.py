@@ -70,7 +70,6 @@ def get_storage_by_type(storage_type: str):
 
 def reset_storage():
     """切换存储配置后调用（目前不需要缓存，每次 get_storage 重新读取配置）"""
-    pass
 
 
 def resolve_material_path(path_or_stored_path):

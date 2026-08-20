@@ -3,10 +3,9 @@
 _populate_registry 在 import 时执行（19 个平台晚加载，失败会被吞掉并告警），
 本测试验证注册表契约 + 关键平台可达性。
 """
-import pytest
 
-from impl.base_platform import BasePlatform
 import impl.registry as registry
+from impl.base_platform import BasePlatform
 
 
 class StubPlatform(BasePlatform):

@@ -8,15 +8,14 @@ Chromium) with automatic Playwright fallback.
 
 import asyncio
 import os
+import threading
 import time
 from datetime import datetime
-
-from util._logger import bind_account_name, get_channel_logger
-import threading
 from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
+from util._logger import bind_account_name, get_channel_logger
 
 from .._browser import create_browser_sync, create_context_sync
 from .._utils import (
