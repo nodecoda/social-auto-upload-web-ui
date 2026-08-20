@@ -50,19 +50,13 @@ import { Search, Loading } from '@element-plus/icons-vue'
 import { channelsApi } from '@/api/channels'
 import { type ApiResponse } from '@/utils/request'
 
-const props = defineProps({
-  accountId: {
-    type: [String, Number] as PropType<string | number | null>,
-    required: true
-  },
-  modelValue: {
-    type: String,
-    default: ''
-  },
-  data: {
-    type: Object as PropType<CollectionItem | null>,
-    default: null
-  }
+const props = withDefaults(defineProps<{
+  accountId: string | number | null
+  modelValue?: string
+  data?: CollectionItem | null
+}>(), {
+  modelValue: '',
+  data: null,
 })
 
 const emit = defineEmits<{

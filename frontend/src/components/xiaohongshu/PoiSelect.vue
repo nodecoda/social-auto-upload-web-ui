@@ -14,27 +14,21 @@
 </template>
 
 <script setup lang="ts">
-import { type PropType } from 'vue'
 import { type ApiResponse } from '@/utils/request'
 import { xhsApi } from '@/api/xiaohongshu'
 import RemoteSearchSelect from '@/components/common/RemoteSearchSelect.vue'
 
-const props = defineProps({
+const props = withDefaults(defineProps<{
   // POI 搜索需账号 cookie,透传 selectedAccountId
-  accountId: {
-    type: [String, Number] as PropType<string | number | null>,
-    default: ''
-  },
+  accountId?: string | number | null
   // v-model 存地点名称
-  modelValue: {
-    type: String,
-    default: ''
-  },
+  modelValue?: string
   // 回显用的完整对象(含 poi_id)
-  data: {
-    type: Object as PropType<PoiItem | null>,
-    default: null
-  }
+  data?: PoiItem | null
+}>(), {
+  accountId: '',
+  modelValue: '',
+  data: null,
 })
 
 defineEmits<{
