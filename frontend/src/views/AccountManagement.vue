@@ -478,14 +478,14 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick, h } from 'vue'
+<script setup lang="ts">
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick, h, type Component } from 'vue'
 import { Refresh, Loading, Link, Plus, Edit, Delete, Check, Folder, Key, CollectionTag, Close, Upload, SuccessFilled, CircleCheckFilled, CircleCloseFilled, Position, InfoFilled, Select, Search, Clock } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { accountApi } from '@/api/account'
 import { useAccountStore } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
-import { http } from '@/utils/request'
+import { http, type ApiResponse } from '@/utils/request'
 import { platformList, platformNameToId, platformNameToKey, platformCssMap, getPlatformByName } from '@/config/platforms'
 import { getDefaultAvatar, proxyAvatar } from '@/utils/avatar'
 import LoginDialog from '@/components/LoginDialog.vue'
@@ -493,25 +493,109 @@ import TagPopover from '@/components/TagPopover.vue'
 import PrePublishCheckDialog from '@/components/PrePublishCheckDialog.vue'
 import BatchTagDialog from '@/components/BatchTagDialog.vue'
 
+/** 账号标签 */
+interface TagItem {
+  id: number | string
+  name: string
+  color?: string
+}
+
+/** 账号 stats 条目（后端 stats JSON 数组元素） */
+interface StatItem {
+  ICON?: string
+  COUNT?: number | string
+  NAME?: string
+  SORT?: number | string
+}
+
+/** 账号条目（accountStore.accounts 的元素） */
+interface AccountItem {
+  id: number
+  type: number
+  filePath: string
+  name: string
+  status: string
+  platform: string
+  avatar: string
+  fans: number
+  likes: number
+  follows: number
+  stats: StatItem[]
+  tags: TagItem[]
+}
+
+/** 平台筛选 tab */
+interface FilterOption {
+  label: string
+  value: string
+  count: number
+}
+
+/** cookie 导入支持的平台 */
+interface ImportPlatform {
+  id: number
+  key?: string
+  name: string
+  letter?: string
+}
+
+/** 导入 4 步进度条目 */
+interface ImportStep {
+  title: string
+  description: string
+  status: 'wait' | 'process' | 'finish' | 'error'
+}
+
+/** 导入完成态展示数据 */
+interface ImportResult {
+  accountId?: number | string
+  userName?: string
+  avatar?: string
+}
+
+/** SSE 导入进度 payload */
+interface ImportStreamPayload {
+  step?: number | string
+  status?: string
+  msg?: string
+  account_id?: number | string
+  userName?: string
+  avatar?: string
+}
+
+/** 编辑账号表单 */
+interface AccountForm {
+  id: number | null
+  name: string
+  platform: string
+  status: string
+}
+
+/** cookie 导入表单 */
+interface ImportForm {
+  platformId: number | null
+  cookieStr: string
+}
+
 const accountStore = useAccountStore()
 const appStore = useAppStore()
 
 /** 平台是否已被加入黑名单（account.platform 是中文名,需先转为 key） */
-const isAccountDisabled = (account) => {
+const isAccountDisabled = (account: AccountItem) => {
   const key = platformNameToKey[account.platform]
   return !!(key && appStore.isPlatformDisabled(key))
 }
 
-const activeTagId = ref(null)
+const activeTagId = ref<number | string | null>(null)
 const tagPopoverVisible = ref(false)
-const tagPopoverAccountId = ref(null)
+const tagPopoverAccountId = ref<number | string | null>(null)
 
 // 哪些账号的标签溢出(决定是否跑马灯):key=accountId
-const tagOverflowMap = ref({})
+const tagOverflowMap = ref<Record<number, boolean>>({})
 
-const tagFilterOptions = computed(() => accountStore.allTags)
+const tagFilterOptions = computed<TagItem[]>(() => accountStore.allTags as TagItem[])
 
-function openTagPopover(accountId) {
+function openTagPopover(accountId: number | string) {
   tagPopoverAccountId.value = accountId
   tagPopoverVisible.value = true
 }
@@ -520,10 +604,10 @@ function openTagPopover(accountId) {
 function checkTagOverflow() {
   nextTick(() => {
     const rows = document.querySelectorAll('.account-tags-viewport')
-    const next = {}
+    const next: Record<number, boolean> = {}
     rows.forEach(viewport => {
       const track = viewport.querySelector('.account-tags-track')
-      const card = viewport.closest('.account-card')
+      const card = viewport.closest('.account-card') as HTMLElement | null
       const id = Number(card?.dataset?.accountId)
       if (id && track) {
         next[id] = track.scrollWidth > viewport.clientWidth + 1
@@ -537,7 +621,7 @@ watch(() => accountStore.accounts, () => {
   checkTagOverflow()
 }, { deep: true })
 
-let tagResizeObserver = null
+let tagResizeObserver: ResizeObserver | null = null
 
 onMounted(() => {
   fetchAccountsQuick()
@@ -561,10 +645,10 @@ async function onTagChanged() {
   await fetchAccountsQuick()
 }
 
-async function handleRemoveAccountTag(account, tag) {
+async function handleRemoveAccountTag(account: AccountItem, tag: TagItem) {
   const remaining = (account.tags || []).filter(t => t.id !== tag.id).map(t => t.id)
   try {
-    const res = await accountApi.setAccountTags(account.id, remaining)
+    const res = (await accountApi.setAccountTags(account.id, remaining)) as ApiResponse
     if (res.code === 200) {
       await fetchAccountsQuick()
       ElMessage.success(`已从「${account.name}」移除标签「${tag.name}」`)
@@ -582,20 +666,20 @@ const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(12)
 
-const filterOptions = computed(() => {
-  const counts = {}
-  accountStore.accounts.forEach(a => {
+const filterOptions = computed<FilterOption[]>(() => {
+  const counts: Record<string, number> = {}
+  ;(accountStore.accounts as AccountItem[]).forEach(a => {
     counts[a.platform] = (counts[a.platform] || 0) + 1
   })
   return [
-    { label: '全部', value: 'all', count: accountStore.accounts.length },
+    { label: '全部', value: 'all', count: (accountStore.accounts as AccountItem[]).length },
     ...platformList.map(p => ({ label: p.name, value: p.name, count: counts[p.name] || 0 }))
   ].filter(opt => opt.value === 'all' || (opt.count && opt.count > 0))
 })
 
 const fetchAccountsQuick = async () => {
   try {
-    const res = await accountApi.getAccounts()
+    const res = (await accountApi.getAccounts()) as ApiResponse<AccountItem[]>
     if (res.code === 200 && res.data) {
       accountStore.setAccounts(res.data)
     }
@@ -605,12 +689,12 @@ const fetchAccountsQuick = async () => {
 }
 
 // 模板里用 ref 拿到 PrePublishCheckDialog 组件实例
-const prePublishCheckRef = ref(null)
+const prePublishCheckRef = ref<InstanceType<typeof PrePublishCheckDialog> | null>(null)
 const prePublishCheckVisible = ref(false)
 
 const fetchAccounts = async () => {
   if (appStore.isAccountRefreshing) return
-  if (!accountStore.accounts.length) {
+  if (!(accountStore.accounts as AccountItem[]).length) {
     ElMessage.warning('暂无账号可检查')
     return
   }
@@ -621,7 +705,7 @@ const fetchAccounts = async () => {
   // 3) fixing   → 失效账号自动打开 SSE 登录
   // 4) done     → 全部修复完成，1.2s 后自动关闭
   try {
-    const allValid = await prePublishCheckRef.value.open(accountStore.accounts)
+    const allValid = await prePublishCheckRef.value.open(accountStore.accounts as AccountItem[])
     // dialog 内部已逐张更新 accountStore；这里再拉一次最新状态保证 UI 同步
     await fetchAccountsQuick()
     if (allValid && appStore.isFirstTimeAccountManagement) {
@@ -635,50 +719,50 @@ const fetchAccounts = async () => {
   }
 }
 
-const getPlatformClass = (platform) => {
+const getPlatformClass = (platform: string) => {
   return platformCssMap[platform] || ''
 }
 
-const getPlatformColor = (platform) => {
+const getPlatformColor = (platform: string) => {
   const p = getPlatformByName(platform)
   return p?.color || '#8b5cf6'
 }
 
-const getPlatformBg = (platform) => {
+const getPlatformBg = (platform: string) => {
   const p = getPlatformByName(platform)
   return p?.bgColor || 'rgba(139, 92, 246, 0.15)'
 }
 
-const getPlatformLogo = (platform) => {
+const getPlatformLogo = (platform: string) => {
   const p = getPlatformByName(platform)
   return p?.logo || null
 }
 
-const getPlatformLetter = (platform) => {
+const getPlatformLetter = (platform: string) => {
   const p = getPlatformByName(platform)
   return p?.letter || platform?.charAt(0) || '?'
 }
 
-const getStatusClass = (status) => {
+const getStatusClass = (status: string) => {
   if (status === '验证中') return 'pending'
   if (status === '正常') return 'normal'
   return 'error'
 }
 
-const isStatusClickable = (status) => status === '异常'
+const isStatusClickable = (status: string) => status === '异常'
 
-const getStatusTagType = (status) => {
+const getStatusTagType = (status: string): 'info' | 'success' | 'danger' => {
   if (status === '验证中') return 'info'
   if (status === '正常') return 'success'
   return 'danger'
 }
 
-const handleStatusClick = (row) => {
+const handleStatusClick = (row: AccountItem) => {
   if (isStatusClickable(row.status)) handleReLogin(row)
 }
 
-const filteredAccounts = computed(() => {
-  let accounts = accountStore.accounts
+const filteredAccounts = computed<AccountItem[]>(() => {
+  let accounts: AccountItem[] = accountStore.accounts as AccountItem[]
   if (activeTab.value !== 'all') {
     accounts = accounts.filter(a => a.platform === activeTab.value)
   }
@@ -692,7 +776,7 @@ const filteredAccounts = computed(() => {
   return accounts
 })
 
-const paginatedAccounts = computed(() => {
+const paginatedAccounts = computed<AccountItem[]>(() => {
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
   return filteredAccounts.value.slice(start, end)
@@ -703,28 +787,28 @@ watch([activeTab, searchKeyword], () => {
 })
 
 const dialogVisible = ref(false)
-const dialogType = ref('add')
-const accountFormRef = ref(null)
+const dialogType = ref<'add' | 'edit'>('add')
+const accountFormRef = ref<FormInstance | null>(null)
 
-const accountForm = reactive({ id: null, name: '', platform: '', status: '正常' })
+const accountForm = reactive<AccountForm>({ id: null, name: '', platform: '', status: '正常' })
 
-const rules = {
+const rules: FormRules = {
   platform: [{ required: true, message: '请选择平台', trigger: 'change' }]
 }
 
-const checkingIds = ref(new Set())
+const checkingIds = ref(new Set<number>())
 
 // LoginDialog 弹窗控制
 const loginDialogVisible = ref(false)
-const loginMode = ref('add')        // 'add' | 'relogin'
-const reloginAccount = ref(null)
+const loginMode = ref<'add' | 'relogin'>('add')        // 'add' | 'relogin'
+const reloginAccount = ref<AccountItem | null>(null)
 
 // ── 导入用户（cookie 字符串）弹窗控制 ──────────────────────────
 const importDialogVisible = ref(false)
-const importSupportedPlatforms = ref([])  // [{id, key, name, letter}, ...]
+const importSupportedPlatforms = ref<ImportPlatform[]>([])  // [{id, key, name, letter}, ...]
 // 平台搜索关键词（导入弹窗左侧）
 const platformSearch = ref('')
-const filteredImportPlatforms = computed(() => {
+const filteredImportPlatforms = computed<ImportPlatform[]>(() => {
   const kw = platformSearch.value.trim().toLowerCase()
   if (!kw) return importSupportedPlatforms.value
   return importSupportedPlatforms.value.filter(p =>
@@ -732,7 +816,7 @@ const filteredImportPlatforms = computed(() => {
     (p.key || '').toLowerCase().includes(kw)
   )
 })
-const importForm = reactive({
+const importForm = reactive<ImportForm>({
   platformId: null,
   cookieStr: '',
 })
@@ -741,10 +825,10 @@ const importStarting = ref(false)
 const importActiveStep = ref(0)   // 当前进行到的 step (0-based)
 const importDone = ref(false)      // 全部完成 / 失败时为 true，允许关闭
 const importFailed = ref(false)    // 失败态：进度条标红，关闭按钮变 danger
-const importResult = ref(null)     // { accountId, userName, avatar } 完成态展示
+const importResult = ref<ImportResult | null>(null)     // { accountId, userName, avatar } 完成态展示
 // EventSource 是非响应式对象，用普通 let 持有；放在 ref 里会被 Vue proxy 包一层
 // 导致 close() 等行为不可靠。仿 LoginDialog.vue 的 eventSources Map 写法。
-let importEventSource = null
+let importEventSource: EventSource | null = null
 
 // 顶部进度条百分比 (0/25/50/75/100)
 const progressPercent = computed(() => {
@@ -754,13 +838,13 @@ const progressPercent = computed(() => {
 })
 
 // 当前正在导入的平台（用于头部 pill 展示）
-const currentImportPlatform = computed(() => {
+const currentImportPlatform = computed<ImportPlatform | null>(() => {
   if (!importForm.platformId) return null
   return importSupportedPlatforms.value.find(p => p.id === importForm.platformId) || null
 })
 
 // 4 步进度，每项 { title, description, status: 'wait'|'process'|'finish'|'error' }
-const importSteps = ref([
+const importSteps = ref<ImportStep[]>([
   { title: '解析 cookie 字符串', description: '等待中...', status: 'wait' },
   { title: '生成 cookie 文件',   description: '等待中...', status: 'wait' },
   { title: '同步用户资料',        description: '等待中...', status: 'wait' },
@@ -793,7 +877,7 @@ const handleImportAccount = async () => {
   resetImportDialog()
   importDialogVisible.value = true
   try {
-    const res = await accountApi.getImportSupportedPlatforms()
+    const res = (await accountApi.getImportSupportedPlatforms()) as ApiResponse<ImportPlatform[]>
     if (res.code === 200 && res.data) {
       importSupportedPlatforms.value = res.data
     }
@@ -821,12 +905,12 @@ const submitImport = async () => {
   importStarted.value = true
 
   // 1. 启动任务
-  let taskId
+  let taskId: number | string
   try {
-    const res = await accountApi.startImportAccount({
+    const res = (await accountApi.startImportAccount({
       type: importForm.platformId,
       cookie_str: importForm.cookieStr.trim(),
-    })
+    })) as ApiResponse<{ task_id: number | string }>
     if (res.code !== 200 || !res.data || !res.data.task_id) {
       throw new Error(res.msg || '启动导入任务失败')
     }
@@ -846,7 +930,7 @@ const submitImport = async () => {
   importEventSource = es
 
   es.onmessage = (event) => {
-    let payload
+    let payload: ImportStreamPayload
     try {
       payload = JSON.parse(event.data)
     } catch (_) {
@@ -920,10 +1004,10 @@ const submitImport = async () => {
 
 // ────────────────────────────────────────────────────────────
 
-const handleCheckAccount = async (row) => {
+const handleCheckAccount = async (row: AccountItem) => {
   checkingIds.value.add(row.id)
   try {
-    const res = await http.get('/checkAccount', { id: row.id })
+    const res = (await http.get('/checkAccount', { id: row.id })) as ApiResponse<{ valid: boolean; status?: string }>
     if (res.code === 200 && res.data) {
       const { valid, status } = res.data
       accountStore.updateAccount(row.id, { ...row, status: valid ? '正常' : '异常' })
@@ -944,18 +1028,18 @@ const handleAddAccount = () => {
   loginDialogVisible.value = true
 }
 
-const handleEdit = (row) => {
+const handleEdit = (row: AccountItem) => {
   dialogType.value = 'edit'
   Object.assign(accountForm, { id: row.id, name: row.name, platform: row.platform, status: row.status })
   dialogVisible.value = true
 }
 
-const handleDelete = (row) => {
+const handleDelete = (row: AccountItem) => {
   ElMessageBox.confirm(`确定要删除账号 ${row.name} 吗？`, '警告', {
     confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning',
   }).then(async () => {
     try {
-      const response = await accountApi.deleteAccount(row.id)
+      const response = (await accountApi.deleteAccount(row.id)) as ApiResponse
       if (response.code === 200) {
         accountStore.deleteAccount(row.id)
         ElMessage({ type: 'success', message: '删除成功' })
@@ -969,7 +1053,7 @@ const handleDelete = (row) => {
   }).catch(() => {})
 }
 
-const handleDownloadCookie = (row) => {
+const handleDownloadCookie = (row: AccountItem) => {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
   const downloadUrl = `${baseUrl}/downloadCookie?filePath=${encodeURIComponent(row.filePath)}`
   const link = document.createElement('a')
@@ -982,7 +1066,7 @@ const handleDownloadCookie = (row) => {
   document.body.removeChild(link)
 }
 
-const handleUploadCookie = (row) => {
+const handleUploadCookie = (row: AccountItem) => {
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = '.json'
@@ -990,7 +1074,7 @@ const handleUploadCookie = (row) => {
   document.body.appendChild(input)
 
   input.onchange = async (event) => {
-    const file = event.target.files[0]
+    const file = (event.target as HTMLInputElement).files?.[0]
     if (!file) return
     if (!file.name.endsWith('.json')) {
       ElMessage.error('请选择JSON格式的Cookie文件')
@@ -1000,7 +1084,7 @@ const handleUploadCookie = (row) => {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('id', row.id)
+      formData.append('id', String(row.id))
       formData.append('platform', row.platform)
       await http.upload('/uploadCookie', formData)
       ElMessage.success('Cookie文件上传成功')
@@ -1014,20 +1098,20 @@ const handleUploadCookie = (row) => {
   input.click()
 }
 
-const handleReLogin = (row) => {
+const handleReLogin = (row: AccountItem) => {
   if (isAccountDisabled(row)) return
   loginMode.value = 'relogin'
   reloginAccount.value = row
   loginDialogVisible.value = true
 }
 
-const syncingIds = reactive(new Set())
+const syncingIds = reactive(new Set<number>())
 
-const handleSyncProfile = async (row) => {
+const handleSyncProfile = async (row: AccountItem) => {
     if (syncingIds.has(row.id)) return
     syncingIds.add(row.id)
     try {
-      const res = await accountApi.syncProfile(row.id)
+      const res = (await accountApi.syncProfile(row.id)) as ApiResponse<{ name?: string; avatar?: string; stats?: StatItem[] }>
       if (res.code === 200 && res.data) {
         // 新接口返回 {name, avatar, stats: [{ICON, COUNT, NAME, SORT}, ...]}
         // 旧平台 stats 为 [] 时保留原值;新平台返回新数组时覆盖
@@ -1051,7 +1135,7 @@ const handleSyncProfile = async (row) => {
   }
 
 // 账号运营数据(粉丝/获赞/关注)是否需要展示:任一 > 0 才显示
-const hasStats = (account) => {
+const hasStats = (account: AccountItem) => {
   const f = Number(account.fans) || 0
   const l = Number(account.likes) || 0
   const fo = Number(account.follows) || 0
@@ -1059,7 +1143,7 @@ const hasStats = (account) => {
 }
 
 // 数值格式化:10000 → 1.0w, 12345 → 1.2w, 100000000 → 1.0亿
-const formatStat = (value) => {
+const formatStat = (value: number | string | undefined) => {
   const n = Number(value) || 0
   if (n < 1000) return String(n)
   if (n < 10000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'k'
@@ -1072,42 +1156,42 @@ const formatStat = (value) => {
 }
 
 // 账号 stats 排序:按 SORT 升序(SORT 缺失时排到最后)
-const sortStats = (stats) => {
+const sortStats = (stats: unknown): StatItem[] => {
   if (!Array.isArray(stats)) return []
-  return [...stats].sort((a, b) => (Number(a?.SORT) || 999) - (Number(b?.SORT) || 999))
+  return [...stats].sort((a, b) => (Number((a as StatItem)?.SORT) || 999) - (Number((b as StatItem)?.SORT) || 999))
 }
 
 // 卡片显示的 stats:按 SORT 排序后取前 N 项(N 由平台决定)
 // 大多数平台 stats 总数 ≤ 4,正常展示;超过 4 项的平台只展示前 3 项(剩余进悬浮窗)
 // 注意 key 用 platform name(中文),与 store 解包后的 account.platform 一致
-const VISIBLE_COUNTS = {
+const VISIBLE_COUNTS: Record<string, number> = {
   'B站': 3,       // 8 项 stats:粉丝 + 点赞 + 收藏 + 更多占位
   '百家号': 3,    // 6 项 stats:粉丝 + 播放量 + 搜索量 + 更多占位
   '腾讯视频': 3,  // 8 项 stats:粉丝 + 总点赞 + 总评论 + 更多占位
   '知乎': 3,      // 9 项 stats:粉丝 + 赞同 + 阅读 + 更多占位
   'CSDN': 3,      // 4 项 stats:粉丝 + 总阅读 + 收藏 + 更多占位
 }
-const getVisibleCount = (account) => {
+const getVisibleCount = (account: AccountItem) => {
   return VISIBLE_COUNTS[account?.platform] ?? 4
 }
 
-const getVisibleStats = (account) => {
+const getVisibleStats = (account: AccountItem): StatItem[] => {
   return sortStats(account?.stats).slice(0, getVisibleCount(account))
 }
 
 // "更多"占位需要显示时,展示该账号的**全部** stats(不是剩余),
 // 鼠标悬停时能看到完整运营数据
-const getExtraStats = (account) => {
+const getExtraStats = (account: AccountItem): StatItem[] => {
   return sortStats(account?.stats)
 }
 
 // "更多"块 hover 时,动态调整浮窗水平位置,避免最右侧卡片溢出视口触发横向滚动条
 // 浮窗本身用 left:50% + transform:translateX(-50%) 居中,JS 在 hover 时根据
 // 浮窗实际位置算出溢出量,通过 --stats-popover-offset CSS 变量微调 translateX
-const handleStatsHover = (event) => {
-  const trigger = event.currentTarget
+const handleStatsHover = (event: MouseEvent) => {
+  const trigger = event.currentTarget as HTMLElement | null
   if (!trigger) return
-  const popover = trigger.querySelector('.stats-more-popover')
+  const popover = trigger.querySelector('.stats-more-popover') as HTMLElement | null
   if (!popover) return
 
   // 触发块的视口位置
@@ -1136,7 +1220,7 @@ const handleStatsHover = (event) => {
 
 // ICON 字符串 -> 渲染组件(SVG),通过 h() 创建组件实例(避免每个 ICON 写一个 .vue 文件)
 // SVG 风格保持与项目现有统计图标一致(Feather/Lucide 风格,14px stroke)
-const ICON_PATHS = {
+const ICON_PATHS: Record<string, string> = {
   user:   '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
   like:   '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>',
   follow: '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line>',
@@ -1150,12 +1234,12 @@ const ICON_PATHS = {
 }
 
 // 缓存 h() 组件(避免每次 render 重新创建)
-const _iconCache = {}
-const getIconComponent = (iconKey) => {
+const _iconCache: Record<string, Component> = {}
+const getIconComponent = (iconKey: string): Component => {
   const key = iconKey || 'user'
   if (_iconCache[key]) return _iconCache[key]
   const inner = ICON_PATHS[key] || ICON_PATHS.user
-  const comp = {
+  const comp: Component = {
     name: `StatIcon-${key}`,
     render() {
       return h('svg', {
@@ -1175,9 +1259,9 @@ const getIconComponent = (iconKey) => {
 
 // getDefaultAvatar / proxyAvatar 已抽到 @/utils/avatar
 
-const handleOpenCreatorCenter = async (row) => {
+const handleOpenCreatorCenter = async (row: AccountItem) => {
   try {
-    const res = await http.post('/openCreatorCenter', { id: row.id })
+    const res = (await http.post('/openCreatorCenter', { id: row.id })) as ApiResponse
     if (res.code === 200) {
       ElMessage.success('正在打开创作中心...')
     } else {
@@ -1190,11 +1274,11 @@ const handleOpenCreatorCenter = async (row) => {
 }
 
 // LoginDialog 回调:登录成功后刷新账号列表(后端 sync_profile 已写库)
-const onLoginSuccess = ({ platform, accountId }) => {
+const onLoginSuccess = ({ platform, accountId }: { platform: string; accountId?: number | string }) => {
   fetchAccountsQuick()
 }
 
-const onLoginFail = ({ platform, errMsg }) => {
+const onLoginFail = ({ platform, errMsg }: { platform: string; errMsg?: string }) => {
   console.warn(`登录失败 [${platform}]:`, errMsg)
 }
 
@@ -1210,7 +1294,7 @@ const submitAccountForm = () => {
     if (valid) {
       try {
         const type = platformNameToId[accountForm.platform] || 1
-        const res = await accountApi.updateAccount({ id: accountForm.id, type, userName: accountForm.name })
+        const res = (await accountApi.updateAccount({ id: accountForm.id, type, userName: accountForm.name })) as ApiResponse
         if (res.code === 200) {
           accountStore.updateAccount(accountForm.id, { id: accountForm.id, name: accountForm.name, platform: accountForm.platform, status: accountForm.status })
           ElMessage.success('更新成功')
