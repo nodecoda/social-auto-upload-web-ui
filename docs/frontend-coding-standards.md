@@ -94,6 +94,8 @@ onMounted(load)
 - **禁止**修改 props（只读）。
 - 函数类型 props 写成 `(arg: T) => void`，**禁止**裸 `Function` 类型。
 
+**允许的变体**：选项式 `defineProps({ ... })` + `PropType`（带运行时校验 / validator / required 提示）为**已接受变体**——运行时 props 校验是泛型形式不具备的能力。存量 40+ 处选项式 props 按变体保留（触碰时顺手迁移）；**新代码**默认泛型 + `withDefaults`。
+
 **坏**：
 ```vue
 <script setup lang="ts">
@@ -214,6 +216,17 @@ const { fetchList } = store // action
 - 组件原则上单根元素（除非刻意 fragment）。
 - 复杂表达式抽到 computed/函数，模板只保留声明式输出。
 
+**已知例外（超出 100 行的存量视图；触碰时再拆，勿在无关改动中顺手大改）**：
+
+| 视图 | 模板行数 |
+|---|---|
+| `views/Settings.vue` | 192 |
+| `views/AccountManagement.vue` | 132 |
+| `views/Feedback.vue` | 131 |
+| `views/PublishHistoryDetail.vue` | 129 |
+| `views/Sponsor.vue` | 117 |
+| `views/PublishHistory.vue` | 104 |
+
 ---
 
 ## 8. 异步组件
@@ -236,7 +249,8 @@ const { fetchList } = store // action
   // 好
   catch (e) { ElMessage.error(getErrorMessage(e)) }
   ```
-- `any` 仅允许在 **API 边界**（`src/api/*`、`src/utils/request.ts` 的 axios 层）；业务代码必须类型化。现状：API 边界存在少量 `any`（约 61 处），视为已知例外，新增代码不扩散。
+- `any` 仅允许在 **API 边界**（`src/api/*`、`src/utils/request.ts` 的 axios 层）；业务代码必须类型化。现状：业务代码 `any` 已清零（基线 128 → 1，2026-08 ts 收尾批 1-13），仅剩 `SettingFieldControl.modelValue: any` 一处**多态边界**（5 种字段类型的判别联合改造 ROI 低，有意保留）；API 边界按契约保留少量 `any`。新增代码不扩散。
+- composable 公共函数必须写**显式返回类型**（`useAutoSave` / `useBatchSetApply` / `useImageBatchSetApply` / `useChannelForm` 已于 2026-08 治理 G1 补齐，公开 API 契约见 `UseChannelFormReturn`）。
 
 ---
 
@@ -261,7 +275,9 @@ const { fetchList } = store // action
 - 每个测试独立 `mount`（**不在** `beforeEach` 共享 wrapper）。
 - 断言渲染结果 DOM 与 `emitted()` 事件；**不**断言 `wrapper.vm` 内部状态。
 - **不用** HTML snapshot。
-- 覆盖：组件关键交互、composable 行为、store 逻辑；当前 183 用例全绿为基线。
+- 覆盖：组件关键交互、composable 行为、store 逻辑；当前 **261 用例全绿**为基线（2026-08-20）。
+
+**例外**：`wrapper.vm` 仅用于**驱动** mount 的 composable / 组件公开 API（如 `wrapper.vm.startAutoSaveTimer()`）；**禁止**断言 `wrapper.vm` 内部状态。
 
 **好**：
 ```ts
@@ -292,6 +308,21 @@ it('emits confirm with payload', async () => {
 | 错误处理 `.message` 直访 | 2 处已收敛 | 改用 `getErrorMessage`（批 13） |
 | API 响应断言 `any[]` | 16 处已收敛 | 复用批 11/12 接口类型（批 14）；TagSelect 6 处多分支搜索响应保留例外 |
 | 平台 Select 列表 `any[]` | **0 处 ✓**（原 18 处） | 已全部收敛为接口（批 11 douyin 系 / 批 12 其余平台） |
+
+### 治理轮次 2（2026-08-20：ts 收尾 + 规范治理）
+
+| 项 | 状态 | 处置 |
+|---|---|---|
+| src 下 `.js` 源文件 | **0 个 ✓** | 全量迁移为 strict TS |
+| 业务代码 `any` | **1 处 ✓**（基线 128） | ts 收尾批 1-13 全部收敛；剩 `SettingFieldControl.modelValue` 多态边界（有意保留） |
+| 错误处理 `.message` 直访 | **0 处 ✓** | MaterialUploader 2 处改 `getErrorMessage`（治理 G1） |
+| composable 显式返回类型 | **4/4 ✓** | useAutoSave / useBatchSetApply / useImageBatchSetApply / useChannelForm（治理 G1） |
+| aiContent 类型一致性 | ✓ | ChannelFormData / PanelDefaultConfig / MergedConfig 对齐 `string \| boolean`（快手 defaultSettings 为 boolean） |
+| 选项式 defineProps | 40+ 处 | 按**已接受变体**保留（运行时校验；新代码用泛型，见 Rule 3） |
+| 超长模板 view | 6 处 | 已知例外清单（见 Rule 7），触碰时再拆 |
+| 测试 `wrapper.vm` | 2 处 | 仅驱动公开 API，非断言内部（Rule 11 例外） |
+| v-for 缺 `:key` | 0 处 ✓ | 全合规（多行属性写法） |
+| 测试用例数 | 261 | 基线更新（原 183） |
 
 ---
 

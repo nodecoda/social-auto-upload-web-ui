@@ -13,6 +13,7 @@ imports → `defineProps` / `defineEmits` (do not import them) → state (ref/re
 
 ## 3. Typed props & emits
 - `defineProps<{ name: Type }>()` + `withDefaults()` for defaults. Never fall back with `0 || x` or `||` in templates (e.g. `0 || 10 === 10`). Never mutate props.
+- Accepted variant: options-style `defineProps({...})` + `PropType` (runtime validation); prefer generics for new code.
 - `defineEmits<{ (e: 'event', payload: T): void }>()` — **never the array form** `defineEmits([...])`.
 - Function props typed as `(arg: T) => void`, never bare `Function`.
 
@@ -30,6 +31,7 @@ imports → `defineProps` / `defineEmits` (do not import them) → state (ref/re
 
 ## 7. Template hygiene
 - Template ≤ 100 lines, nesting ≤ 3 levels, functions ≤ 30 lines (extract composables/components when exceeded).
+- Known exceptions (defer splitting until touched): Settings(192) AccountManagement(132) Feedback(131) PublishHistoryDetail(129) Sponsor(117) PublishHistory(104).
 - One root element per component unless a fragment is intentional.
 
 ## 8. Async components
@@ -40,7 +42,8 @@ imports → `defineProps` / `defineEmits` (do not import them) → state (ref/re
 - Keep `"strict": true`. Use `import type` for type-only imports.
 - Public functions need explicit return types.
 - Error handling: use `getErrorMessage(e)` from `src/utils/error.ts` — never access `.message` on an `unknown` error.
-- `any` is only allowed at API boundaries (`src/api/*`, `src/utils/request.ts`); business code must be typed.
+- Composables need explicit return types.
+- `any` is only allowed at API boundaries (`src/api/*`, `src/utils/request.ts`); business code must be typed. Status: 1 intentional polymorphic boundary (`SettingFieldControl` `modelValue`).
 
 ## 10. Naming & structure
 - Components: PascalCase files, multi-word names.
@@ -49,7 +52,7 @@ imports → `defineProps` / `defineEmits` (do not import them) → state (ref/re
 
 ## 11. Tests (Vitest)
 - One mount per test (no shared wrapper in `beforeEach`).
-- Assert rendered DOM and emitted events; never assert `wrapper.vm` internals; no HTML snapshots.
+- Assert rendered DOM and emitted events; never assert `wrapper.vm` internals (driving exposed API via `wrapper.vm` is OK); no HTML snapshots.
 
 ## 12. Verify before done
 Run in `frontend/`: `npx vue-tsc --noEmit` && `npx vitest run` && `npx vite build`.
