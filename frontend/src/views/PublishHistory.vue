@@ -223,19 +223,71 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, type CheckboxValueType } from 'element-plus'
 import { Clock, Picture, Refresh, Upload, CircleCheck, Calendar, Delete, Check, Select, Close } from '@element-plus/icons-vue'
 import { historyApi, statsApi } from '@/api/v2'
 import { platformList, getPlatformByKey } from '@/config/platforms'
+import { type ApiResponse } from '@/utils/request'
 import ChannelSummary from '@/components/ChannelSummary.vue'
 import PublishStats from '@/components/PublishStats.vue'
 
+// ── 类型定义(与后端 /api/v2/history、/api/v2/stats 响应结构对齐)──
+
+/** 发布明细(单个账号一条) */
+interface HistoryDetailItem {
+  id: string
+  account_name: string
+  platform: string // 中文平台名(如 '抖音')
+  status?: string
+}
+
+/** 发布批次(卡片) */
+interface HistoryBatch {
+  id: string
+  type?: string
+  title: string
+  description?: string
+  cover_url?: string
+  status: string
+  created_at?: string
+  items: HistoryDetailItem[]
+}
+
+/** 顶部统计卡片 */
+interface StatsSummary {
+  total: number
+  successRate: number
+  monthlyTotal: number
+}
+
+/** /api/v2/stats 响应 data 结构(仅声明本页使用的字段) */
+interface StatsData {
+  total?: number
+  successRate?: number
+  monthlyTotal?: number
+  tasks?: { total?: number; successRate?: number }
+}
+
+/** 批量删除接口的失败项 */
+interface BatchDeleteFailed {
+  batch_id: string
+  reason: string
+}
+
+/** computeChannelsSummary 返回的平台汇总(与 ChannelSummary 组件 props 结构一致) */
+interface ChannelGroup {
+  platform: string
+  name: string
+  count: number
+  logo?: string
+}
+
 const router = useRouter()
-const batches = ref([])
-const stats = ref({ total: 0, successRate: 0, monthlyTotal: 0 })
+const batches = ref<HistoryBatch[]>([])
+const stats = ref<StatsSummary>({ total: 0, successRate: 0, monthlyTotal: 0 })
 const loading = ref(false)
 
 // Filters
@@ -248,26 +300,28 @@ const pageSize = ref(20)
 const total = ref(0)
 
 // 多选 + 删除状态
-const selection = ref(new Set())           // 选中的批次 id
+const selection = ref<Set<string>>(new Set())   // 选中的批次 id
 const selectMode = ref(false)              // 多选模式开关
 const isDeleting = ref(false)
 
-function computeChannelsSummary(items) {
-  const groups = {}
+function computeChannelsSummary(items: HistoryDetailItem[]): ChannelGroup[] {
+  const groups: Record<string, ChannelGroup> = {}
   for (const it of items || []) {
     const key = it.platform
     if (!groups[key]) {
       const cfg = getPlatformByKey(
         platformList.find(p => p.name === key)?.key
       )
-      groups[key] = { platform: key, name: it.platform, count: 0, logo: cfg?.logo || null }
+      // 兜底用 undefined 替代原 null:二者均 falsy,模板 v-if="ch.logo" 行为一致,
+      // 同时与 ChannelSummaryItem.logo?: string 类型兼容
+      groups[key] = { platform: key, name: it.platform, count: 0, logo: cfg?.logo || undefined }
     }
     groups[key].count++
   }
   return Object.values(groups)
 }
 
-function statusLabel(status) {
+function statusLabel(status: string): string {
   return ({
     pending: '等待中',
     running: '发布中',
@@ -278,29 +332,36 @@ function statusLabel(status) {
   }[status] || status)
 }
 
-function formatCardTime(iso) {
+function formatCardTime(iso?: string): string {
   if (!iso) return ''
   const d = new Date(iso)
   const now = new Date()
-  const diff = (now - d) / 1000
+  const diff = (now.getTime() - d.getTime()) / 1000
   if (diff < 86400) {
     if (diff < 60) return '刚刚'
     if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`
     return `${Math.floor(diff / 3600)} 小时前`
   }
-  const pad = n => String(n).padStart(2, '0')
+  const pad = (n: number) => String(n).padStart(2, '0')
   return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 async function fetchHistory() {
   loading.value = true
   try {
-    const params = { page: currentPage.value, pageSize: pageSize.value }
+    const params: {
+      page: number
+      pageSize: number
+      timeRange?: string
+      type?: string
+      platform?: string
+      status?: string
+    } = { page: currentPage.value, pageSize: pageSize.value }
     if (timeRange.value !== 'all') params.timeRange = timeRange.value
     if (typeFilter.value !== 'all') params.type = typeFilter.value
     if (platformFilter.value !== 'all') params.platform = platformFilter.value
     if (statusFilter.value !== 'all') params.status = statusFilter.value
-    const res = await historyApi.getHistory(params)
+    const res = (await historyApi.getHistory(params)) as ApiResponse<{ items?: HistoryBatch[]; total?: number }>
     if (res.code === 200) {
       batches.value = res.data?.items || []
       total.value = res.data?.total || 0
@@ -314,7 +375,7 @@ async function fetchHistory() {
 
 async function fetchStats() {
   try {
-    const res = await statsApi.getStats()
+    const res = (await statsApi.getStats()) as ApiResponse<StatsData>
     if (res.code === 200 && res.data) {
       const d = res.data
       stats.value = {
@@ -328,12 +389,12 @@ async function fetchStats() {
   }
 }
 
-const handlePageChange = (page) => {
+const handlePageChange = (page: number) => {
   currentPage.value = page
   if (selectMode.value) selection.value = new Set()
   fetchHistory()
 }
-const handleSizeChange = (size) => {
+const handleSizeChange = (size: number) => {
   pageSize.value = size
   currentPage.value = 1
   if (selectMode.value) selection.value = new Set()
@@ -345,7 +406,7 @@ const handleFilterChange = () => {
   fetchHistory()
 }
 
-function goDetail(batchId) {
+function goDetail(batchId: string) {
   router.push(`/publish-history/${batchId}`)
 }
 
@@ -365,18 +426,18 @@ function toggleSelectMode() {
   }
 }
 
-function toggleSelectAll(checked) {
+function toggleSelectAll(checked: CheckboxValueType) {
   selection.value = checked ? new Set(batches.value.map((b) => b.id)) : new Set()
 }
 
-function toggleSelection(id, checked) {
+function toggleSelection(id: string, checked: boolean) {
   const next = new Set(selection.value)
   if (checked) next.add(id)
   else next.delete(id)
   selection.value = next
 }
 
-function onCardClick(id) {
+function onCardClick(id: string) {
   if (!selectMode.value) {
     goDetail(id)
     return
@@ -385,7 +446,7 @@ function onCardClick(id) {
 }
 
 // ===== 单条删除 =====
-async function confirmDelete(batch) {
+async function confirmDelete(batch: HistoryBatch) {
   const title = batch.title || '无标题'
   try {
     await ElMessageBox.confirm(
@@ -432,7 +493,10 @@ async function onBatchDelete() {
   const ids = [...selection.value]
   isDeleting.value = true
   try {
-    const resp = await historyApi.batchDelete(ids)
+    const resp = (await historyApi.batchDelete(ids)) as {
+      deleted?: string[]
+      failed?: BatchDeleteFailed[]
+    }
     const { deleted = [], failed = [] } = resp || {}
     if (deleted.length) {
       ElMessage.success(`已删除 ${deleted.length} 条记录`)

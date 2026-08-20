@@ -322,45 +322,135 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ChatDotRound, Plus, Close, Warning } from '@element-plus/icons-vue'
 import { settingsApi } from '@/api/v2'
 import { platformList, getPlatformByKey } from '@/config/platforms'
-import { http } from '@/utils/request'
+import { http, type ApiResponse } from '@/utils/request'
 import { useAppStore } from '@/stores/app'
 import PlatformBlacklistDialog from '@/components/PlatformBlacklistDialog.vue'
+
+// ===== 类型定义 =====
+
+// 平台配置对象(来自 @/config/platforms 的 platformList 元素)
+type PlatformObject = NonNullable<ReturnType<typeof getPlatformByKey>>
+
+// S3 存储配置
+interface S3Config {
+  endpoint: string
+  access_key: string
+  secret_key: string
+  bucket: string
+  region: string
+}
+
+// 存储配置
+interface StorageConfig {
+  type: 'local' | 's3'
+  s3: S3Config
+}
+
+// 设置表单状态
+interface SettingsState {
+  proxyUrl: string
+  autoFillTitle: boolean
+  autoSaveDraft: boolean
+  autoSaveInterval: number
+  accountCheckMode: string
+  storage: StorageConfig
+  feedbackEmail: string
+}
+
+// 后端 /api/v2/settings 返回的数据(字段可能缺省,均为可选)
+interface SettingsData {
+  proxyUrl?: string
+  autoFillTitle?: boolean
+  autoSaveDraft?: boolean
+  autoSaveInterval?: number
+  accountCheckMode?: string
+  storage?: StorageConfig
+  feedbackEmail?: string
+  disabledPlatforms?: string | string[] | null
+}
+
+// 缓存信息条目
+interface CacheEntry {
+  count: number
+  size: number
+}
+
+// 日志缓存条目(额外含过期文件数)
+interface LogsCacheEntry extends CacheEntry {
+  oldCount: number
+}
+
+// 缓存管理面板状态
+interface CacheInfoState {
+  frames: CacheEntry
+  logs: LogsCacheEntry
+  s3_videos: CacheEntry
+  covers: CacheEntry
+}
+
+// /api/system-info 返回的缓存数据(字段可能缺省)
+interface SystemInfoCache {
+  frames?: CacheEntry
+  logs?: LogsCacheEntry
+  s3_videos?: CacheEntry
+  covers?: CacheEntry
+}
+
+// /api/system-info 返回的数据
+interface SystemInfoData {
+  version?: string
+  cache?: SystemInfoCache
+}
+
+// 可清理的缓存目标
+type ClearCacheTarget = 'frames' | 'logs' | 's3_videos' | 'covers'
+
+// 清理缓存接口返回的单个目标清理结果
+interface ClearCacheResult {
+  cleared: number
+}
+
+// 技术栈展示项
+interface TechStackItem {
+  name: string
+  version: string
+}
 
 const appStore = useAppStore()
 
 // 已拉黑渠道的平台对象数组(filter(Boolean) 容错,防止后端返回不存在的 key)
 // 注意: store 中存的是小写 platform key (如 'xiaohongshu'),
 // 不能用 PLATFORMS[<uppercase>] 直接查,要用 getPlatformByKey
-const disabledPlatformObjects = computed(() =>
-  appStore.disabledPlatforms
-    .map(k => getPlatformByKey(k))
-    .filter(Boolean)
+const disabledPlatformObjects = computed<PlatformObject[]>(() =>
+  (appStore.disabledPlatforms as string[])
+    .map((k: string) => getPlatformByKey(k))
+    .filter((p): p is PlatformObject => p !== null)
 )
 
 const blacklistDialogVisible = ref(false)
 const openBlacklistDialog = () => { blacklistDialogVisible.value = true }
 
-const removeFromBlacklist = async (key) => {
+const removeFromBlacklist = async (key: string) => {
   try {
     await appStore.removeDisabledPlatform(key)
     ElMessage.success('已从黑名单移除')
-  } catch (e) {
+  } catch (e: unknown) {
     console.error('移除黑名单失败:', e)
     ElMessage.error('移除失败,请重试')
   }
 }
 
-const onBlacklistConfirm = async (newKeys) => {
+const onBlacklistConfirm = async (newKeys: string[]) => {
   try {
     await appStore.addDisabledPlatforms(newKeys)
     ElMessage.success(`已添加 ${newKeys.length} 个渠道到黑名单`)
-  } catch (e) {
+  } catch (e: unknown) {
     console.error('添加黑名单失败:', e)
     ElMessage.error('添加失败,请重试')
   }
@@ -370,7 +460,7 @@ const loading = ref(false)
 const saving = ref(false)
 const clearingCache = ref(false)
 const appVersion = ref('--')
-const cacheInfo = reactive({
+const cacheInfo = reactive<CacheInfoState>({
   frames: { count: 0, size: 0 },
   logs: { count: 0, size: 0, oldCount: 0 },
   s3_videos: { count: 0, size: 0 },
@@ -379,7 +469,7 @@ const cacheInfo = reactive({
 
 const fetchSystemInfo = async () => {
   try {
-    const res = await http.get('/api/system-info')
+    const res = (await http.get('/api/system-info')) as ApiResponse<SystemInfoData>
     if (res.code === 200 && res.data) {
       appVersion.value = res.data.version || '--'
       if (res.data.cache) {
@@ -392,16 +482,16 @@ const fetchSystemInfo = async () => {
   } catch {}
 }
 
-const formatSize = (bytes) => {
+const formatSize = (bytes: number): string => {
   if (!bytes) return '0B'
   if (bytes < 1024) return bytes + 'B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB'
   return (bytes / 1024 / 1024).toFixed(1) + 'MB'
 }
 
-const handleClearCache = async (target) => {
-  const messages = { frames: '抽帧缓存', logs: '日志文件', s3_videos: 'S3 视频缓存', covers: '封面缓存' }
-  const confirmMessages = {
+const handleClearCache = async (target: ClearCacheTarget) => {
+  const messages: Record<ClearCacheTarget, string> = { frames: '抽帧缓存', logs: '日志文件', s3_videos: 'S3 视频缓存', covers: '封面缓存' }
+  const confirmMessages: Record<ClearCacheTarget, string> = {
     frames: '确定要清理所有抽帧缓存数据吗？清理后下次使用封面功能时会重新提取视频帧。',
     logs: '确定要清理所有过期日志文件吗？',
     s3_videos: '确定要清理所有 S3 视频缓存吗？清理后下次抽帧时会重新从 S3 下载。',
@@ -418,7 +508,7 @@ const handleClearCache = async (target) => {
   }
   clearingCache.value = true
   try {
-    const res = await http.post('/api/clear-cache', { targets: [target] })
+    const res = (await http.post('/api/clear-cache', { targets: [target] })) as ApiResponse<Partial<Record<ClearCacheTarget, ClearCacheResult>>>
     if (res.code === 200) {
       const info = res.data?.[target]
       ElMessage.success(info ? `已清理 ${info.cleared} 个${messages[target]}` : `${messages[target]}已清理`)
@@ -433,7 +523,7 @@ const handleClearCache = async (target) => {
   }
 }
 
-const settings = reactive({
+const settings = reactive<SettingsState>({
   proxyUrl: '',
   autoFillTitle: true,
   autoSaveDraft: true,
@@ -451,23 +541,24 @@ const s3Testing = ref(false)
 async function testS3Connection() {
   s3Testing.value = true
   try {
-    const resp = await http.post('/api/materials/test-s3', settings.storage.s3)
+    const resp = (await http.post('/api/materials/test-s3', settings.storage.s3)) as ApiResponse
     if (resp.code === 200) {
       ElMessage.success('S3 连接成功')
     } else {
       ElMessage.error(resp.msg || '连接失败')
     }
-  } catch (e) {
-    ElMessage.error('连接失败: ' + (e.message || '未知错误'))
+  } catch (e: unknown) {
+    const msg = (e instanceof Error && e.message) || '未知错误'
+    ElMessage.error('连接失败: ' + msg)
   }
   s3Testing.value = false
 }
 
 // 海外平台列表
-const overseasPlatforms = platformList.filter(p => ['youtube', 'tiktok'].includes(p.key))
+const overseasPlatforms: PlatformObject[] = platformList.filter(p => ['youtube', 'tiktok'].includes(p.key))
 
 // 技术栈版本
-const frontendStack = [
+const frontendStack: TechStackItem[] = [
   { name: 'Vue', version: '3.5.x' },
   { name: 'Element Plus', version: '2.9.x' },
   { name: 'Vite', version: '6.3.x' },
@@ -475,13 +566,13 @@ const frontendStack = [
   { name: 'Axios', version: '1.9.x' },
 ]
 
-const backendStack = [
+const backendStack: TechStackItem[] = [
   { name: 'Python', version: '3.14' },
   { name: 'Flask', version: '3.1.x' },
   { name: 'SQLite', version: '3.x' },
 ]
 
-const browserStack = [
+const browserStack: TechStackItem[] = [
   { name: 'CloakBrowser', version: 'latest' },
   { name: 'Chromium', version: 'latest' },
 ]
@@ -489,7 +580,7 @@ const browserStack = [
 const fetchSettings = async () => {
   loading.value = true
   try {
-    const res = await settingsApi.getSettings()
+    const res = (await settingsApi.getSettings()) as ApiResponse<SettingsData>
     if (res.code === 200 && res.data) {
       if (res.data.proxyUrl !== undefined) settings.proxyUrl = res.data.proxyUrl
       if (res.data.autoFillTitle !== undefined) settings.autoFillTitle = res.data.autoFillTitle
@@ -508,11 +599,11 @@ const fetchSettings = async () => {
       // 注意:后端 GET 不自动反序列化此字段,前端需手动 JSON.parse
       if (res.data.disabledPlatforms !== undefined && res.data.disabledPlatforms !== null && res.data.disabledPlatforms !== '') {
         try {
-          const parsed = typeof res.data.disabledPlatforms === 'string'
+          const parsed: unknown = typeof res.data.disabledPlatforms === 'string'
             ? JSON.parse(res.data.disabledPlatforms)
             : res.data.disabledPlatforms
           appStore.disabledPlatforms = Array.isArray(parsed) ? parsed : []
-        } catch (e) {
+        } catch (e: unknown) {
           console.warn('解析 disabledPlatforms 失败:', e)
           appStore.disabledPlatforms = []
         }
@@ -520,7 +611,7 @@ const fetchSettings = async () => {
         appStore.disabledPlatforms = []
       }
     }
-  } catch (e) {
+  } catch (e: unknown) {
     console.error(e)
   } finally {
     loading.value = false
@@ -530,7 +621,7 @@ const fetchSettings = async () => {
 const handleSave = async () => {
   saving.value = true
   try {
-    const res = await settingsApi.updateSettings({
+    const res = (await settingsApi.updateSettings({
       proxyUrl: settings.proxyUrl,
       autoFillTitle: settings.autoFillTitle,
       autoSaveDraft: settings.autoSaveDraft,
@@ -538,7 +629,7 @@ const handleSave = async () => {
       accountCheckMode: settings.accountCheckMode,
       storage: settings.storage,
       feedbackEmail: settings.feedbackEmail,
-    })
+    })) as ApiResponse
     if (res.code === 200) {
       // 同步到 Pinia store + localStorage(之前漏了这三项,导致开关不生效)
       appStore.setAutoFillTitle(settings.autoFillTitle)
@@ -550,7 +641,7 @@ const handleSave = async () => {
     } else {
       ElMessage.error(res.msg || '保存失败')
     }
-  } catch (e) {
+  } catch (e: unknown) {
     ElMessage.error('保存失败')
   } finally {
     saving.value = false

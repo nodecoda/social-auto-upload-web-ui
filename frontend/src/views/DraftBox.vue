@@ -225,7 +225,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -234,43 +234,97 @@ import { draftApi } from '@/api/draft'
 import { imagePublishApi } from '@/api/imagePublish'
 import { getPlatformByKey } from '@/config/platforms'
 import { getFileUrl } from '@/utils/storage'
+import { type ApiResponse } from '@/utils/request'
 import BatchDraftPublishDialog from '@/components/BatchDraftPublishDialog.vue'
 
+interface ChannelSummary {
+  platform: string
+  name: string
+  count: number
+}
+
+interface DraftPlatformConfig {
+  title?: string
+}
+
+interface DraftData {
+  platformConfigs?: Record<string, DraftPlatformConfig>
+}
+
+interface DraftItem {
+  id: number
+  type?: string
+  title?: string
+  cover_path?: string
+  video_duration?: number
+  video_file_size?: number
+  channels_summary?: ChannelSummary[]
+  draft_data?: DraftData
+  updated_at?: string
+}
+
+// 传给批量发布 dialog 的草稿条目（id/type/title/platforms）
+interface DialogDraft {
+  id: number
+  type?: string
+  title?: string
+  platforms: string[]
+}
+
+// 批量接口失败条目
+interface DialogFailure {
+  draft_id: number
+  reason: string
+}
+
+// 批量发布响应：视频端返回 task_ids，图集端返回 succeeded，两者都带 failed
+interface BatchPublishResponse {
+  task_ids?: number[]
+  succeeded?: number[]
+  failed?: DialogFailure[]
+}
+
+// 批量删除响应
+interface BatchDeleteResponse {
+  deleted?: number[]
+  failed?: DialogFailure[]
+}
+
 const router = useRouter()
-const activeTab = ref('video')
-const videoDrafts = ref([])
-const imageDrafts = ref([])
+const activeTab = ref<string | number>('video')
+const videoDrafts = ref<DraftItem[]>([])
+const imageDrafts = ref<DraftItem[]>([])
 const loading = ref(true)
-const channelRefs = {}
-const overflowMap = ref({})
+const channelRefs: Record<number, HTMLElement> = {}
+const overflowMap = ref<Record<number, boolean>>({})
 
 // Batch operations state
-const selection = ref(new Set())           // 选中的草稿 id
+const selection = ref<Set<number>>(new Set())           // 选中的草稿 id
 const selectMode = ref(false)              // 多选模式开关
 const dialogVisible = ref(false)
-const dialogDrafts = ref([])                // 给 dialog 的草稿列表
-const dialogFailures = ref([])              // 校验失败列表
+const dialogDrafts = ref<DialogDraft[]>([])                // 给 dialog 的草稿列表
+const dialogFailures = ref<DialogFailure[]>([])              // 校验失败列表
 const isPublishing = ref(false)
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
 
-function getCoverUrl(path) {
+function getCoverUrl(path: string) {
   return getFileUrl(path)
 }
 
-function getPlatformLogo(platformKey) {
+function getPlatformLogo(platformKey: string) {
   const p = getPlatformByKey(platformKey)
   return p?.logo || null
 }
 
-function getImageDraftTitle(draft) {
+function getImageDraftTitle(draft: DraftItem) {
   // 优先使用 title 字段（后端已提取）
   if (draft.title && draft.title !== '无标题') {
     return draft.title
   }
   // 从 draft_data 中提取
   if (draft.draft_data) {
-    const pc = draft.draft_data.platformConfigs || {}
+    const pc: Record<string, DraftPlatformConfig> = draft.draft_data.platformConfigs || {}
     for (const key of ['douyin', 'xiaohongshu', 'kuaishou']) {
       const title = pc[key]?.title
       if (title && title.trim()) {
@@ -281,25 +335,25 @@ function getImageDraftTitle(draft) {
   return ''
 }
 
-function formatDuration(seconds) {
+function formatDuration(seconds: number) {
   if (!seconds) return ''
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-function formatFileSize(bytes) {
+function formatFileSize(bytes: number) {
   if (!bytes) return ''
   if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB'
   if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   return (bytes / 1024).toFixed(0) + ' KB'
 }
 
-function formatTime(isoString) {
+function formatTime(isoString: string) {
   if (!isoString) return ''
   const date = new Date(isoString)
   const now = new Date()
-  const diff = now - date
+  const diff = now.getTime() - date.getTime()
   const minutes = Math.floor(diff / 60000)
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(diff / 86400000)
@@ -310,28 +364,29 @@ function formatTime(isoString) {
   return date.toLocaleDateString('zh-CN')
 }
 
-function editVideoDraft(id) {
+function editVideoDraft(id: number) {
   router.push(`/publish-center?draft=${id}`)
 }
 
-function editImageDraft(id) {
+function editImageDraft(id: number) {
   router.push(`/image-publish?draft=${id}`)
 }
 
-function setChannelRef(draftId, el) {
+function setChannelRef(draftId: number, el: unknown) {
   if (el) {
-    channelRefs[draftId] = el
+    const node = el as HTMLElement
+    channelRefs[draftId] = node
     nextTick(() => {
-      overflowMap.value[draftId] = el.scrollWidth > el.parentElement.clientWidth
+      overflowMap.value[draftId] = node.scrollWidth > node.parentElement.clientWidth
     })
   }
 }
 
-function isOverflow(draftId) {
+function isOverflow(draftId: number) {
   return overflowMap.value[draftId]
 }
 
-async function confirmDelete(id, type) {
+async function confirmDelete(id: number, type: 'video' | 'image') {
   const typeName = type === 'video' ? '视频' : '图集'
   try {
     await ElMessageBox.confirm(`确定删除这个${typeName}草稿吗？`, '删除确认', {
@@ -355,8 +410,8 @@ async function loadAllDrafts() {
       draftApi.getDrafts('video'),
       draftApi.getDrafts('image')
     ])
-    videoDrafts.value = videoResp.data || []
-    imageDrafts.value = imageResp.data || []
+    videoDrafts.value = (videoResp as ApiResponse<DraftItem[]>).data || []
+    imageDrafts.value = (imageResp as ApiResponse<DraftItem[]>).data || []
   } catch (e) {
     console.error('Failed to load drafts:', e)
   } finally {
@@ -384,7 +439,7 @@ function toggleSelectMode() {
   }
 }
 
-function toggleSelectAll(checked) {
+function toggleSelectAll(checked: boolean) {
   if (checked) {
     selection.value = new Set(getCurrentDrafts().map((d) => d.id))
   } else {
@@ -392,7 +447,7 @@ function toggleSelectAll(checked) {
   }
 }
 
-function onCardClick(id) {
+function onCardClick(id: number) {
   if (!selectMode.value) return
   toggleSelection(id, !selection.value.has(id))
 }
@@ -401,14 +456,14 @@ function clearSelection() {
   selection.value = new Set()
 }
 
-function toggleSelection(id, checked) {
+function toggleSelection(id: number, checked: boolean) {
   if (checked) selection.value.add(id)
   else selection.value.delete(id)
   // 触发响应式更新（Set 本身无深度响应）
   selection.value = new Set(selection.value)
 }
 
-function getCurrentDrafts() {
+function getCurrentDrafts(): DraftItem[] {
   return activeTab.value === 'video' ? videoDrafts.value : imageDrafts.value
 }
 
@@ -427,7 +482,7 @@ async function onBatchDelete() {
 
   const ids = [...selection.value]
   try {
-    const resp = await draftApi.batchDeleteDrafts(ids)
+    const resp = (await draftApi.batchDeleteDrafts(ids)) as BatchDeleteResponse
     const { deleted = [], failed = [] } = resp || {}
     if (deleted.length) {
       ElMessage.success(`已删除 ${deleted.length} 个草稿`)
@@ -444,7 +499,7 @@ async function onBatchDelete() {
   }
 }
 
-function extractPlatforms(draft) {
+function extractPlatforms(draft: DraftItem): string[] {
   // 从 channels_summary（list of {platform, name, count}）提取平台 key 列表
   const list = draft?.channels_summary || []
   return list.map((c) => c.platform).filter(Boolean)
@@ -466,7 +521,7 @@ async function onBatchPublish() {
   dialogVisible.value = true
 }
 
-async function onDialogConfirm(confirmedIds) {
+async function onDialogConfirm(confirmedIds: number[]) {
   dialogVisible.value = false
   if (!confirmedIds || confirmedIds.length === 0) return
 
@@ -474,9 +529,9 @@ async function onDialogConfirm(confirmedIds) {
   const isImage = activeTab.value === 'image'
   try {
     // 根据当前 tab 调不同的批量发布端点
-    const resp = isImage
+    const resp = (isImage
       ? await imagePublishApi.batchPublishImageDrafts(confirmedIds)
-      : await draftApi.batchPublishVideoDrafts(confirmedIds)
+      : await draftApi.batchPublishVideoDrafts(confirmedIds)) as BatchPublishResponse
     const { task_ids = [], failed = [] } = resp || {}
     if (task_ids.length) {
       ElMessage.success({
