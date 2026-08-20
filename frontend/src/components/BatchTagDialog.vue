@@ -128,9 +128,7 @@ interface TagItem {
   color?: string
 }
 
-const props = defineProps({
-  modelValue: { type: Boolean, required: true }
-})
+const props = defineProps<{ modelValue: boolean }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void

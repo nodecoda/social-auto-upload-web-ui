@@ -232,11 +232,14 @@ interface MaterialListResponse {
   data?: { items?: MaterialItem[]; total?: number }
 }
 
-const props = defineProps({
+const props = withDefaults(defineProps<{
   /** 'all' | 'image' | 'video' - 限制可选项，默认 'all' */
-  filterType: { type: String, default: 'all' },
+  filterType?: string
   /** 多选模式：返回数组；单选模式：返回单个 */
-  multiple: { type: Boolean, default: false },
+  multiple?: boolean
+}>(), {
+  filterType: 'all',
+  multiple: false,
 })
 
 const emit = defineEmits<{

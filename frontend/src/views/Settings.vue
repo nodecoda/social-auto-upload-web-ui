@@ -329,6 +329,7 @@ import { ChatDotRound, Plus, Close, Warning } from '@element-plus/icons-vue'
 import { settingsApi } from '@/api/v2'
 import { platformList, getPlatformByKey } from '@/config/platforms'
 import { http, type ApiResponse } from '@/utils/request'
+import { getErrorMessage } from '@/utils/error'
 import { useAppStore } from '@/stores/app'
 import PlatformBlacklistDialog from '@/components/PlatformBlacklistDialog.vue'
 
@@ -548,7 +549,7 @@ async function testS3Connection() {
       ElMessage.error(resp.msg || '连接失败')
     }
   } catch (e: unknown) {
-    const msg = (e instanceof Error && e.message) || '未知错误'
+    const msg = getErrorMessage(e)
     ElMessage.error('连接失败: ' + msg)
   }
   s3Testing.value = false

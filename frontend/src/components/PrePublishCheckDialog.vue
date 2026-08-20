@@ -166,11 +166,14 @@ interface CheckCard {
   fixError: string
 }
 
-const props = defineProps({
-  modelValue: { type: Boolean, default: false },
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
   // 用途模式：'pre-publish'（发布前检查） / 'account-check'（账号管理批量检查）
   // 影响 dialog 标题、全通过/完成/取消等文案，其余交互逻辑完全一致
-  mode: { type: String, default: 'pre-publish' },
+  mode?: string
+}>(), {
+  modelValue: false,
+  mode: 'pre-publish',
 })
 
 const emit = defineEmits<{
