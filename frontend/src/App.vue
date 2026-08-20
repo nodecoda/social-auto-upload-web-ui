@@ -105,8 +105,8 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script setup lang="ts">
+import { ref, computed, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   HomeFilled, User, Picture, Upload,
@@ -122,7 +122,7 @@ const appStore = useAppStore()
 const sidebarCollapsed = ref(false)
 
 // 菜单项数据
-const navItems = [
+const navItems: { path: string; icon: Component; title: string }[] = [
   { path: '/', icon: HomeFilled, title: '仪表盘' },
   { path: '/account-management', icon: User, title: '账号管理' },
   { path: '/material-management', icon: Picture, title: '素材管理' },
@@ -136,13 +136,13 @@ const navItems = [
 ]
 
 // 底部区：赞助作者（醒目版）+ 系统设置
-const bottomItems = [
+const bottomItems: { path: string; icon: Component; title: string; _isSponsor?: boolean }[] = [
   { path: '/sponsor', icon: Coffee, title: '赞助作者', _isSponsor: true },
   { path: '/settings', icon: Setting, title: '系统设置' }
 ]
 
 // 打赏头像气泡（循环展示，给赞助项制造"有人在打赏"的氛围）
-const sponsorBubbles = [
+const sponsorBubbles: { name: string; amount: number; color: string }[] = [
   { name: '小张', amount: 88, color: '#f43f5e' },
   { name: '阿杰', amount: 50, color: '#06b6d4' },
   { name: 'Vivi', amount: 128, color: '#22c55e' },
