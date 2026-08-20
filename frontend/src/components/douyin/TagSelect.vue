@@ -105,18 +105,18 @@ const props = defineProps({
     default: ''
   },
   modelValue: {
-    type: Object as PropType<Record<string, any> | null>,
-    default: (): Record<string, any> | null => null
+    type: Object as PropType<TagItem | null>,
+    default: (): TagItem | null => null
   }
 })
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: Record<string, any> | null): void
-  (e: 'change', payload: Record<string, any> | null): void
+  (e: 'update:modelValue', value: TagItem | null): void
+  (e: 'change', payload: TagItem | null): void
 }>()
 
 interface TagItem {
-  id: string | number
+  id?: string | number
   name: string
   desc?: string
   icon?: string
@@ -125,9 +125,68 @@ interface TagItem {
   playCount?: number
   enable_mount?: boolean
   reason?: string
-  data?: Record<string, any>
+  data?: Record<string, unknown>
   [key: string]: unknown
 }
+
+/** 抖音 POI 搜索结果项 */
+interface PoiItem {
+  poi_id: string | number
+  poi_name: string
+  simple_address_str?: string
+  cover_item?: { url_list?: string[] }
+}
+
+/** 抖音小程序搜索结果项 */
+interface AnchorItem {
+  id: string | number
+  name: string
+  summary?: string
+  poster?: { url_list?: string[] }
+  enable_mount?: boolean
+  reason?: string
+}
+
+/** 抖音游戏搜索结果项 */
+interface GameItem {
+  game_info?: {
+    unified_game_id: string | number
+    name?: string
+    tag_names?: string[]
+    icon?: string
+  }
+}
+
+/** 抖音标记万物(商品)搜索结果项 */
+interface SpuItem {
+  spu_id: string | number
+  title?: string
+  front_category?: { front_category_name?: string }
+  cover?: string
+}
+
+/** 抖音影视演绎搜索结果项 */
+interface MediumItem {
+  medium_id?: string | number
+  id?: string | number
+  medium_name?: string
+  name?: string
+  abstract?: string
+  desc?: string
+  poster?: { url_list?: string[] }
+  cover?: { url_list?: string[] }
+  icon?: string
+  type_name?: string
+  typeName?: string
+  play_cnt?: number
+  playCount?: number
+}
+
+interface PoiResp { poi_list?: PoiItem[] }
+interface AnchorResp { anchor_list?: AnchorItem[] }
+interface GameResp { data?: { mount_games?: GameItem[] }; mount_games?: GameItem[] }
+interface SpuResp { data?: { spu_list?: SpuItem[] }; spu_list?: SpuItem[] }
+interface MediumResp { search_list?: MediumItem[]; data?: MediumItem[] }
 
 const selectedType = ref('')
 const loading = ref(false)
@@ -139,7 +198,7 @@ watch(() => props.modelValue, (val) => {
   console.log('TagSelect watch modelValue:', val)
   if (val) {
     selectedType.value = val.type || ''
-    selectedTagId.value = val.id || ''
+    selectedTagId.value = String(val.id || '')
     // 如果有值但 tagList 中没有对应的选项，添加一个占位项
     if (val.id && !tagList.value.find(t => t.id === val.id)) {
       console.log('Adding tag to tagList:', val)
@@ -149,8 +208,8 @@ watch(() => props.modelValue, (val) => {
         desc: val.desc || '',
         icon: val.icon || '',
         type: val.type,
-        typeName: val.typeName || val.data?.type_name || '',
-        playCount: val.playCount || val.data?.play_cnt || 0,
+        typeName: val.typeName || (val.data as Record<string, unknown> | undefined)?.type_name as string | undefined || '',
+        playCount: val.playCount || ((val.data as Record<string, unknown> | undefined)?.play_cnt as number | undefined) || 0,
         data: val.data || val
       })
     }
@@ -211,88 +270,87 @@ async function handleSearch() {
   console.log(`触发${selectedType.value}标签搜索:`, keyword)
   loading.value = true
   try {
-    let resp: ApiResponse<Record<string, any>>
     switch (selectedType.value) {
       case 'poi':
-        resp = (await douyinImageApi.searchPoi(props.accountId || '', keyword)) as ApiResponse<Record<string, any>>
-        console.log('位置搜索结果:', resp)
-        if (resp.code === 200) {
-          tagList.value = (resp.data?.poi_list || []).map((poi: Record<string, any>) => ({
+        const respPoi = (await douyinImageApi.searchPoi(props.accountId || '', keyword)) as ApiResponse<PoiResp>
+        console.log('位置搜索结果:', respPoi)
+        if (respPoi.code === 200) {
+          tagList.value = (respPoi.data?.poi_list || []).map((poi: PoiItem) => ({
             id: poi.poi_id,
             name: poi.poi_name,
             desc: poi.simple_address_str,
             icon: poi.cover_item?.url_list?.[0],
             type: 'poi',
-            data: poi
+            data: poi as unknown as Record<string, unknown>
           }))
         }
         break
       case 'miniapp':
-        resp = (await douyinImageApi.searchMiniapp(props.accountId || '', keyword)) as ApiResponse<Record<string, any>>
-        console.log('小程序搜索结果:', resp)
-        if (resp.code === 200) {
-          tagList.value = (resp.data?.anchor_list || []).map((anchor: Record<string, any>) => ({
+        const respAnchor = (await douyinImageApi.searchMiniapp(props.accountId || '', keyword)) as ApiResponse<AnchorResp>
+        console.log('小程序搜索结果:', respAnchor)
+        if (respAnchor.code === 200) {
+          tagList.value = (respAnchor.data?.anchor_list || []).map((anchor: AnchorItem) => ({
             id: anchor.id,
             name: anchor.name,
             desc: anchor.summary,
             icon: anchor.poster?.url_list?.[0],
             type: 'miniapp',
-            data: anchor,
+            data: anchor as unknown as Record<string, unknown>,
             enable_mount: anchor.enable_mount === true,
             reason: anchor.reason || ''
           }))
         }
         break
       case 'game':
-        resp = (await douyinImageApi.searchGame(props.accountId || '', keyword)) as ApiResponse<Record<string, any>>
-        console.log('游戏搜索结果:', resp)
-        if (resp.code === 200) {
-          // 注意：游戏数据在 resp.data.data.mount_games 中
-          const gameData = resp.data?.data || resp.data
-          tagList.value = (gameData?.mount_games || []).map((game: Record<string, any>) => ({
+        const respGame = (await douyinImageApi.searchGame(props.accountId || '', keyword)) as ApiResponse<GameResp>
+        console.log('游戏搜索结果:', respGame)
+        if (respGame.code === 200) {
+          // 注意：游戏数据在 respGame.data.data.mount_games 中
+          const gameData = respGame.data?.data || respGame.data
+          tagList.value = (gameData?.mount_games || []).map((game: GameItem) => ({
             id: game.game_info?.unified_game_id,
-            name: game.game_info?.name,
+            name: game.game_info?.name || '',
             desc: game.game_info?.tag_names?.join('、'),
             icon: game.game_info?.icon,
             type: 'game',
-            data: game
+            data: game as unknown as Record<string, unknown>
           }))
         }
         break
       case 'mark':
-        resp = (await douyinImageApi.searchMarkSpu(props.accountId || '', keyword)) as ApiResponse<Record<string, any>>
-        console.log('标记万物搜索结果:', resp)
-        if (resp.code === 200) {
-          // 注意：标记万物数据在 resp.data.data.spu_list 中
-          const markData = resp.data?.data || resp.data
-          tagList.value = (markData?.spu_list || []).map((spu: Record<string, any>) => ({
+        const respMark = (await douyinImageApi.searchMarkSpu(props.accountId || '', keyword)) as ApiResponse<SpuResp>
+        console.log('标记万物搜索结果:', respMark)
+        if (respMark.code === 200) {
+          // 注意：标记万物数据在 respMark.data.data.spu_list 中
+          const markData = respMark.data?.data || respMark.data
+          tagList.value = (markData?.spu_list || []).map((spu: SpuItem) => ({
             id: spu.spu_id,
-            name: spu.title,
+            name: spu.title || '',
             desc: spu.front_category?.front_category_name,
             icon: spu.cover,
             type: 'mark',
-            data: spu
+            data: spu as unknown as Record<string, unknown>
           }))
         }
         break
       case 'film':
-        resp = (await douyinImageApi.searchMedium(props.accountId || '', keyword)) as ApiResponse<Record<string, any>>
-        console.log('影视演绎搜索结果:', resp)
-        if (resp.code === 200) {
-          const raw = resp.data
+        const respMedium = (await douyinImageApi.searchMedium(props.accountId || '', keyword)) as ApiResponse<MediumResp>
+        console.log('影视演绎搜索结果:', respMedium)
+        if (respMedium.code === 200) {
+          const raw = respMedium.data
           const mediumList = Array.isArray(raw?.search_list) ? raw.search_list
             : Array.isArray(raw?.data) ? raw.data
             : []
           console.log('影视演绎解析结果:', mediumList)
-          tagList.value = (mediumList || []).map(item => ({
-            id: item.medium_id || item.id,
-            name: item.medium_name || item.name,
+          tagList.value = (mediumList || []).map((item: MediumItem) => ({
+            id: item.medium_id || item.id || '',
+            name: item.medium_name || item.name || '',
             desc: item.abstract || item.desc || '',
             icon: item.poster?.url_list?.[0] || item.cover?.url_list?.[0] || item.icon || '',
             type: 'film',
             typeName: item.type_name || item.typeName || '',
             playCount: item.play_cnt || item.playCount || 0,
-            data: item
+            data: item as unknown as Record<string, unknown>
           }))
           console.log('影视解析结果:', tagList.value)
         }
