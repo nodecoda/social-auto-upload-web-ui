@@ -233,7 +233,7 @@ class XiaohongshuPlatform(BasePlatform):
         try:
             try:
                 await page.goto(_XHS_CREATOR_URL, wait_until="networkidle", timeout=30000)
-            except Exception:
+            except Exception:  # noqa: S110 -- 页面加载兜底,超时继续后续逻辑
                 pass
             return await _scrape_xhs_stats(page)
         except Exception as exc:
@@ -257,12 +257,12 @@ class XiaohongshuPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -615,7 +615,7 @@ async def _publish_single_video(
                     while browser.is_connected():
                         await asyncio.sleep(1)
                     logger.info("[发布调试] 检测到浏览器已关闭,流程结束")
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
             await context.close()
     finally:
@@ -773,7 +773,7 @@ async def _wait_for_page_ready(page, timeout: int = 120) -> bool:
     try:
         await page.screenshot(path="debug_page_not_ready.png")
         logger.info("[发布就绪] 已保存 debug_page_not_ready.png")
-    except Exception:
+    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
         pass
     return False
 
@@ -1139,7 +1139,7 @@ async def _set_thumbnail(page, thumbnail_path: str) -> None:
                     await cover_loc.hover()
                     await page.wait_for_timeout(500)
                     await page.locator("div.operator.pointer").first.click(force=True, timeout=5_000)
-                except Exception:
+                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                     pass
 
         if not modal:
@@ -1147,7 +1147,7 @@ async def _set_thumbnail(page, thumbnail_path: str) -> None:
             try:
                 await page.screenshot(path="debug_cover_modal_missing.png")
                 logger.info("[封面] 已保存 debug_cover_modal_missing.png")
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             return
 

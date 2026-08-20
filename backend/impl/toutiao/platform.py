@@ -138,7 +138,7 @@ class ToutiaoPlatform(BasePlatform):
                         if await user_panel.count():
                             logger.info("[登录] 检测到用户面板，登录成功!")
                             break
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                     await asyncio.sleep(1)
 
@@ -224,7 +224,7 @@ class ToutiaoPlatform(BasePlatform):
                         wait_until="domcontentloaded",
                         timeout=30000,
                     )
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(3)
                 # 抓 name/avatar(用原有 scraper)
@@ -355,12 +355,12 @@ class ToutiaoPlatform(BasePlatform):
                 logger.info("[打开创作中心] 创作中心已打开")
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -556,7 +556,7 @@ class ToutiaoPlatform(BasePlatform):
                             if current_progress and current_progress != last_progress:
                                 logger.info("[上传视频] %s", current_progress)
                                 last_progress = current_progress
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                     await asyncio.sleep(2)
 
@@ -624,7 +624,7 @@ class ToutiaoPlatform(BasePlatform):
                                     await desc_by_placeholder.fill(desc[:400])
                                     logger.info("[填写简介] 通过 placeholder 填写成功")
                                     desc_filled = True
-                            except Exception:
+                            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                                 pass
 
                         if not desc_filled:
@@ -927,7 +927,7 @@ class ToutiaoPlatform(BasePlatform):
                 if await dialog_ok_btn.count() > 0:
                     try:
                         await dialog_ok_btn.wait_for(state="visible", timeout=5000)
-                    except Exception:
+                    except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                         # 弹窗动画中可能 is_visible=False,继续 force click
                         pass
                     await dialog_ok_btn.click(force=True, timeout=5000)

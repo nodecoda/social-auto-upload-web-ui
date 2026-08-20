@@ -205,7 +205,7 @@ class DouyinPlatform(BasePlatform):
                         wait_until="domcontentloaded",
                         timeout=30000,
                     )
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
                 # 等用户卡片渲染(短超时)
                 try:
@@ -670,7 +670,7 @@ class DouyinPlatform(BasePlatform):
                         while browser.is_connected():
                             await asyncio.sleep(1)
                         logger.info("[发布调试] 检测到浏览器已关闭,流程结束")
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                     return
 
@@ -880,7 +880,7 @@ class DouyinPlatform(BasePlatform):
                         "[定时发布] 校验异常，输入框值: %s（期望含 %s）",
                         final_val, dt.strftime("%H:%M"),
                     )
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
         except Exception as exc:
             logger.error("[定时发布] 设置定时发布时间失败: %s", exc)
@@ -1060,7 +1060,7 @@ class DouyinPlatform(BasePlatform):
                         return True
                     except Exception as e:
                         logger.warning("[封面] 自动封面选择失败: %s", e)
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             pass
         return False
 
@@ -1620,7 +1620,7 @@ class DouyinPlatform(BasePlatform):
                 try:
                     t = await all_opts.nth(oi).text_content()
                     logger.info("[设置标签]   option[%s]: %s", oi, t.strip()[:50] if t else "(空)")
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
             try:
                 type_option = page.get_by_role("option", name=type_text)
@@ -1785,7 +1785,7 @@ class DouyinPlatform(BasePlatform):
                     try:
                         ot = await film_options.nth(oi).text_content()
                         logger.info("[设置标签]   影视option[%s]: %s", oi, (ot or '').strip()[:80])
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                 clicked = False
                 for i in range(count):

@@ -195,12 +195,12 @@ class AlipayPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -635,7 +635,7 @@ class AlipayPlatform(BasePlatform):
                         try:
                             data = await response.json()
                             upload_result["response"] = data
-                        except Exception:
+                        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                             pass
 
                 page.on("response", handle_upload_response)
@@ -695,7 +695,7 @@ class AlipayPlatform(BasePlatform):
                 finally:
                     try:
                         page.remove_listener("response", handle_upload_response)
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 文件/资源清理兜底,失败可忽略
                         pass
 
         logger.info(
@@ -726,7 +726,7 @@ class AlipayPlatform(BasePlatform):
                 if await title_input.is_visible():
                     logger.info("[上传图集] 表单已可交互(标题输入框可见)")
                     return
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(3)
         raise RuntimeError(
@@ -869,7 +869,7 @@ class AlipayPlatform(BasePlatform):
             logger.warning("[上传图集] 未找到音乐「%s」,跳过音乐设置", music_title)
             try:
                 await page.keyboard.press("Escape")
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
             return
 
@@ -883,7 +883,7 @@ class AlipayPlatform(BasePlatform):
             # 兜底:Esc 强关
             try:
                 await page.keyboard.press("Escape")
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
         await asyncio.sleep(0.5)
 
@@ -1128,7 +1128,7 @@ class AlipayPlatform(BasePlatform):
                     await page.locator(marked_sel).first.set_input_files(file_path)
                     logger.info("[上传视频] 已通过 patched input 提交视频")
                     return
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(0.5)
 
@@ -1166,7 +1166,7 @@ class AlipayPlatform(BasePlatform):
                     )
             except RuntimeError:
                 raise
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
             try:
@@ -1175,7 +1175,7 @@ class AlipayPlatform(BasePlatform):
                         "[上传视频] 标题输入框已可见,上传完成、表单可交互"
                     )
                     return
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
             # 进度旁证(每 60s 一次)
@@ -1185,7 +1185,7 @@ class AlipayPlatform(BasePlatform):
                     logger.info(
                         "[上传视频] 等待上传完成... (剩余 %ds)", remaining,
                     )
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
             await asyncio.sleep(5)
@@ -1321,7 +1321,7 @@ class AlipayPlatform(BasePlatform):
                 logger.warning("[上传视频] 添加话题 #%s 失败: %s", tag, e)
                 try:
                     await page.keyboard.press("Escape")
-                except Exception:
+                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                     pass
 
     # ------------------------------------------------------------------
@@ -1440,7 +1440,7 @@ class AlipayPlatform(BasePlatform):
             logger.warning("[上传视频] 封面上传所有策略均失败,跳过封面")
             try:
                 await page.keyboard.press("Escape")
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
             return
 
@@ -1588,7 +1588,7 @@ class AlipayPlatform(BasePlatform):
             )
             try:
                 await page.keyboard.press("Escape")
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
         await asyncio.sleep(0.5)
@@ -1693,7 +1693,7 @@ class AlipayPlatform(BasePlatform):
                 });
             }""")
             logger.info("[上传视频] 当前作者声明可选项: %s", options)
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             pass
 
     # ------------------------------------------------------------------
@@ -1754,7 +1754,7 @@ class AlipayPlatform(BasePlatform):
                             }));
                     }""")
                     logger.info("[上传视频] 当前页面所有可见 input: %s", all_inputs)
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
                 return
 
@@ -1839,7 +1839,7 @@ class AlipayPlatform(BasePlatform):
             logger.info("[上传视频] 点击 picker 确定失败(可能已关): %s", e)
             try:
                 await page.keyboard.press("Enter")
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
     # ------------------------------------------------------------------
@@ -1961,7 +1961,7 @@ class AlipayPlatform(BasePlatform):
                 ):
                     logger.info("[上传视频] 发布成功(URL 已跳转: %s)", current_url)
                     return
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
             # ---- 成功判据 2: 「发布成功」文案 ----
@@ -1969,7 +1969,7 @@ class AlipayPlatform(BasePlatform):
                 if await page.get_by_text("发布成功", exact=True).count() > 0:
                     logger.info("[上传视频] 发布成功(检测到「发布成功」文案)")
                     return
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
             await asyncio.sleep(2)

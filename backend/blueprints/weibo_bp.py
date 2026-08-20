@@ -202,10 +202,10 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
         finally:
             try:
                 await context.close()
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
     finally:
         try:
             await browser.close()
-        except Exception:
+        except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
             pass

@@ -290,7 +290,7 @@ async def wait_search_results(frame, timeout: float = 10):
             timeout=timeout * 1000,
             state="visible",
         )
-    except Exception:
+    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
         pass  # 兜底:超时也继续(让 scrape 抓当前状态)
     await sleep(0.3)
 
@@ -370,7 +370,7 @@ async def wait_page_change(frame, timeout: float = 10):
             timeout=timeout * 1000,
             state="visible",
         )
-    except Exception:
+    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
         pass
 
 
@@ -490,7 +490,7 @@ async def close_panel(frame):
         else:
             await _page_of(frame).keyboard.press("Escape")
         await sleep(0.5)
-    except Exception:
+    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
         pass
 
 
@@ -600,7 +600,7 @@ async def search_novels(frame, keyword: str) -> list[dict]:
             timeout=5_000,
             state="visible",
         )
-    except Exception:
+    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
         pass  # 兜底:超时也继续,让 scrape 抓当前
     await sleep(0.3)
 

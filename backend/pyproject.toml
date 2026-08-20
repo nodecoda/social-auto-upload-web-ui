@@ -14,7 +14,6 @@ ignore = [
     "G004",
     # 盲 except 与吞异常 —— 治理批 B2/B4
     "BLE001",   # 881 处盲 except —— 治理批 B4
-    "S110",     # 278 处吞异常 —— 治理批 B2
     # 时区 —— 治理批 B3
     "DTZ005",   #  36 处 datetime.now 无时区
     "DTZ007",   #   7 处 strptime 无时区

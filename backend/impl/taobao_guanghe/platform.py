@@ -221,7 +221,7 @@ async def _legacy_link_by_title(frame, type_: str, items: list) -> None:
                 if not is_active:
                     await tab.click()
                     await asyncio.sleep(1.5)
-        except Exception:
+        except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
             pass
 
     selected = 0
@@ -291,7 +291,7 @@ async def _legacy_link_by_title(frame, type_: str, items: list) -> None:
         if await confirm_btn.count() > 0 and await confirm_btn.is_visible():
             await confirm_btn.click()
             await asyncio.sleep(1.5)
-    except Exception:
+    except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
         pass
 
 
@@ -347,11 +347,11 @@ class TaobaoGuanghePlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             if success:
@@ -374,7 +374,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                     await page.wait_for_load_state(
                         "domcontentloaded", timeout=20000
                     )
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(3)
                 current_url = page.url or ""
@@ -389,11 +389,11 @@ class TaobaoGuanghePlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             await browser.close()
@@ -423,7 +423,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                 await page.goto(_GUANGHE_HOME_URL, wait_until="domcontentloaded", timeout=30000)
                 try:
                     await page.wait_for_load_state("domcontentloaded", timeout=20000)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 await asyncio.sleep(3)
 
@@ -446,11 +446,11 @@ class TaobaoGuanghePlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             await browser.close()
@@ -777,7 +777,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                         path=str(log_dir / "guanghe_before_submit.png"),
                         full_page=True,
                     )
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
 
                 # 9. 点击发布按钮（按钮在 iframe 内，但发布成功后主 page 跳转）
@@ -790,13 +790,13 @@ class TaobaoGuanghePlatform(BasePlatform):
                             path=str(log_dir / "guanghe_dry_run.png"),
                             full_page=True,
                         )
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                     # 阻塞在这里,直到用户手动关闭浏览器,方便反复查看
                     try:
                         logger.info("[上传视频] 🐛 等待浏览器关闭(请手动关闭)...")
                         await page.wait_for_event("close", timeout=0)
-                    except Exception:
+                    except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                         pass
                     upload_success = True
                 else:
@@ -808,7 +808,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                                 path=str(log_dir / "guanghe_after_submit.png"),
                                 full_page=True,
                             )
-                        except Exception:
+                        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                             pass
                     else:
                         logger.info("[上传视频] ✗ 发布失败")
@@ -817,7 +817,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                                 path=str(log_dir / "guanghe_submit_failed.png"),
                                 full_page=True,
                             )
-                        except Exception:
+                        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                             pass
 
                 upload_success = True
@@ -826,16 +826,16 @@ class TaobaoGuanghePlatform(BasePlatform):
                     try:
                         await context.storage_state(path=account_file)
                         logger.info("[上传视频] cookie 已更新")
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                     try:
                         await context.close()
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                         pass
         finally:
             try:
                 await self.close_browser(browser, is_close_by_code=True)
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
             logger.info("[上传视频] 浏览器已关闭")
 
@@ -953,7 +953,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                 try:
                     await menu_item.hover()
                     await asyncio.sleep(0.2)
-                except Exception:
+                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                     pass
                 await menu_item.click()
                 clicked = True
@@ -970,7 +970,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                 try:
                     await video_item.hover()
                     await asyncio.sleep(0.2)
-                except Exception:
+                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                     pass
                 await video_item.click()
                 clicked = True
@@ -1036,7 +1036,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                     np = new_pages.pop(0)
                     try:
                         await np.wait_for_load_state("domcontentloaded", timeout=15000)
-                    except Exception:
+                    except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                         pass
                     np_url = np.url or ""
                     logger.info(f"[进入发布页] 检测到新 tab: {np_url}")
@@ -1092,7 +1092,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                     if inp_count > 0:
                         logger.info(f"[进入发布页] ✓ 找到发布页 frame: {frame_url}")
                         return frame
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
             await asyncio.sleep(1)
         logger.info("[进入发布页] 未找到含上传元素的 iframe，尝试主 frame")
@@ -1359,7 +1359,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                 await asyncio.sleep(0.5)
                 await page.keyboard.press("Escape")
                 await asyncio.sleep(0.5)
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
     @staticmethod
@@ -1573,7 +1573,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                 if await ymd_input.count() > 0:
                     await ymd_input.click()
                     await asyncio.sleep(0.5)
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
             # 直接用 JS 把日期填入并触发选择（日历 cell 用 title 匹配）
@@ -1711,12 +1711,12 @@ class TaobaoGuanghePlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)

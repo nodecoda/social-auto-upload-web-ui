@@ -344,7 +344,7 @@ async def _fetch_activities_via_browser(cookie_file: str, keyword: str) -> dict:
                 try:
                     if await creator_el.count() > 0:
                         creator_name = (await creator_el.inner_text()).strip().rstrip("· ").strip()
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 # video号 DOM 里没看到 activity_id 属性,后端用 f"{name}|{creator_name}" 生成稳定 key
                 activity_id = f"{name}|{creator_name}"
@@ -452,7 +452,7 @@ async def _fetch_locations_via_browser(cookie_file: str, keyword: str) -> dict:
                 try:
                     if await desc_el.count() > 0:
                         desc = (await desc_el.inner_text()).strip()
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 items.append({"name": name, "desc": desc})
 

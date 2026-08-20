@@ -121,11 +121,11 @@ class JdPlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             if success:
@@ -158,11 +158,11 @@ class JdPlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await ctx.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             await browser.close()
@@ -197,11 +197,11 @@ class JdPlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await ctx.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             await browser.close()
@@ -221,12 +221,12 @@ class JdPlatform(BasePlatform):
                 page.goto(JD_CREATOR_CENTER_URL, wait_until="domcontentloaded")
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -407,7 +407,7 @@ class JdPlatform(BasePlatform):
                         if tmp_cover is not None:
                             try:
                                 tmp_cover.unlink(missing_ok=True)
-                            except Exception:
+                            except Exception:  # noqa: S110 -- 文件/资源清理兜底,失败可忽略
                                 pass
 
                 # 3. 标题
@@ -432,7 +432,7 @@ class JdPlatform(BasePlatform):
                     await page.screenshot(
                         path=str(log_dir / "jd_before_submit.png"), full_page=True,
                     )
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
 
                 # 7. dry-run 或 点击发布
@@ -441,12 +441,12 @@ class JdPlatform(BasePlatform):
                     logger.info("[上传视频] 🐛 当前状态: 标题/封面/关联挂件/声明/定时 已填好")
                     try:
                         await page.screenshot(path=str(log_dir / "jd_dry_run.png"), full_page=True)
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 调试截图兜底,失败可忽略
                         pass
                     try:
                         logger.info("[上传视频] 🐛 等待浏览器关闭(请手动关闭)...")
                         await page.wait_for_event("close", timeout=0)
-                    except Exception:
+                    except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                         pass
                 else:
                     await self._click_publish()
@@ -454,12 +454,12 @@ class JdPlatform(BasePlatform):
             finally:
                 try:
                     await context.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             try:
                 await self.close_browser(browser, is_close_by_code=True)
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
             self.browser = None
             self.page = None

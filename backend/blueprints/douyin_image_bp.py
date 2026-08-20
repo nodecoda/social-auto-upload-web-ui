@@ -360,7 +360,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
                     if await publish_btn.is_visible():
                         await publish_btn.click()
                         await page.wait_for_timeout(3000)
-                except Exception:
+                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                     pass
 
             # 4. 点击"选择音乐"按钮
@@ -394,7 +394,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
                         await music_text.click()
                         music_clicked = True
                         logger.info("通过文字定位点击选择音乐成功")
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
 
             if not music_clicked:
@@ -464,7 +464,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
         try:
             if test_image.exists():
                 test_image.unlink()
-        except Exception:
+        except Exception:  # noqa: S110 -- 文件/资源清理兜底,失败可忽略
             pass
 
 

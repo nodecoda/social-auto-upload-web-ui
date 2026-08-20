@@ -165,11 +165,11 @@ async def close_browser(browser, is_close_by_code: bool = True) -> None:
     """
     try:
         browser._is_close_by_code = is_close_by_code
-    except Exception:
+    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
         pass
     try:
         await browser.close()
-    except Exception:
+    except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
         pass
 
 

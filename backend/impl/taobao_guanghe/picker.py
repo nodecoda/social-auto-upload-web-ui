@@ -136,7 +136,7 @@ class GuanghePickerSession:
         try:
             await self.frame.page.keyboard.press("Escape")
             await asyncio.sleep(0.8)
-        except Exception:
+        except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
             pass
 
         await self._open_picker_panel(type_)
@@ -208,7 +208,7 @@ class GuanghePickerSession:
                     ).count()
                     if inp_count > 0:
                         return frame
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             await asyncio.sleep(1)
         return page.main_frame
@@ -252,7 +252,7 @@ class GuanghePickerSession:
                 continue
             try:
                 await obj.close()
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
             setattr(self, attr, None)
         self.page = None

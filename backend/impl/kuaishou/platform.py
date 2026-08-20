@@ -101,7 +101,7 @@ class KuaishouPlatform(BasePlatform):
                 if await qr_login_tab.count() and await qr_login_tab.is_visible():
                     await qr_login_tab.click()
                     await asyncio.sleep(1)
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
             # Extract QR code image
@@ -155,13 +155,13 @@ class KuaishouPlatform(BasePlatform):
             try:
                 # 释放 context 资源
                 await context.close()
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
                 try:
                     await browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -198,11 +198,11 @@ class KuaishouPlatform(BasePlatform):
         finally:
             try:
                 await context.close()
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
             try:
                 await browser.close()
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
 
     # ------------------------------------------------------------------
@@ -236,7 +236,7 @@ class KuaishouPlatform(BasePlatform):
         finally:
             try:
                 await browser.close()
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
 
 
@@ -277,7 +277,7 @@ class KuaishouPlatform(BasePlatform):
                 if await trigger.count() > 0:
                     try:
                         await trigger.click()
-                    except Exception:
+                    except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                         pass
 
                 try:
@@ -316,7 +316,7 @@ class KuaishouPlatform(BasePlatform):
                 # 关闭 popover(点击页面其他位置)
                 try:
                     await page.mouse.click(10, 10)
-                except Exception:
+                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                     pass
             except Exception as exc:
                 logger.info(f"[kuaishou stats] 抓取失败: {exc}")
@@ -335,7 +335,7 @@ class KuaishouPlatform(BasePlatform):
                 if not page.url.startswith(_KS_UPLOAD_URL):
                     await page.goto(_KS_UPLOAD_URL, timeout=15000)
                     await page.wait_for_load_state("domcontentloaded")
-            except Exception:
+            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                 pass
             return await self._scrape_kuaishou_stats(page)
         except Exception as exc:
@@ -359,12 +359,12 @@ class KuaishouPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -767,7 +767,7 @@ class KuaishouPlatform(BasePlatform):
             try:
                 if await know_btn.count() and await know_btn.is_visible():
                     await know_btn.click()
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
             # ------ Dismiss guide overlay ------
@@ -804,7 +804,7 @@ class KuaishouPlatform(BasePlatform):
                         await page.locator(
                             'div.progress-div [class^="upload-btn-input"]'
                         ).set_input_files(video_path)
-                except Exception:
+                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                     pass
                 await asyncio.sleep(2)
                 retry += 1
@@ -859,16 +859,16 @@ class KuaishouPlatform(BasePlatform):
                 try:
                     await context.storage_state(path=cookie_path)
                     logger.info("[发布] Cookie状态已更新")
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(2)
             try:
                 await context.close()
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
             try:
                 await self.close_browser(browser, is_close_by_code=True)
-            except Exception:
+            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                 pass
 
     # ------------------------------------------------------------------
@@ -889,7 +889,7 @@ class KuaishouPlatform(BasePlatform):
                     await close_btn.click(force=True)
                     await asyncio.sleep(0.5)
                     return
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
         # Old DOM: react-joyride
@@ -903,7 +903,7 @@ class KuaishouPlatform(BasePlatform):
                 )
                 await close_btn.click(force=True)
                 await joyride.wait_for(state="hidden", timeout=5000)
-            except Exception:
+            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                 pass
 
     # ------------------------------------------------------------------
@@ -1092,7 +1092,7 @@ class KuaishouPlatform(BasePlatform):
             # 8. Wait for modal to close
             try:
                 await modal.wait_for(state="hidden", timeout=30000)
-            except Exception:
+            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                 pass
 
             logger.info("[封面] 封面设置成功")
@@ -1134,7 +1134,7 @@ class KuaishouPlatform(BasePlatform):
 
             try:
                 await modal.wait_for(state="hidden", timeout=30000)
-            except Exception:
+            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                 pass
             logger.info("[封面] 图集封面设置成功")
         except Exception as exc:
@@ -1293,7 +1293,7 @@ class KuaishouPlatform(BasePlatform):
                 # 点击空白处收起下拉框，避免遮挡后续操作
                 try:
                     await page.keyboard.press("Escape")
-                except Exception:
+                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                     pass
                 return
             await option.click()

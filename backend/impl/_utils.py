@@ -232,7 +232,7 @@ async def scrape_user_profile(page):
     try:
         await page.wait_for_load_state('domcontentloaded', timeout=5000)
         await asyncio.sleep(3)
-    except Exception:
+    except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
         pass
 
     try:
@@ -481,7 +481,7 @@ async def scrape_alipay_profile(page):
                 if found:
                     info_ready = True
                     break
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(0.5)
 
@@ -874,11 +874,11 @@ async def scrape_zhihu_profile(page):
         if navigated:
             try:
                 await page.wait_for_url("**/people/**", timeout=15000)
-            except Exception:
+            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                 pass
         try:
             await page.wait_for_load_state("domcontentloaded", timeout=10000)
-        except Exception:
+        except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
             pass
 
         # 4. 抓取昵称和头像
@@ -907,7 +907,7 @@ async def scrape_zhihu_profile(page):
                     if cand and cand != "知乎":
                         name = cand
                         logger.info(f"[zhihu] 从 title 兜底昵称: {name!r}")
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
         try:
@@ -917,7 +917,7 @@ async def scrape_zhihu_profile(page):
             ).first
             try:
                 await avatar_el.wait_for(state="attached", timeout=8000)
-            except Exception:
+            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                 pass
             if await avatar_el.count() > 0:
                 avatar = (await avatar_el.get_attribute("src") or "").strip()
@@ -951,7 +951,7 @@ async def scrape_csdn_profile(page):
     try:
         try:
             await page.wait_for_load_state("domcontentloaded", timeout=10000)
-        except Exception:
+        except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
             pass
         try:
             await page.locator("div.user-info-box").first.wait_for(
@@ -1439,7 +1439,7 @@ async def clear_input(page, element=None):
             if tag in ("input", "textarea"):
                 await element.fill("")
                 return
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             pass
         # contenteditable 或其他:点击聚焦 + 全选 + 删除
         await element.click()

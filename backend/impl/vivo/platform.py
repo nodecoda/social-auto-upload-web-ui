@@ -124,7 +124,7 @@ class VivoPlatform(BasePlatform):
             finally:
                 try:
                     await context.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
         except Exception as exc:
             logger.error("[登录] 异常: %s", exc)
@@ -139,7 +139,7 @@ class VivoPlatform(BasePlatform):
             if success:
                 try:
                     await browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -197,7 +197,7 @@ class VivoPlatform(BasePlatform):
                         wait_until="domcontentloaded",
                         timeout=30000,
                     )
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(3)
                 name, avatar, fans, likes, follows = await scrape_vivo_profile(page)
@@ -228,7 +228,7 @@ class VivoPlatform(BasePlatform):
         try:
             try:
                 await page.goto(_VIVO_HOME_URL, wait_until="domcontentloaded", timeout=30000)
-            except Exception:
+            except Exception:  # noqa: S110 -- 页面加载兜底,超时继续后续逻辑
                 pass
             await asyncio.sleep(3)
             _name, _avatar, fans, likes, follows = await scrape_vivo_profile(page)
@@ -259,12 +259,12 @@ class VivoPlatform(BasePlatform):
                 logger.info("[打开创作中心] 创作中心已打开")
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -447,7 +447,7 @@ class VivoPlatform(BasePlatform):
                             if current_progress and current_progress != last_progress:
                                 logger.info("[上传视频] 进度: %s", current_progress)
                                 last_progress = current_progress
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                     await asyncio.sleep(2)
 

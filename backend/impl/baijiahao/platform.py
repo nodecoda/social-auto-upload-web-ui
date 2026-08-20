@@ -314,7 +314,7 @@ class BaijiahaoPlatform(BasePlatform):
         try:
             try:
                 await page.goto("https://baijiahao.baidu.com/", wait_until="domcontentloaded", timeout=30000)
-            except Exception:
+            except Exception:  # noqa: S110 -- 页面加载兜底,超时继续后续逻辑
                 pass
             return await self._scrape_baijiahao_stats(page)
         except Exception as exc:
@@ -338,12 +338,12 @@ class BaijiahaoPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)

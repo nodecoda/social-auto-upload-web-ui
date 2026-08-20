@@ -56,7 +56,7 @@ def _worker() -> None:
         task_id, job = _queue.get()
         try:
             job(task_id)
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             # job 自身应兜底所有异常；这里只保证 worker 永不退出
             pass
         finally:

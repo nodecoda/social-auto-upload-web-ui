@@ -197,12 +197,12 @@ class WeiboPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -233,7 +233,7 @@ class WeiboPlatform(BasePlatform):
                 await page.goto("https://weibo.com/", wait_until="domcontentloaded", timeout=20000)
                 try:
                     await page.wait_for_load_state("networkidle", timeout=8000)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 await asyncio.sleep(1)
 
@@ -249,7 +249,7 @@ class WeiboPlatform(BasePlatform):
 
                 try:
                     await page.wait_for_load_state("domcontentloaded", timeout=10000)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 await asyncio.sleep(1)
 
@@ -717,7 +717,7 @@ class WeiboPlatform(BasePlatform):
                 if disabled is None:
                     logger.info("[发布] 图片已上传,发送按钮已启用")
                     return
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(2)
 
@@ -782,7 +782,7 @@ class WeiboPlatform(BasePlatform):
                     logger.info("[发布] 图集发布成功(textarea 空=%s, send 禁用=%s)",
                                 textarea_empty, send_disabled)
                     return
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(2)
 
@@ -1252,7 +1252,7 @@ class WeiboPlatform(BasePlatform):
                             "视为上传完成、表单可交互(转码阶段 spinner 暂未消失)"
                         )
                     return
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
             # 2. 上传失败检测
@@ -1263,7 +1263,7 @@ class WeiboPlatform(BasePlatform):
                     )
             except RuntimeError:
                 raise
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
             # 3. 进度旁证(每 30s 一次,避免刷屏)
@@ -1276,7 +1276,7 @@ class WeiboPlatform(BasePlatform):
                         "上传中=%d (剩余 %ds)",
                         uploading_count, remaining,
                     )
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
 
             await asyncio.sleep(5)

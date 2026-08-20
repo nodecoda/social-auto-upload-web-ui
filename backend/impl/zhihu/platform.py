@@ -115,11 +115,11 @@ class ZhihuPlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             if success:
@@ -143,7 +143,7 @@ class ZhihuPlatform(BasePlatform):
                         "domcontentloaded", timeout=10000
                     )
                     await asyncio.sleep(2)
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
                 profile_entry = page.locator(".AppHeader-profileEntry").first
                 if await profile_entry.count() > 0:
@@ -386,12 +386,12 @@ class ZhihuPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -570,7 +570,7 @@ class ZhihuPlatform(BasePlatform):
                     await page.wait_for_load_state(
                         "domcontentloaded", timeout=30000
                     )
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
 
                 # cookie 失效会被重定向到登录页
@@ -617,7 +617,7 @@ class ZhihuPlatform(BasePlatform):
                         path=str(log_dir / "zhihu_before_submit.png"),
                         full_page=True,
                     )
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
 
                 # 10. 点击发布按钮（监听 /api/v4/content/publish 响应判断结果）
@@ -629,7 +629,7 @@ class ZhihuPlatform(BasePlatform):
                             path=str(log_dir / "zhihu_after_submit.png"),
                             full_page=True,
                         )
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                 else:
                     logger.info(f"[上传视频] ✗ 发布失败: {submit_msg}")
@@ -639,7 +639,7 @@ class ZhihuPlatform(BasePlatform):
                             path=str(log_dir / "zhihu_submit_failed.png"),
                             full_page=True,
                         )
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
 
                 # upload_success 跟踪「浏览器流程跑完」（用于决定是否更新 cookie），
@@ -650,18 +650,18 @@ class ZhihuPlatform(BasePlatform):
                     try:
                         await context.storage_state(path=account_file)
                         logger.info("[上传视频] cookie 已更新")
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                         pass
                 if not DEBUG_DRY_RUN_SUBMIT:
                     try:
                         await context.close()
-                    except Exception:
+                    except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                         pass
         finally:
             if not DEBUG_DRY_RUN_SUBMIT:
                 try:
                     await self.close_browser(browser, is_close_by_code=True)
-                except Exception:
+                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
                     pass
                 logger.info("[上传视频] 浏览器已关闭")
             else:
@@ -687,7 +687,7 @@ class ZhihuPlatform(BasePlatform):
             await page.screenshot(
                 path=str(log_dir / "zhihu_upload_before.png"), full_page=True
             )
-        except Exception:
+        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
             pass
 
         try:
@@ -769,7 +769,7 @@ class ZhihuPlatform(BasePlatform):
                     path=str(log_dir / "zhihu_upload_no_input.png"),
                     full_page=True,
                 )
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             raise RuntimeError(
                 "未找到视频上传 input，请查看 logs/zhihu_upload_before.png"
@@ -920,7 +920,7 @@ class ZhihuPlatform(BasePlatform):
                         preview_found = True
                         logger.info("[设置封面] ✓ 检测到「重新上传」按钮，封面已上传")
                         break
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(1)
 
@@ -968,7 +968,7 @@ class ZhihuPlatform(BasePlatform):
                         modal_closed = True
                         logger.info("[设置封面] ✓ 弹窗已关闭")
                         break
-                except Exception:
+                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(1)
             if not modal_closed:
@@ -976,7 +976,7 @@ class ZhihuPlatform(BasePlatform):
                 try:
                     await page.keyboard.press("Escape")
                     await asyncio.sleep(1)
-                except Exception:
+                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                     pass
 
         except Exception as exc:
@@ -986,13 +986,13 @@ class ZhihuPlatform(BasePlatform):
                     path=str(log_dir / "zhihu_cover_error.png"),
                     full_page=True,
                 )
-            except Exception:
+            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
                 pass
             # 关掉可能仍打开的弹窗，避免遮挡后续步骤
             try:
                 await page.keyboard.press("Escape")
                 await asyncio.sleep(0.5)
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
     @staticmethod
@@ -1122,7 +1122,7 @@ class ZhihuPlatform(BasePlatform):
             logger.info(f"[视频标记] 设置失败（非致命）: {exc}")
             try:
                 await page.keyboard.press("Escape")
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
     @staticmethod
@@ -1211,7 +1211,7 @@ class ZhihuPlatform(BasePlatform):
             try:
                 await page.keyboard.press("Escape")
                 await asyncio.sleep(0.3)
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
 
     @staticmethod
@@ -1245,7 +1245,7 @@ class ZhihuPlatform(BasePlatform):
                 ).first
                 if await cb.count() > 0:
                     is_on = await cb.is_checked()
-            except Exception:
+            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                 pass
             if not is_on:
                 await switch.click()
@@ -1268,7 +1268,7 @@ class ZhihuPlatform(BasePlatform):
                     tool = page.locator('.Calendar-topToolDate').first
                     if await tool.count() > 0:
                         tool_text = (await tool.text_content() or "").strip()
-                except Exception:
+                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
                     pass
 
                 if str(target_year) in tool_text and str(target_month) in tool_text:
@@ -1284,7 +1284,7 @@ class ZhihuPlatform(BasePlatform):
                             await page.locator('.Calendar-topToolButton--prevMonth').first.click()
                         await asyncio.sleep(0.5)
                         continue
-                    except Exception:
+                    except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                         pass
                 await page.locator('.Calendar-topToolButton--nextMonth').first.click()
                 await asyncio.sleep(0.5)
@@ -1352,7 +1352,7 @@ class ZhihuPlatform(BasePlatform):
             # 关闭可能仍打开的下拉
             try:
                 await page.keyboard.press("Escape")
-            except Exception:
+            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
                 pass
             await asyncio.sleep(0.5)
 
