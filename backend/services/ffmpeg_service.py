@@ -91,7 +91,7 @@ FFPROBE: str | None = None
 
 def _ensure_binaries():
     """Resolve ffmpeg/ffprobe paths on first use."""
-    global FFMPEG, FFPROBE
+    global FFMPEG, FFPROBE  # noqa: PLW0603 -- 惰性二进制路径缓存,只读探测幂等
     if FFMPEG is None:
         try:
             FFMPEG = _find_ffmpeg()

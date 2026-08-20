@@ -62,7 +62,7 @@ _tables_ensured = False
 
 def _ensure_tables(conn):
     """确保 drafts 表存在（兼容旧版本数据库升级）。"""
-    global _tables_ensured
+    global _tables_ensured  # noqa: PLW0603 -- 幂等 DDL 一次性标志(IF NOT EXISTS + 列存在兜底)
     if _tables_ensured:
         return
     try:
