@@ -12,8 +12,9 @@ import json
 import platform as _platform
 import sqlite3
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from conf import BASE_DIR
 from util._logger import get_channel_logger
@@ -1199,9 +1200,12 @@ def parse_schedule_time(schedule_time_str, total_files, enableTimer,
                 "%Y-%m-%d %H:%M",
             ):
                 try:
-                    dt = datetime.strptime(raw_clean, fmt)
+                    # UTC 输入标注 UTC 再转东八;本地输入(东八)直接标注
+                    dt = datetime.strptime(raw_clean, fmt).replace(
+                        tzinfo=UTC if is_utc else ZoneInfo("Asia/Shanghai")
+                    )
                     if is_utc:
-                        dt = dt + timedelta(hours=8)
+                        dt = dt.astimezone(ZoneInfo("Asia/Shanghai"))
                     logger.info(f"[schedule] using user-specified time: {dt}")
                     return [dt] * total_files
                 except ValueError:

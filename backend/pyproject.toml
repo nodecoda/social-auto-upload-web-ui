@@ -14,10 +14,6 @@ ignore = [
     "G004",
     # 盲 except 与吞异常 —— 治理批 B2/B4
     "BLE001",   # 881 处盲 except —— 治理批 B4
-    # 时区 —— 治理批 B3
-    "DTZ005",   #  36 处 datetime.now 无时区
-    "DTZ007",   #   7 处 strptime 无时区
-    "DTZ011",   #   5 处 date.today
     # 风格类零散项(低优先,随治理顺手修)
     "E501",     # 159 处超行宽(存量,不阻断)
     "SIM105",   # 178 处可用 contextlib.suppress(风格)

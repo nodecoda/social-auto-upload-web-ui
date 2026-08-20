@@ -5,6 +5,7 @@ Settings reader — all settings stored in SQLite `settings` table.
 import json
 import sqlite3
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from conf import BASE_DIR
 
@@ -38,7 +39,7 @@ def write_setting(key: str, value):
     conn = _db_conn()
     conn.execute(
         "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)",
-        (key, json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else str(value), datetime.now().isoformat()),
+        (key, json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else str(value), datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()),
     )
     conn.commit()
     conn.close()

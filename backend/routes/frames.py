@@ -201,7 +201,8 @@ def clear_cache():
         logs_dir = os.path.join(str(BASE_DIR), 'logs')
         if os.path.isdir(logs_dir):
             from datetime import datetime, timedelta
-            cutoff = datetime.now() - timedelta(days=days)
+            from zoneinfo import ZoneInfo
+            cutoff = datetime.now(ZoneInfo("Asia/Shanghai")) - timedelta(days=days)
             cleared_count = 0
             for item in os.listdir(logs_dir):
                 item_path = os.path.join(logs_dir, item)
@@ -209,7 +210,7 @@ def clear_cache():
                     try:
                         date_part = item.split('-')
                         if len(date_part) == 3:
-                            item_date = datetime.strptime(item, "%Y-%m-%d")
+                            item_date = datetime.strptime(item, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Shanghai"))
                             if item_date < cutoff:
                                 file_count = sum(len(files) for _, _, files in os.walk(item_path))
                                 shutil.rmtree(item_path)
@@ -280,13 +281,14 @@ def system_info():
     logs_count = 0
     logs_old_count = 0
     from datetime import datetime, timedelta
-    cutoff = datetime.now() - timedelta(days=7)
+    from zoneinfo import ZoneInfo
+    cutoff = datetime.now(ZoneInfo("Asia/Shanghai")) - timedelta(days=7)
     if os.path.isdir(logs_dir):
         for item in os.listdir(logs_dir):
             item_path = os.path.join(logs_dir, item)
             if os.path.isdir(item_path):
                 try:
-                    item_date = datetime.strptime(item, "%Y-%m-%d")
+                    item_date = datetime.strptime(item, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Shanghai"))
                     is_old = item_date < cutoff
                 except ValueError:
                     is_old = False

@@ -474,7 +474,8 @@ async def _fill_shoot_date_in_dialog(dialog, shoot_date: str) -> None:
 
     try:
         from datetime import datetime
-        dt = datetime.strptime(shoot_date, "%Y-%m-%d")
+        from zoneinfo import ZoneInfo
+        dt = datetime.strptime(shoot_date, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Shanghai"))
     except ValueError:
         logger.warning("[视频标注] 拍摄时间格式非法(需 YYYY-MM-DD): %s, 跳过", shoot_date)
         return

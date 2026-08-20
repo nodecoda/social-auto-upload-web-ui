@@ -17,6 +17,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
+from zoneinfo import ZoneInfo
 
 from util._logger import bind_account_name, get_channel_logger
 
@@ -655,7 +656,7 @@ class YoutubePlatform(BasePlatform):
             if isinstance(publish_date, datetime):
                 dt = publish_date
             else:
-                dt = datetime.fromtimestamp(int(publish_date))
+                dt = datetime.fromtimestamp(int(publish_date), tz=ZoneInfo("Asia/Shanghai"))
             date_str = f"{dt.year}年{dt.month}月{dt.day}日"
             time_str = f"{dt.hour:02d}:{dt.minute:02d}"
 

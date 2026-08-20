@@ -13,6 +13,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
@@ -72,7 +73,7 @@ class PublishTask:
     max_retries: int = 3
     error_message: str = ""
     publish_url: str = ""
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat())
     started_at: str | None = None
     finished_at: str | None = None
 
@@ -192,7 +193,7 @@ class TaskQueue:
         while True:
             task = await self.queue.get()
             task.status = TaskStatus.RUNNING
-            task.started_at = datetime.now().isoformat()
+            task.started_at = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
             self.running[task.id] = task
             self._update_db(task)
             self._notify_status(task)
@@ -209,7 +210,7 @@ class TaskQueue:
                 task.error_message = str(e)
 
             finally:
-                task.finished_at = datetime.now().isoformat()
+                task.finished_at = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
                 if task.id in self.running:
                     del self.running[task.id]
                 self.completed.append(task)
@@ -417,7 +418,7 @@ class TaskQueue:
                 ).fetchone()
                 total, succ, fail, in_flight = counts[0], counts[1] or 0, counts[2] or 0, counts[3] or 0
                 bs = aggregate_batch_status(succ=succ, fail=fail, in_flight=in_flight, total=total)
-                now = datetime.now().isoformat()
+                now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
                 conn.execute(
                     """UPDATE publish_batches
                        SET status=?, success_count=?, failed_count=?, account_count=?,

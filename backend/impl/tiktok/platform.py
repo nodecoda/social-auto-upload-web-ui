@@ -11,6 +11,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
+from zoneinfo import ZoneInfo
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -819,7 +820,7 @@ class TiktokPlatform(BasePlatform):
         if current_month is None:
             # Fallback — try English parse, else default to current
             try:
-                current_month = datetime.strptime(current_month_text, "%B").month
+                current_month = datetime.strptime(current_month_text, "%B").replace(tzinfo=ZoneInfo("Asia/Shanghai")).month
             except ValueError:
                 logger.info(f"[定时发布] Unknown month title: {current_month_text}")
                 current_month = publish_date.month

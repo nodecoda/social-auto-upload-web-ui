@@ -23,6 +23,7 @@ import threading
 import uuid
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, request
 
@@ -136,8 +137,8 @@ def init_upload():
             chunk_size, total_chunks, status, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, 'uploading', ?, ?)""",
         (upload_id, filename, file_size, mime_type, file_type,
-         chunk_size, total_chunks, datetime.now().isoformat(),
-         datetime.now().isoformat()),
+         chunk_size, total_chunks, datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(),
+         datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()),
     )
     conn.commit()
     conn.close()
@@ -228,7 +229,7 @@ def upload_chunk():
     uploaded = _count_uploaded_chunks(upload_id)
     conn.execute(
         "UPDATE upload_sessions SET uploaded_chunks=?, updated_at=? WHERE upload_id=?",
-        (uploaded, datetime.now().isoformat(), upload_id),
+        (uploaded, datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), upload_id),
     )
     conn.commit()
     conn.close()
@@ -280,7 +281,7 @@ def merge_chunks():
     # 创建最终文件
     material_id = str(uuid.uuid4())
     ext = os.path.splitext(session["original_filename"])[1].lower()
-    now = datetime.now()
+    now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None)
     relative_path = f"materials/{now.strftime('%Y/%m/%d')}/{material_id}{ext}"
     final_abs_path = BASE_DIR / relative_path
     final_abs_path.parent.mkdir(parents=True, exist_ok=True)
@@ -296,7 +297,7 @@ def merge_chunks():
         final_abs_path.unlink(missing_ok=True)
         conn.execute(
             "UPDATE upload_sessions SET status='failed', error_message=?, updated_at=? WHERE upload_id=?",
-            (str(e), datetime.now().isoformat(), upload_id),
+            (str(e), datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), upload_id),
         )
         conn.commit()
         conn.close()
@@ -309,7 +310,7 @@ def merge_chunks():
         conn.execute(
             "UPDATE upload_sessions SET status='failed', error_message=?, updated_at=? WHERE upload_id=?",
             (f"合并后大小 {final_size} 与预期 {session['file_size']} 不符",
-             datetime.now().isoformat(), upload_id),
+             datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), upload_id),
         )
         conn.commit()
         conn.close()
@@ -329,7 +330,7 @@ def merge_chunks():
     )
     conn.execute(
         "UPDATE upload_sessions SET status='completed', material_id=?, updated_at=? WHERE upload_id=?",
-        (material_id, datetime.now().isoformat(), upload_id),
+        (material_id, datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), upload_id),
     )
     conn.commit()
     conn.close()
@@ -435,7 +436,7 @@ def cancel_upload():
 
     conn.execute(
         "UPDATE upload_sessions SET status='cancelled', updated_at=? WHERE upload_id=?",
-        (datetime.now().isoformat(), upload_id),
+        (datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), upload_id),
     )
     conn.commit()
     conn.close()
