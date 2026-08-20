@@ -233,7 +233,7 @@ function onFileChange(file: UploadFile) {
       cancelling: false,     // 正在取消中
       _ref: file,  // 保留 el-upload 的 file 引用，便于移除
     }
-    if (props.maxSize && file.size > props.maxSize * 1024 * 1024) {
+    if (props.maxSize && (file.size ?? 0) > props.maxSize * 1024 * 1024) {
       item.status = 'failed'
       item.error = `超过 ${props.maxSize} MB 限制`
       ElMessage.warning(`${file.name} 超过 ${props.maxSize} MB`)

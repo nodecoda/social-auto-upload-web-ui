@@ -309,9 +309,7 @@ function computeChannelsSummary(items: HistoryDetailItem[]): ChannelGroup[] {
   for (const it of items || []) {
     const key = it.platform
     if (!groups[key]) {
-      const cfg = getPlatformByKey(
-        platformList.find(p => p.name === key)?.key
-      )
+      const cfg = getPlatformByKey(platformList.find(p => p.name === key)?.key ?? '')
       // 兜底用 undefined 替代原 null:二者均 falsy,模板 v-if="ch.logo" 行为一致,
       // 同时与 ChannelSummaryItem.logo?: string 类型兼容
       groups[key] = { platform: key, name: it.platform, count: 0, logo: cfg?.logo || undefined }

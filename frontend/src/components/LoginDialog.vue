@@ -145,7 +145,7 @@ const reloginStatus = ref<LoginCardStatus>('idle')
 const reloginErrMsg = ref('')
 const reloginPlatform = computed(() => {
   if (props.mode !== 'relogin' || !props.account) return null
-  return getPlatformByName(props.account.platform)
+  return getPlatformByName(props.account.platform ?? '')
 })
 const reloginKey = computed(() => reloginPlatform.value?.key)
 

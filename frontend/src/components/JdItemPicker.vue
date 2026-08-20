@@ -208,7 +208,7 @@ async function onSearch() {
   currentPage.value = 1
   loading.value = true
   try {
-    const res = (await jdApi.pickerSearch(props.accountId, searchKeyword.value)) as JdPickerResponse
+    const res = (await jdApi.pickerSearch(props.accountId ?? '', searchKeyword.value)) as JdPickerResponse
     if (opId !== pendingOpId) return  // 旧请求,丢弃(用户又点了下一次)
     currentProducts.value = res.data?.products || []
     total.value = res.data?.total || currentProducts.value.length
@@ -223,7 +223,7 @@ async function onPageChange(page: number) {
   const opId = ++pendingOpId
   loading.value = true
   try {
-    const res = (await jdApi.pickerGoPage(props.accountId, page)) as JdPickerResponse
+    const res = (await jdApi.pickerGoPage(props.accountId ?? '', page)) as JdPickerResponse
     if (opId !== pendingOpId) return
     currentProducts.value = res.data?.products || []
     total.value = res.data?.total || currentProducts.value.length

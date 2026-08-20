@@ -4,8 +4,8 @@
     <AccountSidebar
       :account-groups="imageAccountGroups"
       :total-count="totalCount"
-      :selected-platform="selectedPlatform"
-      :selected-account-id="selectedAccountId"
+      :selected-platform="selectedPlatform || undefined"
+      :selected-account-id="selectedAccountId ?? undefined"
       :expanded-groups="expandedGroups"
       :publish-account-ids="publishAccountIds"
       :has-account-override="hasAccountOverride"
@@ -26,7 +26,7 @@
         :platform-name="currentPlatformConfig?.name"
         :platform-bg-color="currentPlatformConfig?.bgColor"
         :platform-color="currentPlatformConfig?.color"
-        :draft-id="currentDraftId"
+        :draft-id="currentDraftId ?? undefined"
         :has-accounts="publishAccountIds.size > 0"
         :publishing="publishing"
         :disable-one-click="publishAccountIds.size === 0"
@@ -46,15 +46,15 @@
             <span class="hint">所有账号共享</span>
             <template v-if="currentPlatformConfig && publishAccountIds.size > 0">
               <el-checkbox
-                v-model="platformChecked[selectedPlatform]"
+                v-model="platformChecked[selectedPlatform || '']"
                 @change="onPlatformCheckChange"
               >
                 {{ currentPlatformConfig.name }} 渠道个性化
               </el-checkbox>
               <el-checkbox
                 v-if="selectedAccountId"
-                v-model="accountChecked[selectedAccountId]"
-                :disabled="!platformChecked[selectedPlatform]"
+                v-model="accountChecked[selectedAccountId ?? '']"
+                :disabled="!platformChecked[selectedPlatform || '']"
                 @change="onAccountCheckChange"
               >
                 {{ getAccountDisplayName(selectedAccountId) }} 账号个性化
@@ -504,7 +504,7 @@ const IMAGE_PLATFORMS = platformList.filter(p => IMAGE_PLATFORM_KEYS.includes(p.
 
 // ========== Left Sidebar State ==========
 const expandedGroups = ref(new Set<string>())
-const selectedPlatform = ref<string | null>(null)
+const selectedPlatform = ref<string>('')
 const selectedAccountId = ref<number | string | null>(null)
 
 const imageAccountGroups = computed(() => {
@@ -645,17 +645,19 @@ function onPlatformCheckChange(checked: boolean) {
 }
 
 function onAccountCheckChange(checked: boolean) {
-  if (!checked && hasAccountOverrideContent(selectedAccountId.value)) {
+  const accountId = selectedAccountId.value
+  if (accountId === null) return
+  if (!checked && hasAccountOverrideContent(accountId)) {
     ElMessageBox.confirm(
       '取消个性化配置后，本账号的覆写将丢失，恢复使用渠道默认，是否继续？',
       '确认取消', { confirmButtonText: '继续', cancelButtonText: '取消', type: 'warning' }
     ).then(() => {
-      delete accountOverrides[selectedAccountId.value]
+      delete accountOverrides[accountId]
     }).catch(() => {
-      accountChecked[selectedAccountId.value] = true
+      accountChecked[accountId] = true
     })
   } else if (checked) {
-    accountOverrides[selectedAccountId.value] = {
+    accountOverrides[accountId] = {
       images: [], coverImage: null,
     }
   }
@@ -767,7 +769,7 @@ function toggleGroup(key: string) {
     // 再次点击已展开的平台:收起并取消平台选中
     expandedGroups.value.delete(key)
     if (selectedPlatform.value === key) {
-      selectedPlatform.value = null
+      selectedPlatform.value = ''
     }
   } else {
     // 互斥展开:收起所有其它平台,只展开当前平台,并设为选中
@@ -908,7 +910,7 @@ async function saveDraft() {
     } else {
       const resp = (await imagePublishApi.saveDraft({ draft_data: draftData })) as ApiResponse<{ id: number | string }>
       if (resp.code === 200) {
-        currentDraftId.value = resp.data.id
+        currentDraftId.value = resp.data?.id ?? null
         ElMessage.success('草稿已保存')
       }
     }
@@ -1179,6 +1181,7 @@ async function loadDraft(draftId: number | string) {
     const resp = (await draftApi.getDraft(draftId)) as ApiResponse<DraftRecord>
     if (resp.code !== 200) return
     const draft = resp.data
+    if (!draft) return
     const dd = draft.draft_data
     if (!dd) { ElMessage.error('草稿数据为空'); return }
 
@@ -1208,7 +1211,7 @@ async function loadDraft(draftId: number | string) {
     if (dd.selectedPlatform) selectedPlatform.value = dd.selectedPlatform
     if (dd.selectedAccountId) {
       selectedAccountId.value = dd.selectedAccountId
-    } else if (dd.publishAccountIds?.length > 0) {
+    } else if (dd.publishAccountIds && dd.publishAccountIds.length > 0) {
       selectedAccountId.value = dd.publishAccountIds[0]
     }
     if (dd.expandedGroups) expandedGroups.value = new Set(dd.expandedGroups)

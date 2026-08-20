@@ -19,7 +19,7 @@
           :mode="'readonly'"
           :account-groups="readonlyAccountGroups"
           :total-count="batchAccounts.length"
-          :selected-platform="null"
+          :selected-platform="undefined"
           :selected-account-id="selectedAccountId"
           :expanded-groups="expandedGroups"
           :publish-account-ids="readonlyPublishAccountIds"
@@ -42,7 +42,7 @@
         <div v-else-if="!selectedItem" class="empty-state">
           <el-icon class="empty-icon"><DocumentRemove /></el-icon>
           <p>该批次暂无账号数据</p>
-          <p v-if="batchAccounts.length === 0 && batch?.account_count > 0" class="empty-hint">
+          <p v-if="batchAccounts.length === 0 && (batch?.account_count ?? 0) > 0" class="empty-hint">
             该批次的账号已被全部删除，请前往
             <router-link to="/account-management">账号管理</router-link>
             查看

@@ -25,7 +25,8 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "strictNullChecks": true
   },
   "include": [
     "src/**/*",

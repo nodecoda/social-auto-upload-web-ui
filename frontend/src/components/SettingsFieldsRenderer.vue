@@ -175,7 +175,7 @@ const props = defineProps({
   // 发布表单（本组件直接读写其中的字段）
   form: { type: Object as PropType<Record<string, any>>, required: true },
   // 当前平台配置（color/key/hideFields 等）
-  platform: { type: Object as PropType<Record<string, any> | null>, default: null },
+  platform: { type: Object as PropType<Record<string, any>>, default: () => ({}) },
   selectedPlatform: { type: String, default: null },
   selectedAccountId: { type: [String, Number] as PropType<string | number | null>, default: null },
 })

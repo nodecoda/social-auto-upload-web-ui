@@ -24,12 +24,12 @@ export const guangheApi = {
 
   // 切换筛选(仅商品模式平台优选 tab)
   // body: { rule?, category? }
-  pickerFilter(sessionId: string, { rule, category }: { rule?: string; category?: string } = {}) {
+  pickerFilter(sessionId: string, { rule, category }: { rule?: string; category?: string } = {}): Promise<any> {
     return http.post('/api/taobao_guanghe/picker/filter', { session_id: sessionId, rule, category })
   },
 
   // 搜索
-  pickerSearch(sessionId: string, keyword: string) {
+  pickerSearch(sessionId: string, keyword: string): Promise<any> {
     return http.post('/api/taobao_guanghe/picker/search', { session_id: sessionId, keyword })
   },
 

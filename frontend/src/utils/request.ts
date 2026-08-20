@@ -109,29 +109,29 @@ export interface HttpLike {
 }
 
 export const http: HttpLike = {
-  get(url, params) {
-    return request.get(url, { params }) as Promise<never>
+  get<T = unknown>(url: string, params?: Record<string, unknown>) {
+    return request.get(url, { params }) as Promise<T>
   },
 
-  post(url, data, config = {}) {
-    return request.post(url, data, config) as Promise<never>
+  post<T = unknown>(url: string, data?: unknown, config: AxiosRequestConfig = {}) {
+    return request.post(url, data, config) as Promise<T>
   },
 
-  put(url, data, config = {}) {
-    return request.put(url, data, config) as Promise<never>
+  put<T = unknown>(url: string, data?: unknown, config: AxiosRequestConfig = {}) {
+    return request.put(url, data, config) as Promise<T>
   },
 
-  delete(url, params) {
-    return request.delete(url, { params }) as Promise<never>
+  delete<T = unknown>(url: string, params?: Record<string, unknown>) {
+    return request.delete(url, { params }) as Promise<T>
   },
 
-  upload(url, formData, onUploadProgress) {
+  upload<T = unknown>(url: string, formData: FormData, onUploadProgress?: (e: unknown) => void) {
     return request.post(url, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       },
       onUploadProgress
-    }) as Promise<never>
+    }) as Promise<T>
   }
 }
 

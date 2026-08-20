@@ -375,7 +375,7 @@ function onImageError(e: Event) {
   if (img) img.src = placeholderSvg
 }
 
-function formatFileSize(bytes: number): string {
+function formatFileSize(bytes: number | undefined): string {
   if (!bytes) return '0 B'
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
@@ -383,7 +383,7 @@ function formatFileSize(bytes: number): string {
   return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string | undefined): string {
   if (!iso) return ''
   const d = new Date(iso.replace(' ', 'T') + (iso.endsWith('Z') ? '' : 'Z'))
   if (isNaN(d.getTime())) return iso

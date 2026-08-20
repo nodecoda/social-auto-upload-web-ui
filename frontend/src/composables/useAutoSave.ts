@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/app'
 
 export function useAutoSave(saveFn: () => void) {
   const appStore = useAppStore()
-  const autoSaveTimer = ref(null)
+  const autoSaveTimer = ref<ReturnType<typeof setInterval> | null>(null)
   const hasChanges = ref(false)
 
   function startAutoSaveTimer() {

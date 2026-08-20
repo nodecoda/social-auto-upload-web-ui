@@ -37,7 +37,7 @@ function setRef(el: unknown) {
 
 function checkOverflow() {
   if (!trackEl.value) return
-  isOverflow.value = trackEl.value.scrollWidth > trackEl.value.parentElement.clientWidth
+  isOverflow.value = trackEl.value.scrollWidth > (trackEl.value.parentElement?.clientWidth ?? 0)
 }
 
 watch(

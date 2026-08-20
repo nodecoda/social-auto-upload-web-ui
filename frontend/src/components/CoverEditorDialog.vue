@@ -312,10 +312,10 @@ function switchTab(tab: string) {
 }
 
 // 为某面板加载图片
-function loadImageToPanel(ratio: string, src: string) {
+function loadImageToPanel(ratio: string, src: string | undefined) {
   const p = panels[ratio]
   if (!p) return
-  p.imageSrc = src
+  p.imageSrc = src ?? ''
   const img = new Image()
   img.crossOrigin = 'anonymous'
   img.onload = () => {
@@ -323,7 +323,7 @@ function loadImageToPanel(ratio: string, src: string) {
     initPanelCropRect(ratio, img)
     if (ratio === activeTab.value) nextTick(() => redrawActivePanel())
   }
-  img.src = src
+  if (src) img.src = src
 }
 
 // 计算某面板的裁剪框（居中、撑满最大、锁定该 ratio）
@@ -356,7 +356,7 @@ function redrawActivePanel() {
   canvas.width = p.img.width * scale
   canvas.height = p.img.height * scale
   const ctx = canvas.getContext('2d')
-  ctx.drawImage(p.img, 0, 0, canvas.width, canvas.height)
+  ctx?.drawImage(p.img, 0, 0, canvas.width, canvas.height)
   clampPanelOffset(p)
 }
 
@@ -367,7 +367,7 @@ function onTimelineSelect(seconds: number) {
 }
 
 function onMaterialSelect(material: { url?: string; stored_path?: string }) {
-  const url = material.url || getFileUrl(material.stored_path)
+  const url = material.url || getFileUrl(material.stored_path ?? '')
   loadImageToPanel(activeTab.value, url)
 }
 
@@ -390,7 +390,8 @@ function onWheel(e: WheelEvent) {
   let newZoom = oldZoom * factor
   newZoom = Math.max(1, Math.min(8, newZoom))
   if (newZoom === oldZoom) return
-  const rect = cropCanvasRef.value.getBoundingClientRect()
+  const rect = cropCanvasRef.value?.getBoundingClientRect()
+  if (!rect) return
   const mx = e.clientX - rect.left
   const my = e.clientY - rect.top
   p.offset.x = mx - (mx - p.offset.x) * (newZoom / oldZoom)
@@ -474,7 +475,7 @@ async function cropAndUploadPanel(ratio: string): Promise<CropCoverData | null> 
   const offscreen = document.createElement('canvas')
   offscreen.width = targetW
   offscreen.height = targetH
-  offscreen.getContext('2d').drawImage(p.img, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH)
+  offscreen.getContext('2d')?.drawImage(p.img, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH)
   const blob = await new Promise<Blob | null>(resolve => offscreen.toBlob(resolve, 'image/jpeg', 0.92))
   if (!blob) return null
   const formData = new FormData()

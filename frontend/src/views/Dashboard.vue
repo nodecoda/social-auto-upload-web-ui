@@ -60,7 +60,7 @@
               >
                 <img
                   v-if="getPlatformLogo(p.key)"
-                  :src="getPlatformLogo(p.key)"
+                  :src="getPlatformLogo(p.key) || undefined"
                   :alt="p.name"
                   class="channel-icon"
                 />
@@ -326,7 +326,7 @@ function detectPlatformOverflow() {
   const el = platformTrackRef.value
   if (!el) return
   // 父容器宽度 = el.parentElement.clientWidth
-  platformOverflow.value = el.scrollWidth > el.parentElement.clientWidth + 1
+  platformOverflow.value = el.scrollWidth > (el.parentElement?.clientWidth ?? 0) + 1
 }
 
 onMounted(() => {
@@ -351,8 +351,8 @@ onBeforeUnmount(() => {
 })
 
 // 复用 platforms.js 的 getPlatformLogo (按 key 查 logo)
-function getPlatformLogo(platformKey: string): string | null {
-  return getPlatformByKey(platformKey)?.logo || null
+function getPlatformLogo(platformKey: string | null): string | null {
+  return getPlatformByKey(platformKey ?? '')?.logo || null
 }
 
 // 素材统计数据 - 从 file_type 字段直接统计
@@ -402,10 +402,10 @@ const fetchDashboardData = async () => {
     ])
 
     if (accountRes.status === 'fulfilled' && accountRes.value.code === 200) {
-      accountStore.setAccounts(accountRes.value.data)
+      accountStore.setAccounts(accountRes.value.data ?? [])
     }
     if (materialRes.status === 'fulfilled' && materialRes.value.code === 200) {
-      appStore.setMaterials(materialRes.value.data.items || [])
+      appStore.setMaterials(materialRes.value.data?.items || [])
     }
   } catch (error) {
     console.error('获取仪表盘数据失败:', error)

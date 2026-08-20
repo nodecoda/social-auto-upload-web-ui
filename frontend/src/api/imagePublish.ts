@@ -9,7 +9,7 @@ export const imagePublishApi = {
       if (onProgress) {
         onProgress(percent)
       }
-    })
+    }) as Promise<{ data?: { url?: string }; url?: string }>
   },
   publishImage(data: unknown) { return http.post('/api/image-publish/publish', data) },
   getDrafts() { return http.get('/api/image-publish/drafts') },

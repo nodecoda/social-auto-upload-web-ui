@@ -7,16 +7,16 @@ export const useImagePublishStore = defineStore('imagePublish', () => {
   // ========== 状态 ==========
 
   // 图片列表，每项: { url, name, file, progress }
-  const images = ref([])
+  const images = ref<Array<{ url: string; name: string; file: File; progress: number }>>([])
 
   // 已选账号 ID 列表
-  const selectedAccounts = ref([])
+  const selectedAccounts = ref<Array<string | number>>([])
 
   // 每个账号的独立配置 { [accountId]: { title, description } }
-  const accountConfigs = ref({})
+  const accountConfigs = ref<Record<string, any>>({})
 
   // 当前草稿 ID（null 表示新建）
-  const currentDraftId = ref(null)
+  const currentDraftId = ref<string | number | null>(null)
 
   // 是否正在发布
   const publishing = ref(false)

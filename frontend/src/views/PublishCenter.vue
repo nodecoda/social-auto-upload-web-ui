@@ -5,8 +5,8 @@
       :mode="'edit'"
       :account-groups="accountGroups"
       :total-count="totalCount"
-      :selected-platform="selectedPlatform"
-      :selected-account-id="selectedAccountId"
+      :selected-platform="selectedPlatform || undefined"
+      :selected-account-id="selectedAccountId ?? undefined"
       :expanded-groups="expandedGroups"
       :publish-account-ids="publishAccountIds"
       :has-account-override="hasAccountOverride"
@@ -26,7 +26,7 @@
         :platform-name="currentPlatformConfig?.name"
         :platform-bg-color="currentPlatformConfig?.bgColor"
         :platform-color="currentPlatformConfig?.color"
-        :draft-id="currentDraftId"
+        :draft-id="currentDraftId ?? undefined"
         :has-accounts="publishAccountIds.size > 0"
         :publishing="publishing"
         @save-draft="saveDraft"
@@ -45,15 +45,15 @@
             <span class="hint">所有账号共享</span>
             <template v-if="currentPlatformConfig && publishAccountIds.size > 0">
               <el-checkbox
-                v-model="platformChecked[selectedPlatform]"
+                v-model="platformChecked[selectedPlatform || '']"
                 @change="onPlatformCheckChange"
               >
                 {{ currentPlatformConfig.name }} 渠道个性化
               </el-checkbox>
               <el-checkbox
                 v-if="selectedAccountId"
-                v-model="accountChecked[selectedAccountId]"
-                :disabled="!platformChecked[selectedPlatform]"
+                v-model="accountChecked[selectedAccountId ?? '']"
+                :disabled="!platformChecked[selectedPlatform || '']"
                 @change="onAccountCheckChange"
               >
                 {{ getAccountName(selectedAccountId) }} 账号个性化
@@ -571,7 +571,7 @@
     <MaterialUploader
       v-model="videoUploadDialogVisible"
       accept="video/*"
-      :max-size="null"
+      :max-size="undefined"
       :multiple="false"
       :title="'上传视频'"
       tip="支持 MP4、AVI、MKV 等视频格式，不限大小"
@@ -1212,7 +1212,7 @@ const route = useRoute()
 
 // ========== Left Sidebar State ==========
 const expandedGroups = ref<Set<string>>(new Set())
-const selectedPlatform = ref<string | null>(null)
+const selectedPlatform = ref<string>('')
 const selectedAccountId = ref<number | string | null>(null)
 
 const accountGroups = computed<AccountGroupItem[]>(() => {
@@ -1282,6 +1282,7 @@ watch(currentEditTarget, () => {
 })
 
 function hasPlatformOverrideContent(platformKey: string | null) {
+  if (!platformKey) return false
   const ov = platformOverrides[platformKey]
   if (!ov) return false
   return !!(
@@ -1291,6 +1292,7 @@ function hasPlatformOverrideContent(platformKey: string | null) {
 }
 
 function hasAccountOverrideContent(accountId: number | string | null) {
+  if (accountId === null) return false
   const ov = accountOverrides[accountId]
   if (!ov) return false
   return !!(
@@ -1302,17 +1304,19 @@ function hasAccountOverrideContent(accountId: number | string | null) {
 // ========== Override Section: Interaction ==========
 
 function onPlatformCheckChange(checked: boolean) {
-  if (!checked && hasPlatformOverrideContent(selectedPlatform.value)) {
+  const platformKey = selectedPlatform.value
+  if (!platformKey) return
+  if (!checked && hasPlatformOverrideContent(platformKey)) {
     ElMessageBox.confirm(
       '取消个性化配置后，本渠道的覆写将丢失，恢复使用公共默认，是否继续？',
       '确认取消', { confirmButtonText: '继续', cancelButtonText: '取消', type: 'warning' }
     ).then(() => {
-      delete platformOverrides[selectedPlatform.value]
+      delete platformOverrides[platformKey]
     }).catch(() => {
-      platformChecked[selectedPlatform.value] = true
+      platformChecked[platformKey] = true
     })
   } else if (checked) {
-    platformOverrides[selectedPlatform.value] = {
+    platformOverrides[platformKey] = {
       coverPortrait: null, coverLandscape: null,
       coverLandscape169: null, coverPortrait916: null,
       videoPortrait: null, videoLandscape: null,
@@ -1321,17 +1325,19 @@ function onPlatformCheckChange(checked: boolean) {
 }
 
 function onAccountCheckChange(checked: boolean) {
-  if (!checked && hasAccountOverrideContent(selectedAccountId.value)) {
+  const accountId = selectedAccountId.value
+  if (accountId === null) return
+  if (!checked && hasAccountOverrideContent(accountId)) {
     ElMessageBox.confirm(
       '取消个性化配置后，本账号的覆写将丢失，恢复使用渠道默认，是否继续？',
       '确认取消', { confirmButtonText: '继续', cancelButtonText: '取消', type: 'warning' }
     ).then(() => {
-      delete accountOverrides[selectedAccountId.value]
+      delete accountOverrides[accountId]
     }).catch(() => {
-      accountChecked[selectedAccountId.value] = true
+      accountChecked[accountId] = true
     })
   } else if (checked) {
-    accountOverrides[selectedAccountId.value] = {
+    accountOverrides[accountId] = {
       coverPortrait: null, coverLandscape: null,
       coverLandscape169: null, coverPortrait916: null,
       videoPortrait: null, videoLandscape: null,
@@ -1482,7 +1488,7 @@ const currentGuangheFieldKey = computed<'guangheProducts' | 'guangheShops'>(() =
   form.guangheLinkType === 'shop' ? 'guangheShops' : 'guangheProducts'
 )
 const currentGuangheItems = computed<GuangheItem[]>(() =>
-  Array.isArray(form[currentGuangheFieldKey.value]) ? form[currentGuangheFieldKey.value] : []
+  (Array.isArray(form[currentGuangheFieldKey.value]) ? form[currentGuangheFieldKey.value] : []) as GuangheItem[]
 )
 
 // 从已勾选的账号中任选一个淘宝光合账号(配置 picker 时不需要先选具体账号)
@@ -1767,7 +1773,7 @@ function addTag() {
 }
 
 function removeTag(index: number) {
-  form.tags.splice(index, 1)
+  form.tags?.splice(index, 1)
 }
 
 // 自动提取描述中的 #xxx 到标签数组,并从描述中清除 #xxx 字样
@@ -1785,7 +1791,7 @@ useAutoExtractHashtags({
 
 // ========== Douyin-specific Methods ==========
 function handleDouyinActivityChange(activity: { challenge?: string[] } | null) {
-  if (activity?.challenge?.length > 0) {
+  if (activity?.challenge && activity.challenge.length > 0) {
     for (const topic of activity.challenge) {
       if (form.tags && !form.tags.includes(topic)) {
         if ((form.activityId?.length || 0) + (form.tags?.length || 0) >= 5) break
@@ -1881,7 +1887,9 @@ async function fetchBiliCollections(keyword: string) {
 
 // 抖音合集(mix)—— RemoteSearchSelect 数据源(前端过滤模式,空关键词清空)
 async function fetchDouyinMixes(keyword: string) {
-  const resp = (await douyinImageApi.getMixList(selectedAccountId.value)) as ApiResponse<{ mix_list?: Array<{ mix_name?: string }> }>
+  const accountId = selectedAccountId.value
+  if (accountId === null) return { list: [] }
+  const resp = (await douyinImageApi.getMixList(accountId)) as ApiResponse<{ mix_list?: Array<{ mix_name?: string }> }>
   const all = resp.data?.mix_list || []
   const kw = keyword?.trim().toLowerCase()
   return {
@@ -2105,7 +2113,7 @@ function toggleGroup(key: string) {
     // 再次点击已展开的平台:收起并取消平台选中
     expandedGroups.value.delete(key)
     if (selectedPlatform.value === key) {
-      selectedPlatform.value = null
+      selectedPlatform.value = ''
     }
   } else {
     // 互斥展开:收起所有其它平台,只展开当前平台,并设为选中
@@ -2160,12 +2168,12 @@ function clearVideo() {
 const coverPortraitActiveCover = computed<MediaAsset | null>(() => {
   const t = currentEditTarget.value
   if (!t) return null
-  return coverPortraitActiveRatio.value === '9:16' ? t.coverPortrait916 : t.coverPortrait
+  return (coverPortraitActiveRatio.value === '9:16' ? t.coverPortrait916 : t.coverPortrait) ?? null
 })
 const coverLandscapeActiveCover = computed<MediaAsset | null>(() => {
   const t = currentEditTarget.value
   if (!t) return null
-  return coverLandscapeActiveRatio.value === '16:9' ? t.coverLandscape169 : t.coverLandscape
+  return (coverLandscapeActiveRatio.value === '16:9' ? t.coverLandscape169 : t.coverLandscape) ?? null
 })
 
 // 移除/更新当前激活 tab 的封面（v-model 回调）
@@ -2263,7 +2271,7 @@ async function selectFromLibrary(mode: 'video' | 'cover' = 'video', videoOrCover
   materialsApi.list({ page_size: 200 }).then((response) => {
     const res = response as ApiResponse<{ items?: unknown[] }>
     if (res.code === 200) {
-      appStore.setMaterials(res.data.items || [])
+      appStore.setMaterials(res.data?.items || [])
     }
   }).catch((err) => console.error('预拉素材列表出错:', err))
   materialSelectRef.value?.open()
@@ -2348,7 +2356,7 @@ async function saveDraft() {
       ElMessage.success('草稿已更新')
     } else {
       const resp = (await draftApi.createDraft({ draft_data: draftData })) as ApiResponse<{ id: number | string }>
-      currentDraftId.value = resp.data.id
+      currentDraftId.value = resp.data?.id ?? null
       ElMessage.success('草稿已保存')
     }
   } catch (e) {
@@ -2360,6 +2368,7 @@ async function restoreDraft(draftId: number | string) {
   try {
     const resp = (await draftApi.getDraft(draftId)) as ApiResponse<DraftRecord>
     const data = resp.data
+    if (!data) return
     const dd = data.draft_data
     if (!dd) {
       ElMessage.error('草稿数据为空')
@@ -2531,7 +2540,7 @@ onMounted(async () => {
   // 加载账号列表
   try {
     const res = (await accountApi.getAccounts()) as ApiResponse<unknown[]>
-    accountStore.setAccounts(res.data)
+    accountStore.setAccounts(res.data ?? [])
   } catch (e) {
     console.error('加载账号列表失败:', e)
   }
@@ -2782,7 +2791,7 @@ async function publishAll() {
       const full = parts.filter((p): p is string => Boolean(p)).join(' ').trim()
       let charCount = 0
       for (const ch of full) {
-        charCount += ch.codePointAt(0) > 0xFFFF ? 3 : 1
+        charCount += (ch.codePointAt(0) ?? 0) > 0xFFFF ? 3 : 1
       }
       if (charCount > 50) {
         baijiahaoAccountsNoTag.push(`${account.name}(百家号) 描述+标签共 ${charCount} 字符,超过 50`)

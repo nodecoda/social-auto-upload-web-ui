@@ -108,6 +108,7 @@ async function handleCreate() {
     if (res.code === 200) {
       await accountStore.loadTags()
       const newTag = res.data
+      if (!newTag) return
       const ids = [...selectedIds.value, newTag.id]
       await accountApi.setAccountTags(props.accountId, ids)
       keyword.value = ''
