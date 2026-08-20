@@ -107,7 +107,6 @@ class KuaishouPlatform(BasePlatform):
             # Extract QR code image
             qrcode_img = page.locator('img[name="qrcode"], div.qr-login img[alt="qrcode"]').first
             await qrcode_img.wait_for(state="visible", timeout=30000)
-            qrcode_src = await qrcode_img.get_attribute("src")
             logger.info("[kuaishou] QR code ready, waiting for scan...")
 
             # Monitor URL change — login redirects to profile or upload page
@@ -117,7 +116,6 @@ class KuaishouPlatform(BasePlatform):
                 "https://cp.kuaishou.com/rest/app",      # app dashboard
                 "https://cp.kuaishou.com/article/manage", # manage page
             )
-            current_url = page.url
             # 无限等扫码确认（不设超时，浏览器由用户自己关）
             while True:
                 if any(page.url.startswith(u) for u in _KS_LOGGED_IN_URLS):
@@ -943,7 +941,6 @@ class KuaishouPlatform(BasePlatform):
         # CDP session 提到循环外,每个标签复用同一个连接
         cdp = await page.context.new_cdp_session(page)
         for tag in tags[:max_n]:
-            text = f"#{tag}"
             # 1. 通过 CDP Input.dispatchKeyEvent 直接发 keydown/keyup,显式指定
             #    text='#' / key='#' / modifiers=8(Shift 位),保证插入的字符是 #
             #    且 React 能读到 event.key='#' + event.shiftKey=true。

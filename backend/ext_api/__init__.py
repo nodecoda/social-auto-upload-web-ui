@@ -443,7 +443,6 @@ def get_history():
     """
     type_ = request.args.get('type')
     status = request.args.get('status')
-    platform = request.args.get('platform')  # 暂未使用，留扩展
     time_range = request.args.get('timeRange')
     start_date = request.args.get('startDate')
     end_date = request.args.get('endDate')

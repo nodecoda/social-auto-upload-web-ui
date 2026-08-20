@@ -395,12 +395,10 @@ async def locate_and_check(frame, target_ids: list[str]) -> LocateResult:
     cards = await frame.query_selector_all("._sku-card-mygoods-con_jvzh5_77")
     page_ids = []
     for card in cards:
-        title_el = await card.query_selector("._sku-name_jvzh5_204")
         img_el = await card.query_selector("._sku-card-img_jvzh5_154")
         checkbox_el = await card.query_selector(".jd-checkbox-input")
         checkbox_label = await card.query_selector(".jd-checkbox-wrapper")
 
-        title = (await title_el.inner_text()).strip() if title_el else ""
         image = await img_el.get_attribute("src") if img_el else ""
 
         # 提取商品 id(同 scrape_products)
