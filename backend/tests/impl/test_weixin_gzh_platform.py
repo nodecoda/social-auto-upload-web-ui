@@ -5,9 +5,10 @@ _resolve_date_label),不触发浏览器/CloakBrowser 流程(模块惰性导入�
 """
 import inspect
 import sys
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 # 把 backend 目录加进 sys.path（与项目其他测试一致）
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -124,21 +125,21 @@ def test_build_publish_datetime_utc_iso_adds_8h():
 def test_resolve_date_label_today():
     """目标日期为今天 → 「今天」。"""
     from impl.weixin_gzh.platform import WeixinGzhPlatform
-    now = datetime.combine(date.today(), datetime.min.time())
+    now = datetime.combine(datetime.now(ZoneInfo("Asia/Shanghai")).date(), datetime.min.time())
     assert WeixinGzhPlatform._resolve_date_label(now) == "今天"
 
 
 def test_resolve_date_label_tomorrow():
     """目标日期为明天 → 「明天」。"""
     from impl.weixin_gzh.platform import WeixinGzhPlatform
-    dt = datetime.combine(date.today() + timedelta(days=1), datetime.min.time())
+    dt = datetime.combine(datetime.now(ZoneInfo("Asia/Shanghai")).date() + timedelta(days=1), datetime.min.time())
     assert WeixinGzhPlatform._resolve_date_label(dt) == "明天"
 
 
 def test_resolve_date_label_other_day_uses_month_day():
     """其他日期 → 「M月D日」文案(公众号下拉 7 天内选项)。"""
     from impl.weixin_gzh.platform import WeixinGzhPlatform
-    dt = datetime.combine(date.today() + timedelta(days=2), datetime.min.time())
+    dt = datetime.combine(datetime.now(ZoneInfo("Asia/Shanghai")).date() + timedelta(days=2), datetime.min.time())
     label = WeixinGzhPlatform._resolve_date_label(dt)
     assert label == f"{dt.month}月{dt.day}日"
 

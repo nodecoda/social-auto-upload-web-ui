@@ -7,8 +7,9 @@ import contextvars
 import logging
 import sys
 from contextlib import contextmanager
-from datetime import date
+from datetime import datetime
 from logging import LoggerAdapter
+from zoneinfo import ZoneInfo
 
 # Use conf.BASE_DIR which respects SAU_DATA_DIR in packaged mode
 from conf import BASE_DIR
@@ -64,7 +65,7 @@ def _get_log_level() -> int:
 def init_logger():
     """Initialize per-channel loggers (not root logger)."""
     log_level = _get_log_level()
-    today_dir = BASE_DIR / "logs" / date.today().strftime("%Y-%m-%d")
+    today_dir = BASE_DIR / "logs" / datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d")
     today_dir.mkdir(parents=True, exist_ok=True)
 
     formatter = ChannelFormatter(LOG_FORMAT, DATE_FORMAT)

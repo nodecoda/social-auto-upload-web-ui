@@ -10,8 +10,9 @@ import sys
 import threading
 import urllib.parse
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, Response, jsonify, request
 
@@ -102,7 +103,8 @@ def _to_beijing_time(utc_str):
     if not utc_str:
         return utc_str
     try:
-        dt = datetime.strptime(str(utc_str), '%Y-%m-%d %H:%M:%S')
+        # 输入是 SQLite 中 UTC naive 字符串,标注为 UTC 后 +8h 得北京时间
+        dt = datetime.strptime(str(utc_str), '%Y-%m-%d %H:%M:%S').replace(tzinfo=UTC)
         dt = dt + timedelta(hours=8)
         return dt.strftime('%Y-%m-%dT%H:%M:%S+08:00')
     except (ValueError, TypeError):
@@ -315,7 +317,7 @@ def task_stream():
                 "account": task.account_name,
                 "title": task.title,
                 "error": task.error_message,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
             }, ensure_ascii=False))
         except queue.Full:
             pass
@@ -451,7 +453,7 @@ def get_history():
     offset = (page - 1) * page_size
 
     if time_range and not start_date:
-        now = datetime.now()
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
         if time_range == 'today':
             start_date = now.strftime('%Y-%m-%d')
         elif time_range == '7days':
@@ -655,8 +657,8 @@ def get_stats():
         # 最近7天趋势（以 batch 的 created_at 为口径）
         trend = []
         for i in range(6, -1, -1):
-            date = (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d')
-            next_date = (datetime.now() - timedelta(days=i-1)).strftime('%Y-%m-%d') if i > 0 else (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+            date = (datetime.now(ZoneInfo("Asia/Shanghai")) - timedelta(days=i)).strftime('%Y-%m-%d')
+            next_date = (datetime.now(ZoneInfo("Asia/Shanghai")) - timedelta(days=i-1)).strftime('%Y-%m-%d') if i > 0 else (datetime.now(ZoneInfo("Asia/Shanghai")) + timedelta(days=1)).strftime('%Y-%m-%d')
             count = conn.execute(
                 "SELECT COUNT(*) FROM publish_batches WHERE created_at >= ? AND created_at < ?",
                 (date, next_date)
@@ -664,7 +666,7 @@ def get_stats():
             trend.append({"date": date, "count": count})
 
         # 本月发布数
-        month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d')
+        month_start = datetime.now(ZoneInfo("Asia/Shanghai")).replace(day=1, hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d')
         monthly_total = conn.execute(
             "SELECT COUNT(*) FROM publish_batches WHERE created_at >= ?", (month_start,)
         ).fetchone()[0]
@@ -768,7 +770,7 @@ def update_settings():
             conn.execute(
                 """INSERT OR REPLACE INTO settings (key, value, updated_at)
                    VALUES (?, ?, ?)""",
-                (key, value, datetime.now().isoformat())
+                (key, value, datetime.now(ZoneInfo("Asia/Shanghai")).isoformat())
             )
         conn.commit()
         conn.close()

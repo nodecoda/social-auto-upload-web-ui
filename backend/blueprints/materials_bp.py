@@ -4,6 +4,7 @@ import subprocess
 import threading
 import uuid
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, request
 
@@ -168,7 +169,7 @@ def upload():
 
         file_id = str(uuid.uuid4())
         ext = os.path.splitext(file.filename)[1].lower()
-        now = datetime.now()
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
         relative_path = f"materials/{now.strftime('%Y/%m/%d')}/{file_id}{ext}"
 
         storage = get_storage()
@@ -271,7 +272,7 @@ def covers_upload():
 
         file_id = str(uuid.uuid4())
         ext = os.path.splitext(file.filename)[1].lower() or ".jpg"
-        now = datetime.now()
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
         relative_path = f"covers/{now.strftime('%Y/%m/%d')}/{file_id}{ext}"
 
         storage = get_storage()

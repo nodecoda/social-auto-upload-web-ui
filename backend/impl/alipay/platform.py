@@ -29,9 +29,10 @@ import asyncio
 import os
 import threading
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from queue import Queue
+from zoneinfo import ZoneInfo
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -1991,7 +1992,6 @@ def _parse_schedule_dt(schedule_time_str: str):
     - ISO UTC: ``2026-06-22T13:00:00.000Z`` / ``2026-06-22T13:00:00+08:00``
     - 本地: ``2026-06-22 13:00:00`` / ``2026-06-22 13:00`` / ``2026-06-22T13:00``
     """
-    from datetime import timedelta
 
     if not schedule_time_str:
         return None
@@ -2009,9 +2009,11 @@ def _parse_schedule_dt(schedule_time_str: str):
             "%Y-%m-%d %H:%M",
         ):
             try:
-                dt = datetime.strptime(raw_clean, fmt)
+                dt = datetime.strptime(raw_clean, fmt).replace(
+                    tzinfo=UTC if is_utc else ZoneInfo("Asia/Shanghai")
+                )
                 if is_utc:
-                    dt = dt + timedelta(hours=8)
+                    dt = dt.astimezone(ZoneInfo("Asia/Shanghai"))
                 return dt
             except ValueError:
                 continue

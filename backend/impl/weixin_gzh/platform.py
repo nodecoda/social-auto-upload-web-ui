@@ -1550,8 +1550,9 @@ class WeixinGzhPlatform(BasePlatform):
 
         公众号下拉只提供最近 7 天的选项,文案为「今天」「明天」或「M月D日」。
         """
-        from datetime import date
-        today = date.today()
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
         target = publish_dt.date()
         delta = (target - today).days
         if delta == 0:

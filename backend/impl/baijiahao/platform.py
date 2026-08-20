@@ -13,6 +13,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
+from zoneinfo import ZoneInfo
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -837,7 +838,7 @@ class BaijiahaoPlatform(BasePlatform):
         If the target time is today, the selected hour must be strictly greater
         than the current hour.
         """
-        now = datetime.now()
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
         delta_days = (publish_date.date() - now.date()).days
 
         if delta_days < 0:
@@ -920,7 +921,7 @@ class BaijiahaoPlatform(BasePlatform):
             target_num = int(label.replace("点", ""))
         elif "日" in label:
             day = int(label.split("月")[1].replace("日", ""))
-            target_num = day - datetime.now().day
+            target_num = day - datetime.now(ZoneInfo("Asia/Shanghai")).day
             if target_num < 0 or target_num > 7:
                 target_num = 0
         else:

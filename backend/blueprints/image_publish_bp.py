@@ -9,6 +9,7 @@ import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, request
 
@@ -40,7 +41,7 @@ def _update_image_publish_detail(detail_id, status, error_message=""):
         with sqlite3.connect(str(DB_PATH)) as conn:
             conn.execute(
                 "UPDATE publish_details SET status=?, finished_at=?, error_message=? WHERE id=?",
-                (status, datetime.now().isoformat(), error_message, detail_id)
+                (status, datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), error_message, detail_id)
             )
             row = conn.execute(
                 "SELECT batch_id FROM publish_details WHERE id=?", (detail_id,)
@@ -69,8 +70,8 @@ def _update_image_publish_detail(detail_id, status, error_message=""):
                    SET status=?, success_count=?, failed_count=?, account_count=?,
                        finished_at=?, updated_at=?
                    WHERE id=?""",
-                (bs, succ, fail, total, datetime.now().isoformat(),
-                 datetime.now().isoformat(), batch_id)
+                (bs, succ, fail, total, datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(),
+                 datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), batch_id)
             )
     except Exception as e:
         logger.info(f"[image_publish] 更新失败: {e}")
@@ -97,7 +98,7 @@ def publish_images():
     if not image_ids and not config.get('filePath'):
         return jsonify({"code": 400, "msg": "缺少 image_ids 或 filePath"}), 400
 
-    now = datetime.now().isoformat()
+    now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
     platform = config.get('platform', '未知')
     account_id = config.get('account_id')
     account_name = config.get('account_name') or Path(config.get('filePath', '')).stem
@@ -284,7 +285,7 @@ def save_draft():
     image_ids = [img['id'] for img in images] if isinstance(images, list) else []
 
     draft_id = data.get('id')
-    now = datetime.now().isoformat()
+    now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
 
     try:
         conn = _get_db()
@@ -479,7 +480,7 @@ def execute_publish():
                          16: 'VIVO', 17: '微信公众号'}
     platform_label = platform_name_map.get(int(platform_type), str(platform_type))
 
-    now = datetime.now().isoformat()
+    now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
 
     # account_configs JSON：除封面字段外的所有配置
     excluded = {'landscapeCoverMaterialId', 'portraitCoverMaterialId'}

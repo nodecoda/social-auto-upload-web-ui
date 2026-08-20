@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
+from zoneinfo import ZoneInfo
 
 import requests as _requests
 
@@ -671,7 +672,7 @@ def _enqueue_publish(platform, publish_kwargs, detail_id):
                 result = asyncio.run(publish_fn(**publish_kwargs))
             else:
                 result = publish_fn(**publish_kwargs)
-            now = datetime.now().isoformat()
+            now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
             if result:
                 # 先落库再更新任务状态：前端轮询到终态时，发布历史一定已写入
                 if detail_id:
@@ -703,7 +704,7 @@ def _enqueue_publish(platform, publish_kwargs, detail_id):
 def _finish_publish_failed(task_id, detail_id, msg):
     """发布 job 失败收尾：更新任务状态 + 发布历史明细（先落库再标记终态）。"""
     if detail_id:
-        _update_publish_result(detail_id, 'failed', datetime.now().isoformat(), msg)
+        _update_publish_result(detail_id, 'failed', datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), msg)
     _publish_exec.mark_finished(task_id, 'failed', msg)
 
 
@@ -1142,7 +1143,7 @@ def _before_publish():
         data = request.get_json(silent=True)
         if not data:
             return
-        now = datetime.now().isoformat()
+        now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
         batch_id = data.get('batchId') or str(uuid.uuid4())
         detail_id = str(uuid.uuid4())
         platform_type = data.get('type', 0)
@@ -1211,7 +1212,7 @@ def _before_publish():
 @app.after_request
 def _after_publish(response):
     if request.path == '/postVideo' and hasattr(g, 'publish_detail_id'):
-        now = datetime.now().isoformat()
+        now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
         if response.status_code == 200:
             try:
                 resp_data = json.loads(response.get_data(as_text=True))
