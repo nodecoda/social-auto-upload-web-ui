@@ -91,7 +91,7 @@ const DOUYIN_DEFAULTS = { ...PLATFORMS.DOUYIN.defaultSettings, tags: [] as strin
 
 const declarationOptions = computed(() => {
   const field = PLATFORMS.DOUYIN.settingsFields.find(f => f.key === 'aiContent')
-  return field?.options || []
+  return field?.type === 'select' ? field.options || [] : []
 })
 
 const { form, hasAccountOverride, resetOverride, publicApi } = useChannelForm(

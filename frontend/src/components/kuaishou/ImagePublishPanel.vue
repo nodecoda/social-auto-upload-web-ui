@@ -80,7 +80,7 @@ const KS_DEFAULTS = { ...PLATFORMS.KUAISHOU.defaultSettings, tags: [] as string[
 
 const declarationOptions = computed(() => {
   const field = PLATFORMS.KUAISHOU.settingsFields.find(f => f.key === 'aiContent')
-  return field?.options || []
+  return field?.type === 'select' ? field.options || [] : []
 })
 
 function handleMusicChange(music: Record<string, unknown> | null) {

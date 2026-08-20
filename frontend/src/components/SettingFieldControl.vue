@@ -1,13 +1,13 @@
 <template>
   <el-input
     v-if="field.type === 'input'"
-    v-model="value"
+    v-model="(value as string)"
     :placeholder="field.placeholder"
     size="small"
   />
   <el-switch
     v-else-if="field.type === 'switch'"
-    v-model="value"
+    v-model="(value as boolean | string | number)"
   />
   <div v-else-if="field.type === 'radio'" class="radio-row" :class="{ 'is-disabled': isRadioDisabled }">
     <label
@@ -19,7 +19,7 @@
         type="radio"
         :name="radioName"
         :value="opt.value"
-        v-model="value"
+        v-model="(value as string | boolean)"
         :disabled="isRadioDisabled"
         class="cursor-pointer"
       />
@@ -31,7 +31,7 @@
   </div>
   <el-select
     v-else-if="field.type === 'select' || field.type === 'multiSelect'"
-    v-model="value"
+    v-model="(value as string | number | Array<string | number>)"
     :placeholder="field.placeholder"
     size="small"
     :multiple="field.type === 'multiSelect'"
@@ -45,7 +45,7 @@
   </el-select>
   <el-date-picker
     v-else-if="field.type === 'datetime' || field.type === 'date'"
-    v-model="value"
+    v-model="(value as string | null)"
     :type="field.type"
     :placeholder="field.placeholder"
     :disabled-date="pickerDisabledDate"
@@ -58,20 +58,20 @@
   <XhsPoiSelect
     v-else-if="field.type === 'poiSelect' && !field.key.startsWith('vivo')"
     :account-id="selectedAccountId"
-    v-model="value"
+    v-model="(value as string)"
     :data="(form[field.key + 'Data'] as PoiSelectData | null)"
     @change="(val) => emit('poi-change', field.key, val)"
   />
   <VivoPositionSelect
     v-else-if="field.type === 'poiSelect' && field.key.startsWith('vivo')"
     :account-id="selectedAccountId"
-    v-model="value"
+    v-model="(value as string)"
     :data="(form[field.key + 'Data'] as PoiSelectData | null)"
     @change="(val) => emit('poi-change', field.key, val)"
   />
   <el-cascader
     v-else-if="field.type === 'cascader'"
-    v-model="value"
+    v-model="(value as string[])"
     :options="field.options || []"
     :placeholder="field.placeholder"
     :props="field.props || { expandTrigger: 'hover' }"
@@ -82,7 +82,7 @@
   />
   <RemoteSearchSelect
     v-else-if="field.type === 'compilationSelect'"
-    v-model="value"
+    v-model="(value as string)"
     :data="(form.compilationData as Record<string, unknown> | null)"
     :fetcher="fetchCompilation"
     :field-map="compilationFieldMap"
@@ -102,25 +102,7 @@ import VivoPositionSelect from '@/components/vivo/PositionSelect.vue'
 import RemoteSearchSelect from '@/components/common/RemoteSearchSelect.vue'
 import { alipayApi } from '@/api/alipay'
 import { toutiaoApi } from '@/api/toutiao'
-
-// 平台 settingsFields 字段项(部分字段仅特定 type 使用;其余字段透传)
-interface SettingsField {
-  key: string
-  label?: string
-  type?: string
-  required?: boolean
-  description?: string
-  placeholder?: string
-  fullRow?: boolean
-  options?: Array<{ label: string; value: string | boolean }>
-  visibleWhen?: { key: string; value: string | number | boolean }
-  disabledWhen?: { key: string; value: string | number | boolean }
-  disabledDate?: (date: Date) => boolean
-  disabledHours?: (role: string, comparingDate?: Date | { toDate: () => Date } | null) => number[]
-  disabledMinutes?: (hour: number, role: string, comparingDate?: Date | { toDate: () => Date } | null) => number[]
-  props?: Record<string, unknown>
-  [key: string]: unknown
-}
+import { type SettingsField, type SettingsFieldValue, type SettingsRadioOption } from '@/types/settings-field'
 
 // PoiSelect data prop 形状(PoiSelect.PoiItem 未导出,按结构声明用于动态表单数据收窄)
 interface PoiSelectData {
@@ -132,11 +114,11 @@ interface PoiSelectData {
 }
 
 const props = defineProps<{
-  // 字段配置
+  // 字段配置(判别联合:按 field.type 收窄)
   field: SettingsField
   // 字段当前值 (v-model = form[field.key])
-  // 按 field.type 变化:字符串/布尔/数字/数组等多形态,故保持 any 作为多态边界
-  modelValue: any
+  // 随 field.type 变化的多形态值,见 SettingsFieldValue(替代原 any 边界)
+  modelValue: SettingsFieldValue
   // 完整发布表单:用于 disabledWhen 联动 / poi Data / compilationData
   form: Record<string, unknown>
   platformColor: string
@@ -145,14 +127,14 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', val: unknown): void
+  (e: 'update:modelValue', val: SettingsFieldValue): void
   (e: 'poi-change', key: string, poi: Record<string, unknown> | null): void
   (e: 'compilation-change', key: string, comp: Record<string, unknown> | null): void
 }>()
 
 const value = computed({
   get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val),
+  set: (val: SettingsFieldValue) => emit('update:modelValue', val),
 })
 
 // ----- radio: 禁用联动 + 样式 -----
@@ -163,7 +145,7 @@ const isRadioDisabled = computed(() => {
 
 const radioName = computed(() => `${props.selectedAccountId || props.selectedPlatform || ''}-${props.field.key}`)
 
-function radioTextStyle(opt: { label: string; value: string | boolean }) {
+function radioTextStyle(opt: SettingsRadioOption) {
   const active = props.modelValue === opt.value && !isRadioDisabled.value
   return active ? { borderColor: props.platformColor, color: props.platformColor } : {}
 }
@@ -192,6 +174,8 @@ function _sameDay(a: Date, b: Date) {
 function scheduleDisabledHours(fieldKey: string) {
   if (fieldKey !== 'scheduleTime') return []
   const raw = props.modelValue
+  // datetime 字段值为字符串/数字时间,其它形态直接跳过
+  if (typeof raw !== 'string' && typeof raw !== 'number') return []
   if (!raw) return []
   const selected = new Date(raw)
   if (isNaN(selected.getTime())) return []
@@ -204,6 +188,8 @@ function scheduleDisabledHours(fieldKey: string) {
 function scheduleDisabledMinutes(fieldKey: string, hour: number) {
   if (fieldKey !== 'scheduleTime') return []
   const raw = props.modelValue
+  // datetime 字段值为字符串/数字时间,其它形态直接跳过
+  if (typeof raw !== 'string' && typeof raw !== 'number') return []
   if (!raw) return []
   const selected = new Date(raw)
   if (isNaN(selected.getTime())) return []

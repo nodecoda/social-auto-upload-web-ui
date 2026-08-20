@@ -677,6 +677,7 @@ import { draftApi } from '@/api/draft'
 import { useRoute } from 'vue-router'
 import { HASHTAG_RE as DESC_HASHTAG_RE, countDescriptionHashtags, useAutoExtractHashtags } from '@/utils/hashtag'
 import { getErrorMessage } from '@/utils/error'
+import { type SettingsField } from '@/types/settings-field'
 
 // ========== 类型定义 ==========
 
@@ -728,25 +729,6 @@ interface PlatformItem {
   settingsFields?: SettingsField[]
   defaultSettings?: Record<string, unknown>
   hideFields?: string[]
-  [key: string]: unknown
-}
-
-/** 平台 settingsFields 字段定义（SettingsFieldsRenderer 兼容） */
-interface SettingsField {
-  key: string
-  label?: string
-  type?: string
-  required?: boolean
-  description?: string
-  placeholder?: string
-  fullRow?: boolean
-  options?: Array<{ label: string; value: string | boolean }>
-  visibleWhen?: { key: string; value: string | number | boolean }
-  disabledWhen?: { key: string; value: string | number | boolean }
-  disabledDate?: (date: Date) => boolean
-  disabledHours?: (role: string, comparingDate?: Date | { toDate: () => Date } | null) => number[]
-  disabledMinutes?: (hour: number, role: string, comparingDate?: Date | { toDate: () => Date } | null) => number[]
-  props?: Record<string, unknown>
   [key: string]: unknown
 }
 

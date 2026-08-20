@@ -61,7 +61,7 @@ const accountStore = useAccountStore()
 
 // 内容声明 options 来自 settingsFields.contentStatement(不是 aiContent!)
 const statementField = PLATFORMS.WEIBO.settingsFields.find(f => f.key === 'contentStatement')
-const statementOptions = computed(() => statementField?.options || [])
+const statementOptions = computed(() => (statementField?.type === 'select' ? statementField.options || [] : []))
 
 // 9 STANDARD_FIELDS 全部齐备(必含 aiContent,即使 PLATFORMS.WEIBO.defaultSettings 没这个 key)
 // 7 文本字段(panel 内部状态);images/coverImage 不显式声明,4 级合并时
