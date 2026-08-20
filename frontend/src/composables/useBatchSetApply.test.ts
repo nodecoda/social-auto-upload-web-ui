@@ -4,9 +4,9 @@ import { useBatchSetApply } from './useBatchSetApply'
 // xiaohongshu key → name '小红书' (来自 @/config/platforms 真实注册表)
 function setup() {
   const refs = {
-    platformConfigs: {} as Record<string, any>,
-    accountOverrides: {} as Record<number, any>,
-    accountChecked: {} as Record<number, any>,
+    platformConfigs: {} as Record<string, Record<string, unknown>>,
+    accountOverrides: {} as Record<string | number, Record<string, unknown>>,
+    accountChecked: {} as Record<string | number, boolean>,
     accountStore: {
       accounts: [
         { id: 1, platform: '小红书' },
@@ -89,7 +89,7 @@ describe('useBatchSetApply', () => {
   })
 
   it('accountStore 无账号/空列表: 渠道级仍写入且不抛错', () => {
-    const refs = { platformConfigs: {} as Record<string, any>, accountOverrides: {}, accountChecked: {}, accountStore: { accounts: [] } }
+    const refs = { platformConfigs: {} as Record<string, Record<string, unknown>>, accountOverrides: {}, accountChecked: {}, accountStore: { accounts: [] } }
     const { applyBatchSet } = useBatchSetApply(refs)
     applyBatchSet(['xiaohongshu'], fullPayload)
     expect(refs.platformConfigs.xiaohongshu).toEqual(fullPayload)

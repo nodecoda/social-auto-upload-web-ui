@@ -1,4 +1,17 @@
 import { getPlatformByKey } from '@/config/platforms'
+import type { BatchSetPayload } from './useBatchSetApply'
+
+/** panel 公开 API（defineExpose 展开或 publicApi 包装） */
+export interface BatchPanelApi {
+  setPlatformConfig?(fields: Record<string, unknown>): void
+  setAccountOverride?(accountId: number | string, fields: Record<string, unknown>): void
+  publicApi?: BatchPanelApi
+}
+
+/** panel 索引：对象/Map 兼容（get 可选） */
+export type BatchPanelIndex = Record<string, BatchPanelApi | null | undefined> & {
+  get?: (key: string) => BatchPanelApi | null | undefined
+}
 
 /**
  * 图集发布批量设 composable。
@@ -14,10 +27,10 @@ import { getPlatformByKey } from '@/config/platforms'
  * @param {object} refs  { panels, accountStore } — panels 用 platformKey 索引
  * @returns {{ applyImageBatchSet: (checkedPlatformKeys: string[], payload: { title: string, description: string, tags: string[], scheduleTime: string }) => void }}
  */
-export function useImageBatchSetApply({ panels, accountStore }: { panels: any[]; accountStore: any }) {
-  function applyImageBatchSet(checkedPlatformKeys: string[], payload: any) {
+export function useImageBatchSetApply({ panels, accountStore }: { panels: BatchPanelIndex; accountStore: { accounts: Array<{ id: number | string; platform: string }> } }) {
+  function applyImageBatchSet(checkedPlatformKeys: string[], payload: BatchSetPayload) {
     const { title, description, tags, scheduleTime } = payload
-    const mode = payload.mode || 'full'
+    const mode = payload.mode ?? 'full'
     const tagsCopy = Array.isArray(tags) ? [...tags] : []
     const scheduleTimeValue = scheduleTime || ''
     // 定时开关由 scheduleTime 是否非空派生：选了时间→true，留空→false（立即发布）
@@ -44,11 +57,13 @@ export function useImageBatchSetApply({ panels, accountStore }: { panels: any[];
     }
 
     for (const pk of checkedPlatformKeys) {
-      const panel = (panels as any).get?.(pk) || (panels as any)[pk]
+      const panel = panels.get?.(pk) || panels[pk]
       // panel 组件用 defineExpose(publicApi) 直接展开方法,所以方法在 panel 上而非 panel.publicApi 下
       // 但保留 panel.publicApi 兼容 (未来如果 wrap 一下)
       const api = panel?.publicApi || panel
-      if (!api?.setPlatformConfig) continue
+      const setPlatformConfig = api?.setPlatformConfig
+      const setAccountOverride = api?.setAccountOverride
+      if (!setPlatformConfig) continue
 
       const fields = buildFields()
       // partial 模式下用户可能一个字段都没填，此时 fields 为空，跳过该渠道
@@ -56,15 +71,15 @@ export function useImageBatchSetApply({ panels, accountStore }: { panels: any[];
       if (isPartial && Object.keys(fields).length === 0) continue
 
       // 1. 写 panel 内的 platformConfig（覆盖）
-      api.setPlatformConfig(fields)
+      setPlatformConfig(fields)
 
       // 2. 写该 panel 下所有账号（覆盖）—— 不再用 getCheckedAccountIds 筛选：
       //    批量设置应替换所选渠道下所有账号，无论是否已个性化（五角星）。
       const platformCfg = getPlatformByKey(pk)
       if (platformCfg) {
-        const accounts = (accountStore?.accounts || []).filter((a: any) => a.platform === platformCfg.name)
+        const accounts = (accountStore?.accounts || []).filter((a) => a.platform === platformCfg.name)
         for (const acc of accounts) {
-          api.setAccountOverride(acc.id, fields)
+          setAccountOverride?.(acc.id, fields)
         }
       }
     }
