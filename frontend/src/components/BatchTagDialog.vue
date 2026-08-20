@@ -106,13 +106,27 @@
   </el-dialog>
 </template>
 
-<script setup>
-import { ref, computed, watch } from 'vue'
+<script setup lang="ts">
+import { ref, computed, watch, type PropType } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, Close } from '@element-plus/icons-vue'
 import { useAccountStore } from '@/stores/account'
 import { accountApi } from '@/api/account'
 import { getDefaultAvatar, proxyAvatar } from '@/utils/avatar'
+
+interface BatchTagAccount {
+  id: number | string
+  name: string
+  platform: string
+  status: string
+  avatar?: string
+}
+
+interface TagItem {
+  id: number | string
+  name: string
+  color?: string
+}
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true }
@@ -121,16 +135,19 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'done'])
 
 const accountStore = useAccountStore()
-const accounts = computed(() => accountStore.accounts)
-const selectedAccountIds = ref(new Set())
-const selectedTagIds = ref(new Set())
+// store 的 accounts/allTags 类型未精确标注 (ref([])), 按实际结构使用
+const accounts = computed<BatchTagAccount[]>(() => (accountStore.accounts as unknown as BatchTagAccount[]) || [])
+const selectedAccountIds = ref(new Set<number | string>())
+const selectedTagIds = ref(new Set<number | string>())
 const keyword = ref('')
 const submitting = ref(false)
 
+const allTags = computed<TagItem[]>(() => (accountStore.allTags as unknown as TagItem[]) || [])
+
 const filteredTags = computed(() => {
-  if (!keyword.value.trim()) return accountStore.allTags
+  if (!keyword.value.trim()) return allTags.value
   const kw = keyword.value.trim().toLowerCase()
-  return accountStore.allTags.filter(t => t.name.toLowerCase().includes(kw))
+  return allTags.value.filter(t => t.name.toLowerCase().includes(kw))
 })
 
 const isAllSelected = computed(() => {
@@ -139,7 +156,7 @@ const isAllSelected = computed(() => {
   return validIds.every(id => selectedAccountIds.value.has(id))
 })
 
-function toggleAccount(id) {
+function toggleAccount(id: number | string) {
   const next = new Set(selectedAccountIds.value)
   if (next.has(id)) next.delete(id)
   else next.add(id)
@@ -155,7 +172,7 @@ function toggleSelectAll() {
   }
 }
 
-function toggleTag(tag) {
+function toggleTag(tag: TagItem) {
   const next = new Set(selectedTagIds.value)
   if (next.has(tag.id)) next.delete(tag.id)
   else next.add(tag.id)
@@ -165,13 +182,14 @@ function toggleTag(tag) {
 async function handleCreate() {
   const name = keyword.value.trim()
   if (!name) return
-  const exists = accountStore.allTags.some(t => t.name.toLowerCase() === name.toLowerCase())
+  const exists = allTags.value.some(t => t.name.toLowerCase() === name.toLowerCase())
   if (exists) {
     ElMessage.warning(`标签「${name}」已存在`)
     return
   }
   try {
-    const res = await accountApi.createTag({ name })
+    // createTag 的 api 层返回类型未精确标注, 按响应结构做最小标注
+    const res = (await accountApi.createTag({ name })) as { code?: number; data?: TagItem }
     if (res.code === 200 && res.data) {
       await accountStore.loadTags()
       selectedTagIds.value = new Set([...selectedTagIds.value, res.data.id])
@@ -184,7 +202,7 @@ async function handleCreate() {
   }
 }
 
-async function handleDeleteTag(tag) {
+async function handleDeleteTag(tag: TagItem) {
   try {
     await ElMessageBox.confirm(
       `确认删除标签「${tag.name}」？\n该标签会从所有账号上移除,且不可恢复。`,
@@ -200,10 +218,10 @@ async function handleDeleteTag(tag) {
     return
   }
   try {
-    const res = await accountApi.deleteTag(tag.id)
+    const res = (await accountApi.deleteTag(tag.id)) as { code?: number; msg?: string }
     if (res.code === 200) {
       // 从 store 同步移除,避免一次额外网络请求
-      accountStore.allTags = accountStore.allTags.filter(t => t.id !== tag.id)
+      accountStore.allTags = (accountStore.allTags as unknown as TagItem[]).filter(t => t.id !== tag.id) as never[]
       const next = new Set(selectedTagIds.value)
       next.delete(tag.id)
       selectedTagIds.value = next
@@ -221,10 +239,10 @@ async function handleApply() {
   if (selectedAccountIds.value.size === 0) return
   submitting.value = true
   try {
-    const res = await accountApi.setBatchAccountTags(
+    const res = (await accountApi.setBatchAccountTags(
       [...selectedAccountIds.value],
       [...selectedTagIds.value]
-    )
+    )) as { code?: number; msg?: string; data?: { updated?: number } }
     if (res.code === 200) {
       ElMessage.success(`已为 ${res.data?.updated ?? selectedAccountIds.value.size} 个账号追加标签`)
       emit('done')

@@ -69,11 +69,27 @@
   </aside>
 </template>
 
-<script setup>
-import { computed } from 'vue'
+<script setup lang="ts">
+import { computed, type PropType } from 'vue'
 import { ArrowRight, StarFilled, Close } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'
 import { getDefaultAvatar, proxyAvatar } from '@/utils/avatar'
+
+interface PlatformAccount {
+  id: number | string
+  name: string
+  status: string
+  avatar?: string
+}
+
+interface AccountGroup {
+  key: string
+  name: string
+  color: string
+  logo?: string
+  letter: string
+  accounts: PlatformAccount[]
+}
 
 const appStore = useAppStore()
 
@@ -81,15 +97,15 @@ const props = defineProps({
   mode: {
     type: String,
     default: 'edit',
-    validator: v => ['edit', 'readonly'].includes(v),
+    validator: (v: string) => ['edit', 'readonly'].includes(v),
   },
-  accountGroups: { type: Array, required: true },
+  accountGroups: { type: Array as PropType<AccountGroup[]>, required: true },
   totalCount: { type: Number, required: true },
   selectedPlatform: { type: String, default: null },
-  selectedAccountId: { type: [Number, String], default: null },
-  expandedGroups: { type: Set, required: true },
-  publishAccountIds: { type: Set, required: true },
-  hasAccountOverride: { type: Function, required: true },
+  selectedAccountId: { type: [Number, String] as PropType<number | string | null>, default: null },
+  expandedGroups: { type: Set as PropType<Set<string>>, required: true },
+  publishAccountIds: { type: Set as PropType<Set<number | string>>, required: true },
+  hasAccountOverride: { type: Function as PropType<(id: number | string) => boolean>, required: true },
 })
 
 defineEmits(['toggle-group', 'select-account', 'remove-account', 'open-account-dialog'])
@@ -111,10 +127,10 @@ const visibleAccountGroups = computed(() =>
 )
 
 // 展开/收起过渡:动态设置 max-height,避免硬编码上限导致内容被裁剪
-function onSlideEnter(el) {
+function onSlideEnter(el: HTMLElement) {
   el.style.maxHeight = el.scrollHeight + 'px'
 }
-function onSlideLeave(el) {
+function onSlideLeave(el: HTMLElement) {
   el.style.maxHeight = el.scrollHeight + 'px'
   // 强制重排后再改为 0,确保 leave 动画能播放
   void el.offsetHeight

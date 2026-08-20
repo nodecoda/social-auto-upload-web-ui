@@ -104,15 +104,22 @@
   </el-dialog>
 </template>
 
-<script setup>
-import { ref, computed, watch } from 'vue'
+<script setup lang="ts">
+import { ref, computed, watch, type PropType } from 'vue'
 import { ElMessage } from 'element-plus'
 
 const MAX_TAGS = 10
 
+interface PlatformOption {
+  key: string
+  name: string
+  logo?: string
+  count: number
+}
+
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
-  platforms: { type: Array, required: true },
+  platforms: { type: Array as PropType<PlatformOption[]>, required: true },
   title: { type: String, default: '批量设置' },
 })
 
@@ -120,10 +127,10 @@ const emit = defineEmits(['update:modelValue', 'apply'])
 
 const formTitle = ref('')
 const formDescription = ref('')
-const formTags = ref([])
+const formTags = ref<string[]>([])
 const tagInput = ref('')
 const formScheduleTime = ref('')
-const checkedKeys = ref(new Set())
+const checkedKeys = ref(new Set<string>())
 
 const checkedCount = computed(() => checkedKeys.value.size)
 
@@ -140,7 +147,7 @@ watch(() => props.modelValue, (open) => {
   }
 })
 
-function toggleKey(p) {
+function toggleKey(p: PlatformOption) {
   if (p.count === 0) return
   const next = new Set(checkedKeys.value)
   if (next.has(p.key)) {
@@ -166,11 +173,11 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(idx) {
+function removeTag(idx: number) {
   formTags.value = formTags.value.filter((_, i) => i !== idx)
 }
 
-function handleApply(mode = 'full') {
+function handleApply(mode: 'full' | 'partial' = 'full') {
   emit('apply', Array.from(checkedKeys.value), {
     title: formTitle.value,
     description: formDescription.value,

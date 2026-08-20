@@ -47,23 +47,23 @@
   </el-dialog>
 </template>
 
-<script setup>
-import { ref } from 'vue'
+<script setup lang="ts">
+import { ref, type PropType } from 'vue'
 import { platformList } from '@/config/platforms'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
-  disabledKeys: { type: Array, default: () => [] }
+  disabledKeys: { type: Array as PropType<string[]>, default: () => [] }
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm'])
 
-const selectedKeys = ref([])
+const selectedKeys = ref<string[]>([])
 
-const isAlreadyDisabled = (key) => props.disabledKeys.includes(key)
-const isSelected = (key) => selectedKeys.value.includes(key)
+const isAlreadyDisabled = (key: string) => props.disabledKeys.includes(key)
+const isSelected = (key: string) => selectedKeys.value.includes(key)
 
-const toggleSelect = (key) => {
+const toggleSelect = (key: string) => {
   if (isAlreadyDisabled(key)) return
   if (isSelected(key)) {
     selectedKeys.value = selectedKeys.value.filter(k => k !== key)

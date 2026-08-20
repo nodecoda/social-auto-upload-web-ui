@@ -128,7 +128,7 @@
   </el-dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
@@ -137,6 +137,34 @@ import {
 import { http } from '@/utils/request'
 import { getPlatformByKey } from '@/config/platforms'
 import { useAccountStore } from '@/stores/account'
+
+type CheckStatus = 'pending' | 'checked'
+type FixStatus = 'idle' | 'logging' | 'success' | 'fail'
+type CheckPhase = 'checking' | 'all-valid' | 'fixing' | 'done'
+
+interface CheckAccountInput {
+  id: number | string
+  type: number | string
+  filePath?: string
+  name?: string
+  platform?: string
+}
+
+interface CheckCard {
+  id: number | string
+  name: string
+  platformName: string
+  type: number | string
+  logo: string | null
+  letter: string
+  color: string
+  bgColor: string
+  cssClass: string
+  checkStatus: CheckStatus
+  valid: boolean
+  fixStatus: FixStatus
+  fixError: string
+}
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -167,9 +195,9 @@ const cancelButtonText = computed(() =>
 
 // ===== 状态 =====
 // phase: 'checking' → 'all-valid' | 'fixing' → 'done'
-const phase = ref('checking')
-const cards = ref([])              // 全部账号卡片
-const eventSources = new Map()     // accountId → EventSource
+const phase = ref<CheckPhase>('checking')
+const cards = ref<CheckCard[]>([])              // 全部账号卡片
+const eventSources = new Map<number | string, EventSource>()     // accountId → EventSource
 
 // ===== 计算属性 =====
 const totalCount = computed(() => cards.value.length)
@@ -180,9 +208,9 @@ const progressPercent = computed(() =>
 const invalidCards = computed(() => cards.value.filter(c => !c.valid))
 
 // ===== 对外暴露：open(accountList) → Promise<boolean> =====
-let resolvePromise = null
+let resolvePromise: ((v: boolean) => void) | null = null
 
-function open(accounts) {
+function open(accounts: CheckAccountInput[]): Promise<boolean> {
   // accounts: [{ id, type, filePath, name, platform(platformName) }]
   // 初始化卡片
   cards.value = accounts.map(a => {
@@ -201,12 +229,12 @@ function open(accounts) {
       valid: false,
       fixStatus: 'idle',       // idle / logging / success / fail
       fixError: '',
-    }
+    } as CheckCard
   })
   phase.value = 'checking'
   emit('update:modelValue', true)
 
-  return new Promise(resolve => {
+  return new Promise<boolean>(resolve => {
     resolvePromise = resolve
     // 启动并发检查
     runConcurrentChecks()
@@ -214,8 +242,8 @@ function open(accounts) {
 }
 
 // platform type(int) → key
-function platformTypeToKey(type) {
-  const map = {
+function platformTypeToKey(type: number | string) {
+  const map: Record<string, string> = {
     1: 'xiaohongshu', 2: 'channels', 3: 'douyin', 4: 'kuaishou',
     5: 'bilibili', 6: 'baijiahao', 7: 'tiktok', 8: 'youtube',
     9: 'tencent_video', 10: 'iqiyi', 11: 'weibo', 12: 'alipay', 13: 'toutiao', 14: 'zhihu', 15: 'csdn', 16: 'vivo', 17: 'weixin_gzh',
@@ -239,7 +267,7 @@ async function runConcurrentChecks() {
       const card = queue.shift()
       if (!card) break
       try {
-        const res = await http.get('/checkAccount', { id: card.id })
+        const res = (await http.get('/checkAccount', { id: card.id })) as { data?: { valid?: boolean } } | undefined
         card.checkStatus = 'checked'
         card.valid = res?.data?.valid ?? false
         // 同步更新 accountStore 状态
@@ -274,7 +302,7 @@ async function runConcurrentChecks() {
   }
 }
 
-function updateAccountStore(accountId, valid) {
+function updateAccountStore(accountId: number | string, valid: boolean) {
   // 更新 store 中的账号状态（让账号管理页也同步）
   try {
     const store = useAccountStore()
@@ -285,7 +313,7 @@ function updateAccountStore(accountId, valid) {
 }
 
 // ===== 重新登录（复用 SSE 模式）=====
-function startRelogin(card) {
+function startRelogin(card: CheckCard) {
   closeSSE(card.id)
   card.fixStatus = 'logging'
   card.fixError = ''
@@ -327,13 +355,13 @@ function startRelogin(card) {
   }
 }
 
-function cancelRelogin(card) {
+function cancelRelogin(card: CheckCard) {
   closeSSE(card.id)
   card.fixStatus = 'idle'
   ElMessage.info('已取消登录')
 }
 
-function closeSSE(accountId) {
+function closeSSE(accountId: number | string) {
   const es = eventSources.get(accountId)
   if (es) {
     es.close()
@@ -355,7 +383,7 @@ function checkAllFixed() {
 }
 
 // ===== 弹窗关闭处理 =====
-function onVisibleChange(val) {
+function onVisibleChange(val: boolean) {
   if (!val) {
     // 清理 SSE
     for (const id of eventSources.keys()) closeSSE(id)

@@ -42,12 +42,18 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import { type PropType } from 'vue'
 import { Upload, Picture, Delete } from '@element-plus/icons-vue'
+
+interface VideoData {
+  url: string
+  name?: string
+}
 
 defineProps({
   // { url, name } | null
-  videoData: { type: Object, default: null },
+  videoData: { type: Object as PropType<VideoData | null>, default: null },
   // horizontal→landscape, 其余→portrait
   modeTab: { type: String, default: 'portrait' },
 })

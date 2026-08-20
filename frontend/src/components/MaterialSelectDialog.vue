@@ -197,8 +197,8 @@
   </el-dialog>
 </template>
 
-<script setup>
-import { ref, computed, watch } from 'vue'
+<script setup lang="ts">
+import { ref, computed, type PropType } from 'vue'
 import {
   Search,
   VideoPlay,
@@ -214,6 +214,24 @@ import {
 import { materialsApi } from '@/api/materials'
 import { getFileUrl } from '@/utils/storage'
 
+interface MaterialItem {
+  id: number | string
+  original_filename: string
+  file_type: 'image' | 'video' | string
+  mime_type?: string
+  stored_path: string
+  thumbnail_url?: string
+  storage_type?: string
+  file_size?: number
+  duration?: number
+  upload_time?: string
+}
+
+interface MaterialListResponse {
+  code?: number
+  data?: { items?: MaterialItem[]; total?: number }
+}
+
 const props = defineProps({
   /** 'all' | 'image' | 'video' - 限制可选项，默认 'all' */
   filterType: { type: String, default: 'all' },
@@ -226,15 +244,15 @@ const emit = defineEmits(['select'])
 const visible = ref(false)
 const loading = ref(false)
 const probing = ref(false)
-const items = ref([])
+const items = ref<MaterialItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(24)
 const searchKeyword = ref('')
 const typeFilter = ref('all')
-const selectedId = ref(null)
+const selectedId = ref<number | string | null>(null)
 // 当前正在播放的视频素材 id（互斥，同一时间只能播一个）
-const playingId = ref(null)
+const playingId = ref<number | string | null>(null)
 
 // 当 props.filterType 限定为 video/image 时，只显示对应按钮，不允许切换类型
 const typeOptions = computed(() => {
@@ -255,30 +273,30 @@ const hasFilter = computed(
   () => searchKeyword.value.trim() !== '' || typeFilter.value !== props.filterType,
 )
 
-const selectedMat = computed(
+const selectedMat = computed<MaterialItem | null>(
   () => items.value.find((m) => m.id === selectedId.value) || null,
 )
 
-function getThumbUrl(mat) {
+function getThumbUrl(mat: MaterialItem) {
   if (mat.thumbnail_url) return mat.thumbnail_url
   return getFileUrl(mat.stored_path)
 }
 
-function getMaterialFullUrl(mat) {
+function getMaterialFullUrl(mat: MaterialItem) {
   return getFileUrl(mat.stored_path)
 }
 
-function togglePlay(id) {
+function togglePlay(id: number | string) {
   playingId.value = playingId.value === id ? null : id
 }
 
-function onVideoEnded(id) {
+function onVideoEnded(id: number | string) {
   if (playingId.value === id) {
     playingId.value = null
   }
 }
 
-function formatSize(bytes) {
+function formatSize(bytes: number) {
   if (!bytes) return ''
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
@@ -286,11 +304,11 @@ function formatSize(bytes) {
   return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
 }
 
-function formatDate(iso) {
+function formatDate(iso: string) {
   if (!iso) return ''
   const d = new Date(iso.replace(' ', 'T') + (iso.endsWith('Z') ? '' : 'Z'))
   if (isNaN(d.getTime())) return iso
-  const pad = (n) => String(n).padStart(2, '0')
+  const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
@@ -298,11 +316,11 @@ function formatDate(iso) {
 const placeholderSvg =
   'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzFhMWQyNCIvPjx0ZXh0IHg9IjEwMCIgeT0iMTA1IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TG9hZGluZyBmYWlsZWQ8L3RleHQ+PC9zdmc+'
 
-function onImageError(e) {
-  e.target.src = placeholderSvg
+function onImageError(e: Event) {
+  ;(e.target as HTMLImageElement).src = placeholderSvg
 }
 
-let searchDebounce = null
+let searchDebounce: ReturnType<typeof setTimeout> | null = null
 function onSearchInput() {
   clearTimeout(searchDebounce)
   searchDebounce = setTimeout(() => {
@@ -316,7 +334,7 @@ function onSearchClear() {
   loadPage()
 }
 
-function onTypeChange(value) {
+function onTypeChange(value: string) {
   typeFilter.value = value
   page.value = 1
   loadPage()
@@ -330,12 +348,12 @@ function onPageSizeChange() {
 async function loadPage() {
   loading.value = true
   try {
-    const resp = await materialsApi.list({
+    const resp = (await materialsApi.list({
       type: typeFilter.value,
       keyword: searchKeyword.value.trim(),
       page: page.value,
       page_size: pageSize.value,
-    })
+    })) as MaterialListResponse
     if (resp.code === 200) {
       items.value = resp.data.items || []
       total.value = resp.data.total || 0
@@ -366,7 +384,8 @@ async function confirmSelect() {
   if (material.file_type === 'video' && (!material.duration || material.duration === 0)) {
     try {
       probing.value = true
-      const res = await materialsApi.probe(material.id)
+      const res = (await materialsApi.probe(material.id)) as
+        { code?: number; data?: { duration?: number; file_size?: number } } | undefined
       if (res?.code === 200 && res.data) {
         // 用后端返回的最新数据更新 material
         Object.assign(material, {

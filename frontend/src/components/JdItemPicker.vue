@@ -112,16 +112,34 @@
   </el-dialog>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type PropType } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Check, Shop } from '@element-plus/icons-vue'
 import { jdApi } from '@/api/jd'
 
+interface JdPickerTrace {
+  keyword: string
+  page: number
+}
+
+interface JdProduct {
+  id: string
+  title: string
+  image: string
+  price?: string
+  shop_name?: string
+  trace?: JdPickerTrace
+}
+
+interface JdPickerResponse {
+  data?: { products?: JdProduct[]; total?: number }
+}
+
 const props = defineProps({
   modelValue: Boolean,
   accountId: String,
-  initSelected: { type: Array, default: () => [] },
+  initSelected: { type: Array as PropType<Array<JdProduct | string>>, default: () => [] },
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm'])
@@ -131,8 +149,8 @@ const pageSize = 10
 
 const loading = ref(false)
 const searchKeyword = ref('')
-const currentProducts = ref([])
-const selectedItems = ref([])
+const currentProducts = ref<JdProduct[]>([])
+const selectedItems = ref<JdProduct[]>([])
 const currentPage = ref(1)
 const total = ref(0)
 
@@ -152,7 +170,7 @@ watch(
   }
 )
 
-function normalizeItem(item) {
+function normalizeItem(item: JdProduct | string): JdProduct {
   if (typeof item === 'string') {
     return { title: item, image: '', id: '', trace: { keyword: '', page: 1 } }
   }
@@ -174,7 +192,7 @@ async function openPanel() {
   try {
     // 后端响应 {code:200, data:{products, total, sessionId}} 已被 utils/request.js
     // 拦截器整体放行,res 即整个响应体,res.data 才是业务数据。
-    const res = await jdApi.pickerOpen(props.accountId)
+    const res = (await jdApi.pickerOpen(props.accountId)) as JdPickerResponse
     currentProducts.value = res.data?.products || []
     total.value = res.data?.total || 0
   } catch (e) {
@@ -190,7 +208,7 @@ async function onSearch() {
   currentPage.value = 1
   loading.value = true
   try {
-    const res = await jdApi.pickerSearch(props.accountId, searchKeyword.value)
+    const res = (await jdApi.pickerSearch(props.accountId, searchKeyword.value)) as JdPickerResponse
     if (opId !== pendingOpId) return  // 旧请求,丢弃(用户又点了下一次)
     currentProducts.value = res.data?.products || []
     total.value = res.data?.total || currentProducts.value.length
@@ -201,11 +219,11 @@ async function onSearch() {
   }
 }
 
-async function onPageChange(page) {
+async function onPageChange(page: number) {
   const opId = ++pendingOpId
   loading.value = true
   try {
-    const res = await jdApi.pickerGoPage(props.accountId, page)
+    const res = (await jdApi.pickerGoPage(props.accountId, page)) as JdPickerResponse
     if (opId !== pendingOpId) return
     currentProducts.value = res.data?.products || []
     total.value = res.data?.total || currentProducts.value.length
@@ -216,12 +234,12 @@ async function onPageChange(page) {
   }
 }
 
-function isSelected(id) {
+function isSelected(id: string) {
   if (!id) return false
   return selectedItems.value.some((s) => s.id === id)
 }
 
-function onCardClick(item) {
+function onCardClick(item: JdProduct) {
   const idx = selectedItems.value.findIndex((s) => s.id === item.id)
   if (idx >= 0) {
     selectedItems.value.splice(idx, 1)
@@ -243,7 +261,7 @@ function onCardClick(item) {
   }
 }
 
-function removeSelected(item) {
+function removeSelected(item: JdProduct) {
   selectedItems.value = selectedItems.value.filter((s) => s.id !== item.id)
 }
 

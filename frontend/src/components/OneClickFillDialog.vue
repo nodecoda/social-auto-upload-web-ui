@@ -44,10 +44,32 @@
   </el-dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
-import { http } from '@/utils/request'
+import { http, type ApiResponse } from '@/utils/request'
 import { Picture } from '@element-plus/icons-vue'
+
+interface TemplateChannel {
+  platform?: string
+  account_id?: number | string
+}
+
+interface PublishTemplate {
+  id: number | string
+  type: string
+  title?: string
+  description?: string
+  channels?: TemplateChannel[]
+  created_at?: string
+  thumbnail_path?: string
+  first_image_id?: number | string
+  coverSrc?: string
+}
+
+interface MaterialRecord {
+  stored_path?: string
+  url?: string
+}
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -56,16 +78,16 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'pick'])
 
 const loading = ref(false)
-const list = ref([])
+const list = ref<PublishTemplate[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 
-function formatRelativeTime(iso) {
+function formatRelativeTime(iso: string) {
   if (!iso) return ''
   const d = new Date(iso)
   const now = new Date()
-  const diff = (now - d) / 1000
+  const diff = (now.getTime() - d.getTime()) / 1000
   if (diff < 60) return '刚刚'
   if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`
   if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`
@@ -73,7 +95,7 @@ function formatRelativeTime(iso) {
   return d.toLocaleDateString('zh-CN')
 }
 
-function buildVideoCoverUrl(thumbPath) {
+function buildVideoCoverUrl(thumbPath: string) {
   if (!thumbPath) return ''
   return `${window.location.protocol}//${window.location.hostname}:5409/api/materials/file/${thumbPath}`
 }
@@ -81,7 +103,7 @@ function buildVideoCoverUrl(thumbPath) {
 async function load() {
   loading.value = true
   try {
-    const res = await http.get('/api/v2/publish-templates', {
+    const res = await http.get<ApiResponse<{ list: PublishTemplate[]; total: number }>>('/api/v2/publish-templates', {
       type: props.type, page: page.value, page_size: pageSize.value
     })
     const items = res.data?.list || []
@@ -90,7 +112,7 @@ async function load() {
         item.coverSrc = buildVideoCoverUrl(item.thumbnail_path)
       } else if (item.type === 'image' && item.first_image_id) {
         try {
-          const m = await http.get(`/api/materials/${item.first_image_id}`)
+          const m = await http.get<ApiResponse<MaterialRecord>>(`/api/materials/${item.first_image_id}`)
           const mat = m.data
           if (mat) {
             item.coverSrc = mat.stored_path
@@ -123,7 +145,7 @@ watch(() => props.modelValue, (open) => {
   }
 })
 
-function handlePick(record) {
+function handlePick(record: PublishTemplate) {
   emit('pick', record)
   emit('update:modelValue', false)
 }

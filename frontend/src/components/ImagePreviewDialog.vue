@@ -99,15 +99,21 @@
   </el-dialog>
 </template>
 
-<script setup>
-import { ref, computed, watch } from 'vue'
+<script setup lang="ts">
+import { ref, computed, watch, type PropType } from 'vue'
 import {
   ZoomIn, ZoomOut, RefreshLeft, RefreshRight,
   FullScreen, Close, ArrowLeft, ArrowRight, Picture
 } from '@element-plus/icons-vue'
 
+interface PreviewImage {
+  url?: string
+  src?: string
+  id?: number | string
+}
+
 const props = defineProps({
-  images: { type: Array, default: () => [] },
+  images: { type: Array as PropType<PreviewImage[]>, default: () => [] },
   initialIndex: { type: Number, default: 0 },
 })
 
@@ -121,8 +127,8 @@ const translateX = ref(0)
 const translateY = ref(0)
 const isFullscreen = ref(false)
 
-const bodyRef = ref(null)
-const containerRef = ref(null)
+const bodyRef = ref<HTMLElement | null>(null)
+const containerRef = ref<HTMLElement | null>(null)
 
 // Drag state
 const isDragging = ref(false)
@@ -216,7 +222,7 @@ function toggleFullscreen() {
   }
 }
 
-function onWheel(e) {
+function onWheel(e: WheelEvent) {
   const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
   const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale.value + delta))
 
@@ -233,7 +239,7 @@ function onWheel(e) {
   scale.value = newScale
 }
 
-function startDrag(e) {
+function startDrag(e: MouseEvent) {
   if (e.button !== 0) return
   isDragging.value = true
   dragStartX = e.clientX
@@ -241,7 +247,7 @@ function startDrag(e) {
   dragStartTranslateX = translateX.value
   dragStartTranslateY = translateY.value
 
-  const onMove = (ev) => {
+  const onMove = (ev: MouseEvent) => {
     if (!isDragging.value) return
     translateX.value = dragStartTranslateX + (ev.clientX - dragStartX)
     translateY.value = dragStartTranslateY + (ev.clientY - dragStartY)
@@ -261,11 +267,11 @@ function onImageLoad() {
   // Image loaded successfully
 }
 
-function onImageError(e) {
-  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzIyMiIvPjx0ZXh0IHg9IjIwMCIgeT0iMTUwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYfliqDovb3lpLHotJU8L3RleHQ+PC9zdmc+'
+function onImageError(e: Event) {
+  ;(e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzIyMiIvPjx0ZXh0IHg9IjIwMCIgeT0iMTUwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYfliqDovb3lpLHotJU8L3RleHQ+PC9zdmc+'
 }
 
-function onKeyDown(e) {
+function onKeyDown(e: KeyboardEvent) {
   if (!visible.value) return
   switch (e.key) {
     case 'ArrowLeft':

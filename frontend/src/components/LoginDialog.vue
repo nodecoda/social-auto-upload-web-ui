@@ -94,17 +94,42 @@
   </el-dialog>
 </template>
 
-<script setup>
-import { ref, reactive, computed } from 'vue'
+<script setup lang="ts">
+import { ref, reactive, computed, type PropType } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Loading, Select, CloseBold } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'
 import { platformList, getPlatformByName, getPlatformByKey } from '@/config/platforms'
 
+type LoginCardStatus = 'idle' | 'logging' | 'success' | 'fail'
+
+interface LoginCardState {
+  status: LoginCardStatus
+  errMsg: string
+}
+
+interface LoginCardItem {
+  key: string
+  name: string
+  letter?: string
+  logo?: string
+  color?: string
+  bgColor?: string
+  cssClass?: string
+  status: LoginCardStatus
+  errMsg: string
+}
+
+interface LoginAccount {
+  id?: number | string
+  platform?: string
+  name?: string
+}
+
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
   mode: { type: String, default: 'add' },  // 'add' | 'relogin'
-  account: { type: Object, default: null }
+  account: { type: Object as PropType<LoginAccount | null>, default: null }
 })
 
 const emit = defineEmits(['update:modelValue', 'success', 'fail'])
@@ -112,11 +137,11 @@ const emit = defineEmits(['update:modelValue', 'success', 'fail'])
 const appStore = useAppStore()
 
 // add 模式: 多卡片状态
-const cardStates = reactive({})  // key -> { status, errMsg }
-const eventSources = new Map()   // key -> EventSource(非响应式)
+const cardStates = reactive<Record<string, LoginCardState>>({})  // key -> { status, errMsg }
+const eventSources = new Map<string, EventSource>()   // key -> EventSource(非响应式)
 
 // relogin 模式: 单卡片状态
-const reloginStatus = ref('idle')
+const reloginStatus = ref<LoginCardStatus>('idle')
 const reloginErrMsg = ref('')
 const reloginPlatform = computed(() => {
   if (props.mode !== 'relogin' || !props.account) return null
@@ -132,7 +157,7 @@ const dialogTitle = computed(() => {
 })
 
 // 卡片列表(响应式:平台状态变化时自动更新)
-const cardList = computed(() =>
+const cardList = computed<LoginCardItem[]>(() =>
   platformList
     .filter(p => !appStore.isPlatformDisabled(p.key))
     .map(p => ({
@@ -142,7 +167,7 @@ const cardList = computed(() =>
     }))
 )
 
-function setCardStatus(key, status, errMsg = '') {
+function setCardStatus(key: string, status: LoginCardStatus, errMsg = '') {
   cardStates[key] = { status, errMsg }
 }
 
@@ -165,7 +190,7 @@ function handleClose() {
 }
 
 // ===== SSE 逻辑 =====
-function startLogin(platformKey, accountId = null) {
+function startLogin(platformKey: string, accountId: number | string | null | undefined = null) {
   const platform = getPlatformByKey(platformKey)
   if (!platform) return
 
@@ -243,7 +268,7 @@ function startLogin(platformKey, accountId = null) {
   }
 }
 
-function closeSSE(platformKey) {
+function closeSSE(platformKey: string) {
   const es = eventSources.get(platformKey)
   if (es) {
     es.close()
@@ -251,19 +276,19 @@ function closeSSE(platformKey) {
   }
 }
 
-function onCardClick(p) {
+function onCardClick(p: LoginCardItem) {
   if (p.status === 'idle' || p.status === 'fail') {
     startLogin(p.key)
   }
 }
 
-function cancelLogin(platformKey) {
+function cancelLogin(platformKey: string) {
   closeSSE(platformKey)
   setCardStatus(platformKey, 'idle')
   ElMessage.info('已取消登录')
 }
 
-function retryLogin(platformKey) {
+function retryLogin(platformKey: string) {
   closeSSE(platformKey)
   startLogin(platformKey)
 }
