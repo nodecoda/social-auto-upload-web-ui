@@ -230,7 +230,7 @@
                       </div>
                     </div>
                     <div class="info">
-                      <div class="title" :title="item.title || item">{{ item.title || item }}</div>
+                      <div class="title" :title="(item.title || item) as string">{{ item.title || item }}</div>
                     </div>
                     <div class="guanghe-selected-remove" @click="removeGuangheItem(currentGuangheFieldKey, i)">
                       <el-icon><Close /></el-icon>
@@ -617,7 +617,7 @@
       v-model="guanghePickerVisible"
       :account-id="guanghePickerAccountId"
       :mode="guanghePickerMode"
-      :init-selected="(form[guanghePickerFieldKey] || [])"
+      :init-selected="(form[guanghePickerFieldKey] || []) as Array<GuangheItem | string>"
       @confirm="onGuanghePickerConfirm"
     />
 
@@ -631,7 +631,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed, nextTick, watch, onMounted } from 'vue'
 import { VideoCameraFilled, WarningFilled, UserFilled, Close, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
@@ -639,7 +639,7 @@ import { useAccountStore } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
 import { materialsApi } from '@/api/materials'
 import { getFileUrl } from '@/utils/storage'
-import { http } from '@/utils/request'
+import { http, type ApiResponse } from '@/utils/request'
 import { accountApi } from '@/api/account'
 import { platformList, getPlatformByKey, platformKeyToId, platformNameToKey } from '@/config/platforms'
 import { validateVideoForPlatform, validateTitleForPlatform, validateDescForPlatform, countCharsWithEmoji } from '@/config/videoLimits'
@@ -677,6 +677,531 @@ import { draftApi } from '@/api/draft'
 import { useRoute } from 'vue-router'
 import { HASHTAG_RE as DESC_HASHTAG_RE, countDescriptionHashtags, useAutoExtractHashtags } from '@/utils/hashtag'
 
+// ========== 类型定义 ==========
+
+/** 素材条目（视频/封面通用，与 MaterialSelectDialog / MaterialUploader / CoverEditorDialog 结构一致） */
+interface MediaAsset {
+  id: number | string
+  name: string
+  url: string
+  stored_path?: string
+  size?: number
+  type?: string
+  duration?: number
+  orientation?: string
+  title?: string
+  image?: string
+  _searchKeyword?: string
+  [key: string]: unknown
+}
+
+/** 账号条目（accountStore.accounts 的元素） */
+interface AccountItem {
+  id: number | string
+  type?: number | string
+  filePath?: string
+  name: string
+  platform: string
+  status: string
+  avatar?: string
+  fans?: number
+  likes?: number
+  follows?: number
+  stats?: unknown[]
+  tags?: unknown[]
+  [key: string]: unknown
+}
+
+/** 平台配置条目（@/config/platforms 中 PLATFORMS 的元素） */
+interface PlatformItem {
+  key: string
+  id: number
+  name: string
+  shortName?: string
+  letter: string
+  logo?: string
+  color: string
+  bgColor: string
+  cssClass: string
+  creatorUrl?: string
+  settingsFields?: SettingsField[]
+  defaultSettings?: Record<string, unknown>
+  hideFields?: string[]
+  [key: string]: unknown
+}
+
+/** 平台 settingsFields 字段定义（SettingsFieldsRenderer 兼容） */
+interface SettingsField {
+  key: string
+  label?: string
+  type?: string
+  required?: boolean
+  description?: string
+  placeholder?: string
+  fullRow?: boolean
+  options?: Array<{ label: string; value: string | boolean }>
+  visibleWhen?: { key: string; value: string | number | boolean }
+  disabledWhen?: { key: string; value: string | number | boolean }
+  disabledDate?: (...args: unknown[]) => boolean
+  disabledHours?: (...args: unknown[]) => number[]
+  disabledMinutes?: (...args: unknown[]) => number[]
+  props?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+/** 左侧账号分组条目（AccountSidebar accountGroups 元素） */
+interface AccountGroupItem {
+  key: string
+  id: number
+  name: string
+  letter: string
+  color: string
+  bgColor: string
+  cssClass: string
+  logo?: string
+  accounts: AccountItem[]
+  settingsFields: SettingsField[]
+  defaultSettings: Record<string, unknown>
+}
+
+/** 公共区媒体配置（视频 + 4 个封面槽位） */
+interface CommonConfig {
+  videoLandscape: MediaAsset | null
+  videoPortrait: MediaAsset | null
+  coverLandscape: MediaAsset | null
+  coverPortrait: MediaAsset | null
+  coverLandscape169: MediaAsset | null
+  coverPortrait916: MediaAsset | null
+}
+
+/** 平台级媒体覆写（spec §3.3：公共区媒体字段的个性化覆写） */
+interface MediaOverride {
+  coverPortrait?: MediaAsset | null
+  coverLandscape?: MediaAsset | null
+  coverLandscape169?: MediaAsset | null
+  coverPortrait916?: MediaAsset | null
+  videoPortrait?: MediaAsset | null
+  videoLandscape?: MediaAsset | null
+  [key: string]: unknown
+}
+
+/** 账号级覆写（媒体字段 + 表单字段 diff） */
+interface AccountOverride {
+  title?: string
+  description?: string
+  tags?: string[]
+  scheduleTime?: string
+  category?: string
+  videoLandscape?: MediaAsset | null
+  videoPortrait?: MediaAsset | null
+  coverLandscape?: MediaAsset | null
+  coverPortrait?: MediaAsset | null
+  coverLandscape169?: MediaAsset | null
+  coverPortrait916?: MediaAsset | null
+  [key: string]: unknown
+}
+
+/** 抖音标签（DouyinTagSelect change 载荷） */
+interface DouyinTag {
+  type: string
+  name: string
+  id?: string
+  _searchKeyword?: string
+  [key: string]: unknown
+}
+
+/** 平台级发布配置（各平台字段并集，平台特有字段走宽松索引） */
+interface PlatformConfig {
+  title?: string
+  description?: string
+  tags?: string[]
+  isOriginal?: boolean
+  scheduleTime?: string
+  aiContent?: string | boolean
+  zone?: string
+  category?: string
+  activityId?: string[]
+  hotspotId?: string
+  hotspotData?: Record<string, unknown> | null
+  selectedTag?: DouyinTag | null
+  tagType?: string
+  tagValue?: string
+  mixId?: string
+  mixData?: Record<string, unknown> | null
+  creationDeclaration?: string | string[]
+  biliRepostSource?: string
+  biliCollectionName?: string
+  biliCollectionData?: Record<string, unknown> | null
+  channelsCollectionName?: string
+  channelsCollectionData?: Record<string, unknown> | null
+  channelsLocationName?: string
+  channelsLocationData?: Record<string, unknown> | null
+  channelsActivityName?: string
+  channelsActivityData?: Record<string, unknown> | null
+  channelsMarkTag?: string
+  channelsShootDate?: string
+  channelsShootRegion?: string[]
+  channelsRepostSource?: string
+  riskWarning?: string
+  enableCashActivity?: boolean
+  audience?: string
+  alteredContent?: boolean
+  videoType?: string
+  weiboCategory?: string[]
+  contentStatement?: string
+  contentStatement2?: string
+  contentStatement2Optional?: string
+  weiboCollectionName?: string
+  weiboCollectionData?: Record<string, unknown> | null
+  authorStatement?: string
+  reprintUrl?: string
+  compilation?: string
+  enableGenerateImage?: boolean
+  collection?: string
+  extendLink?: boolean
+  extendLinkUrl?: string
+  recommend?: boolean
+  vivoLocationName?: string
+  vivoLocationData?: Record<string, unknown> | null
+  vivoDistribution?: boolean
+  vivoDeclaration?: string
+  vivoPrivacy?: string
+  vivoDownloadPermission?: string
+  gzhClaimSource?: string
+  gzhCollectionName?: string
+  gzhCollectionData?: Record<string, unknown> | null
+  guangheClaim?: string
+  guangheLinkType?: string
+  guangheProducts?: GuangheItem[]
+  guangheShops?: GuangheItem[]
+  jdRelatedType?: string
+  jdProducts?: JdProduct[]
+  jdNovel?: string
+  jdNovelData?: Record<string, unknown> | null
+  jdDeclaration?: string
+  xhsSourceType?: string
+  xhsShootLocation?: string
+  xhsShootDate?: string
+  xhsRepostSource?: string
+  supplementaryDeclaration?: string
+  settingsFields?: SettingsField[]
+  defaultSettings?: Record<string, unknown>
+  hideFields?: string[]
+  [key: string]: unknown
+}
+
+/** 淘宝光合关联商品/店铺条目（GuangheItemPicker 兼容） */
+interface GuangheItem {
+  id: string
+  title: string
+  image: string
+  price?: string
+  shop_name?: string
+  sold?: string
+  buy_count?: string
+  disabled?: boolean
+  trace?: { tab: string; keyword: string; rule: string; category: string }
+  [key: string]: unknown
+}
+
+/** 京东关联商品条目（JdItemPicker 兼容） */
+interface JdProduct {
+  id: string
+  title: string
+  image: string
+  price?: string
+  shop_name?: string
+  trace?: { keyword: string; page: number }
+  [key: string]: unknown
+}
+
+/** 发布表单（当前编辑目标字段镜像；平台特有字段走宽松索引） */
+interface FormState {
+  title?: string
+  description?: string
+  tags?: string[]
+  activityId?: string[]
+  hotspotId?: string
+  hotspotData?: Record<string, unknown> | null
+  selectedTag?: DouyinTag | null
+  tagType?: string
+  tagValue?: string
+  mixId?: string
+  mixData?: Record<string, unknown> | null
+  collectionId?: string | number
+  collectionName?: string
+  collectionData?: Record<string, unknown> | null
+  biliCollectionName?: string
+  biliCollectionData?: Record<string, unknown> | null
+  channelsCollectionName?: string
+  channelsCollectionData?: Record<string, unknown> | null
+  channelsLocationName?: string
+  channelsLocationData?: Record<string, unknown> | null
+  channelsActivityName?: string
+  channelsActivityData?: Record<string, unknown> | null
+  weiboCollectionName?: string
+  weiboCollectionData?: Record<string, unknown> | null
+  gzhCollectionName?: string
+  gzhCollectionData?: Record<string, unknown> | null
+  guangheLinkType?: string
+  jdRelatedType?: string
+  jdNovel?: string
+  jdNovelData?: Record<string, unknown> | null
+  jdProducts?: JdProduct[]
+  guangheProducts?: GuangheItem[]
+  guangheShops?: GuangheItem[]
+  isOriginal?: boolean
+  xhsSourceType?: string
+  category?: string
+  [key: string]: unknown
+}
+
+/** 4 级合并后的账号级发布配置（mergeConfig 返回值 + 平台特有字段） */
+interface MergedConfig {
+  title: string
+  description: string
+  tags: string[]
+  scheduleTime: string
+  isOriginal: boolean
+  aiContent?: string | boolean
+  zone?: string
+  category?: string
+  activityId?: string[]
+  hotspotId?: string
+  hotspotData?: Record<string, unknown> | null
+  selectedTag?: DouyinTag | null
+  tagType?: string
+  tagValue?: string
+  mixId?: string
+  mixData?: Record<string, unknown> | null
+  videoLandscape?: MediaAsset | null
+  videoPortrait?: MediaAsset | null
+  coverLandscape?: MediaAsset | null
+  coverPortrait?: MediaAsset | null
+  coverLandscape169?: MediaAsset | null
+  coverPortrait916?: MediaAsset | null
+  creationDeclaration?: string | string[]
+  biliRepostSource?: string
+  riskWarning?: string
+  enableCashActivity?: boolean
+  supplementaryDeclaration?: string
+  audience?: string
+  alteredContent?: boolean
+  videoType?: string
+  weiboCategory?: string[]
+  contentStatement?: string
+  contentStatement2?: string
+  contentStatement2Optional?: string
+  weiboCollectionName?: string
+  authorStatement?: string
+  reprintUrl?: string
+  compilation?: string
+  enableGenerateImage?: boolean
+  collection?: string
+  extendLink?: boolean
+  extendLinkUrl?: string
+  recommend?: boolean
+  vivoLocationName?: string
+  vivoDistribution?: boolean
+  vivoDeclaration?: string
+  vivoPrivacy?: string
+  vivoDownloadPermission?: string
+  gzhClaimSource?: string
+  gzhCollectionName?: string
+  guangheClaim?: string
+  guangheLinkType?: string
+  guangheProducts?: Array<string | GuangheItem>
+  guangheShops?: Array<string | GuangheItem>
+  jdRelatedType?: string
+  jdProducts?: Array<string | JdProduct>
+  jdNovel?: string
+  jdNovelData?: Record<string, unknown> | null
+  jdDeclaration?: string
+  channelsCollectionName?: string
+  channelsLocationName?: string
+  channelsActivityName?: string
+  channelsMarkTag?: string
+  channelsShootDate?: string
+  channelsShootRegion?: string[]
+  channelsRepostSource?: string
+  collectionId?: string | number
+  collectionName?: string
+  xhsSourceType?: string
+  xhsShootLocation?: string
+  xhsShootDate?: string
+  xhsRepostSource?: string
+  isDraft?: boolean
+  [key: string]: unknown
+}
+
+/** 发布结果条目（BatchPublishDialog 展示用） */
+interface PublishResultItem {
+  label: string
+  status: 'success' | 'error' | 'cancelled'
+  message: string
+}
+
+/** 单账号发布任务 */
+interface PublishTaskItem {
+  account: AccountItem
+  group: AccountGroupItem
+  merged: MergedConfig
+  platformSettings: PlatformConfig
+}
+
+/** 保存草稿时的素材精简载荷 */
+interface DraftAssetPayload {
+  id: number | string
+  name: string
+  stored_path?: string
+  url: string
+  size?: number
+  type?: string
+  _fromFrame?: unknown
+}
+
+/** 保存草稿的数据结构 */
+interface DraftDataShape {
+  commonConfig: {
+    videoLandscape: DraftAssetPayload | null
+    videoPortrait: DraftAssetPayload | null
+    coverLandscape: DraftAssetPayload | null
+    coverPortrait: DraftAssetPayload | null
+    coverLandscape169: DraftAssetPayload | null
+    coverPortrait916: DraftAssetPayload | null
+  }
+  platformConfigs: Record<string, PlatformConfig>
+  platformOverrides: Record<string, MediaOverride>
+  accountOverrides: Record<string, AccountOverride>
+  platformChecked: Record<string, boolean>
+  accountChecked: Record<string, boolean>
+  publishAccountIds: Array<number | string>
+  selectedPlatform: string | null
+  selectedAccountId: number | string | null
+  expandedGroups: string[]
+}
+
+/** 旧草稿中的平台配置（字段可能来自旧格式，如 tags 为字符串） */
+interface PlatformConfigLoose {
+  title?: string
+  description?: string
+  tags?: string | string[]
+  videoFormat?: string
+  activityId?: string[]
+  hotspotId?: string
+  hotspotData?: Record<string, unknown> | null
+  selectedTag?: DouyinTag | null
+  tagType?: string
+  tagValue?: string
+  mixId?: string
+  mixData?: Record<string, unknown> | null
+  guangheLinkType?: string
+  guangheProducts?: unknown
+  guangheShops?: unknown
+  jdRelatedType?: string
+  jdProducts?: unknown
+  jdNovel?: string
+  jdNovelData?: Record<string, unknown> | null
+  jdDeclaration?: string
+  [key: string]: unknown
+}
+
+/** 加载草稿时使用的宽松结构（兼容旧格式迁移字段） */
+interface DraftDataLoose {
+  commonConfig?: {
+    videoLandscape?: MediaAsset | null
+    videoPortrait?: MediaAsset | null
+    coverLandscape?: MediaAsset | null
+    coverPortrait?: MediaAsset | null
+    coverLandscape169?: MediaAsset | null
+    coverPortrait916?: MediaAsset | null
+    topics?: string[]
+  }
+  platformConfigs?: Record<string, PlatformConfigLoose>
+  platformOverrides?: Record<string, MediaOverride>
+  accountOverrides?: Record<string, AccountOverride>
+  platformChecked?: Record<string, boolean>
+  accountChecked?: Record<string, boolean>
+  publishAccountIds?: Array<number | string>
+  selectedPlatform?: string | null
+  selectedAccountId?: number | string | null
+  expandedGroups?: string[]
+}
+
+/** 后端草稿记录（getDraft 响应 data） */
+interface DraftRecord {
+  id: number | string
+  draft_data?: DraftDataLoose
+}
+
+/** 一键填充：历史发布记录 */
+interface PublishHistoryChannel {
+  platform: string
+  [key: string]: unknown
+}
+
+interface PublishHistoryRecord {
+  account_configs?: Record<string, unknown>
+  channels?: PublishHistoryChannel[]
+  [key: string]: unknown
+}
+
+/** 批量设置 payload（BatchSetDialog apply 事件） */
+interface BatchSetPayload {
+  title: string
+  description: string
+  tags: string[]
+  scheduleTime: string
+  mode?: 'full' | 'partial'
+}
+
+/** 上传文件载荷（MaterialUploader uploaded 事件） */
+interface UploadedFilePayload {
+  id: number | string
+  original_filename: string
+  stored_path: string
+  file_size?: number
+  mime_type?: string
+  duration?: number
+}
+
+/** 后端发布任务响应（/postVideo 返回） */
+interface PostVideoResponse {
+  data?: { taskId?: string; status?: string; msg?: string }
+}
+
+/** 抖音热点搜索条目 */
+interface HotspotItem {
+  word?: string
+  hot_value?: number
+  [key: string]: unknown
+}
+
+/** 京东小说条目 */
+interface JdNovelItem {
+  title?: string
+  category?: string
+  read_count?: number
+  image?: string
+  [key: string]: unknown
+}
+
+/** 小红书合集条目 */
+interface XhsCollectionItem {
+  id?: string | number
+  name?: string
+  note_num?: number
+  [key: string]: unknown
+}
+
+/** 视频号活动条目 */
+interface ChannelsActivityItem {
+  activity_id?: string
+  name?: string
+  creator_name?: string
+  [key: string]: unknown
+}
+
 // ========== Stores & Config ==========
 const accountStore = useAccountStore()
 const appStore = useAppStore()
@@ -686,12 +1211,12 @@ appStore.loadAutoSaveSettings()
 const route = useRoute()
 
 // ========== Left Sidebar State ==========
-const expandedGroups = ref(new Set())
-const selectedPlatform = ref(null)
-const selectedAccountId = ref(null)
+const expandedGroups = ref<Set<string>>(new Set())
+const selectedPlatform = ref<string | null>(null)
+const selectedAccountId = ref<number | string | null>(null)
 
-const accountGroups = computed(() => {
-  return platformList.map(p => ({
+const accountGroups = computed<AccountGroupItem[]>(() => {
+  return platformList.map((p: PlatformItem) => ({
     key: p.key,
     id: p.id,
     name: p.name,
@@ -700,7 +1225,7 @@ const accountGroups = computed(() => {
     bgColor: p.bgColor,
     cssClass: p.cssClass,
     logo: p.logo,
-    accounts: accountStore.accounts.filter(a => a.platform === p.name),
+    accounts: accountStore.accounts.filter((a: AccountItem) => a.platform === p.name),
     settingsFields: p.settingsFields || [],
     defaultSettings: p.defaultSettings || {},
   }))
@@ -713,12 +1238,12 @@ const currentVideoData = computed(() =>
   currentEditTarget.value.videoLandscape || currentEditTarget.value.videoPortrait
 )
 
-const currentPlatformConfig = computed(() =>
+const currentPlatformConfig = computed<PlatformItem | null>(() =>
   selectedPlatform.value ? getPlatformByKey(selectedPlatform.value) : null
 )
 
 // ========== Public Config ==========
-const commonConfig = reactive({
+const commonConfig = reactive<CommonConfig>({
   videoLandscape: null,
   videoPortrait: null,
   coverLandscape: null,      // 横版封面 4:3（主尺寸）
@@ -730,15 +1255,15 @@ const commonConfig = reactive({
 // ===== 封面卡片 tab 激活比例 =====
 // 切换到不同编辑目标（公共/平台覆写/账号覆写）后重置到主尺寸
 // 对应的 watch 注册在 currentEditTarget 声明之后
-const coverPortraitActiveRatio = ref('3:4')    // 竖版卡：默认 3:4
-const coverLandscapeActiveRatio = ref('4:3')    // 横版卡：默认 4:3
+const coverPortraitActiveRatio = ref<'3:4' | '9:16'>('3:4')    // 竖版卡：默认 3:4
+const coverLandscapeActiveRatio = ref<'4:3' | '16:9'>('4:3')    // 横版卡：默认 4:3
 
 // 平台级覆写（spec §3.3）—— 公共区域的媒体字段覆写
-const platformOverrides = reactive({})         // { [platformKey]: { coverPortrait, coverLandscape, videoPortrait, videoLandscape } }
-const platformChecked = reactive({})           // { [platformKey]: boolean }
+const platformOverrides = reactive<Record<string, MediaOverride>>({})         // { [platformKey]: { coverPortrait, coverLandscape, videoPortrait, videoLandscape } }
+const platformChecked = reactive<Record<string, boolean>>({})           // { [platformKey]: boolean }
 
 // 账号级覆写（accountOverrides 已在下方 line 631 声明）
-const accountChecked = reactive({})            // { [accountId]: boolean }
+const accountChecked = reactive<Record<string, boolean>>({})            // { [accountId]: boolean }
 
 // 当前编辑目标：公共区域 v-model / 编辑器 source/target 的实际绑定对象
 // 勾选账号 → accountOverrides[id]；勾选平台 → platformOverrides[key]；默认 → commonConfig
@@ -756,7 +1281,7 @@ watch(currentEditTarget, () => {
   coverLandscapeActiveRatio.value = '4:3'
 })
 
-function hasPlatformOverrideContent(platformKey) {
+function hasPlatformOverrideContent(platformKey: string | null) {
   const ov = platformOverrides[platformKey]
   if (!ov) return false
   return !!(
@@ -765,7 +1290,7 @@ function hasPlatformOverrideContent(platformKey) {
   )
 }
 
-function hasAccountOverrideContent(accountId) {
+function hasAccountOverrideContent(accountId: number | string | null) {
   const ov = accountOverrides[accountId]
   if (!ov) return false
   return !!(
@@ -776,7 +1301,7 @@ function hasAccountOverrideContent(accountId) {
 
 // ========== Override Section: Interaction ==========
 
-function onPlatformCheckChange(checked) {
+function onPlatformCheckChange(checked: boolean) {
   if (!checked && hasPlatformOverrideContent(selectedPlatform.value)) {
     ElMessageBox.confirm(
       '取消个性化配置后，本渠道的覆写将丢失，恢复使用公共默认，是否继续？',
@@ -795,7 +1320,7 @@ function onPlatformCheckChange(checked) {
   }
 }
 
-function onAccountCheckChange(checked) {
+function onAccountCheckChange(checked: boolean) {
   if (!checked && hasAccountOverrideContent(selectedAccountId.value)) {
     ElMessageBox.confirm(
       '取消个性化配置后，本账号的覆写将丢失，恢复使用渠道默认，是否继续？',
@@ -816,7 +1341,7 @@ function onAccountCheckChange(checked) {
 
 // ========== 4 级优先级合并（spec §3.3） ==========
 // accountOv > platformOv > platformDefault > common
-function resolveAccountConfig(platformKey, accountId) {
+function resolveAccountConfig(platformKey: string, accountId: number | string): MergedConfig {
   const accountOv = accountOverrides[accountId] || null
   const platformOv = platformOverrides[platformKey] || null
   const platformDefault = platformConfigs[platformKey] || null
@@ -835,7 +1360,7 @@ function resolveAccountConfig(platformKey, accountId) {
 // ========== Override Section: CoverEditor source/target ==========
 // 公共区域的 CoverEditor 永远跟随 currentEditTarget（默认=commonConfig, 勾选时=覆写对象）
 // coverEditOrientation 记录当前打开的是横版还是竖版弹窗
-const coverEditOrientation = ref('landscape')
+const coverEditOrientation = ref<'landscape' | 'portrait'>('landscape')
 const editorSource = computed(() => {
   const t = currentEditTarget.value
   const isLandscape = coverEditOrientation.value === 'landscape'
@@ -850,7 +1375,7 @@ const editorSource = computed(() => {
 })
 
 // 确定性写回：直接按 orientation + ratio 映射到具体字段
-function onCoverSaved({ orientation, ratio, cover }) {
+function onCoverSaved({ orientation, ratio, cover }: { orientation: string; ratio: string; cover: MediaAsset | null }) {
   const t = currentEditTarget.value
   if (orientation === 'landscape') {
     if (ratio === '4:3') t.coverLandscape = cover
@@ -862,24 +1387,24 @@ function onCoverSaved({ orientation, ratio, cover }) {
 }
 
 // Cover editor
-const coverEditorRef = ref(null)
-const landscapeFrames = ref([])
-const portraitFrames = ref([])
+const coverEditorRef = ref<InstanceType<typeof CoverEditorDialog> | null>(null)
+const landscapeFrames = ref<MediaAsset[]>([])
+const portraitFrames = ref<MediaAsset[]>([])
 // 预览区 mockup 比例:根据当前视频方向自动推导(horizontal→横版,其余→竖版)
 // 不再需要用户手动切换 tab;无视频时默认竖版
-const videoModeTab = computed(() =>
+const videoModeTab = computed<'landscape' | 'portrait'>(() =>
   currentVideoData.value?.orientation === 'horizontal' ? 'landscape' : 'portrait'
 )
 
-const portraitCoverFrames = computed(() =>
+const portraitCoverFrames = computed<MediaAsset[]>(() =>
   portraitFrames.value.length > 0 ? portraitFrames.value : landscapeFrames.value
 )
-const landscapeCoverFrames = computed(() =>
+const landscapeCoverFrames = computed<MediaAsset[]>(() =>
   landscapeFrames.value.length > 0 ? landscapeFrames.value : portraitFrames.value
 )
 
 // ========== Per-platform Config ==========
-const platformConfigs = reactive({
+const platformConfigs = reactive<Record<string, PlatformConfig>>({
   douyin: { title: '', description: '', tags: [], aiContent: '', isOriginal: false, scheduleTime: '', activityId: [], hotspotId: '', hotspotData: null, selectedTag: null, tagType: '', tagValue: '', mixId: '', mixData: null },
   xiaohongshu: { title: '', description: '', aiContent: '', isOriginal: false, scheduleTime: '', tags: [], collectionId: '', collectionName: '', collectionData: null },
   kuaishou: { title: '', description: '', aiContent: '', isOriginal: false, scheduleTime: '', tags: [] },
@@ -903,7 +1428,7 @@ const platformConfigs = reactive({
   jingmai: { title: '', description: '', jdRelatedType: '', jdProducts: [], jdNovel: '', jdNovelData: null, jdDeclaration: '', scheduleTime: '', tags: [] },
 })
 
-const accountOverrides = reactive({})
+const accountOverrides = reactive<Record<string, AccountOverride>>({})
 
 const currentSettings = computed(() =>
   selectedPlatform.value ? platformConfigs[selectedPlatform.value] || {} : {}
@@ -922,13 +1447,13 @@ function getAccountSettings(accountId, platformKey) {
   return merged
 }
 
-function hasAccountOverride(accountId) {
+function hasAccountOverride(accountId: number | string) {
   const override = accountOverrides[accountId]
   if (!override) return false
   return Object.values(override).some(v => v !== undefined && v !== '' && v !== false)
 }
 
-const form = reactive({})
+const form = reactive<FormState>({})
 
 // 媒体字段由 currentEditTarget 直接管理（写入 commonConfig / platformOverrides / accountOverrides），
 // 不应该出现在 form 里。否则 watch(form) 的 diff 会把它们当成账号级差异写回 accountOverrides，
@@ -943,20 +1468,20 @@ const MEDIA_KEYS = new Set([
 // ========== 淘宝光合: 关联商品/店铺 picker ==========
 // picker 组件可见性 + 配置
 const guanghePickerVisible = ref(false)
-const guanghePickerMode = ref('product') // 'product' | 'shop'
-const guanghePickerFieldKey = ref('') // 当前编辑的字段 key
+const guanghePickerMode = ref<'product' | 'shop'>('product') // 'product' | 'shop'
+const guanghePickerFieldKey = ref<'guangheProducts' | 'guangheShops' | ''>('') // 当前编辑的字段 key
 const guanghePickerAccountId = ref('') // 用于打开浏览器的账号 id(从已勾选账号里挑一个)
 
 // ========== 京东: 关联商品 picker ==========
 // picker 组件可见性 + 当前账号 id
 const jdPickerVisible = ref(false)
-const jdPickerAccountId = ref('')
+const jdPickerAccountId = ref<string>('')
 
 // 复合字段当前要操作的数据 key(guangheProducts / guangheShops) + 数据列表
-const currentGuangheFieldKey = computed(() =>
+const currentGuangheFieldKey = computed<'guangheProducts' | 'guangheShops'>(() =>
   form.guangheLinkType === 'shop' ? 'guangheShops' : 'guangheProducts'
 )
-const currentGuangheItems = computed(() =>
+const currentGuangheItems = computed<GuangheItem[]>(() =>
   Array.isArray(form[currentGuangheFieldKey.value]) ? form[currentGuangheFieldKey.value] : []
 )
 
@@ -975,7 +1500,7 @@ function findAnyGuangheAccountId() {
 
 function openGuanghePicker() {
   // mode / field key 由当前 radio 决定
-  const mode = form.guangheLinkType === 'shop' ? 'shop' : 'product'
+  const mode: string = form.guangheLinkType === 'shop' ? 'shop' : 'product'
   if (mode !== 'product' && mode !== 'shop') {
     ElMessage.warning('请先选择「商品」或「店铺」')
     return
@@ -991,7 +1516,7 @@ function openGuanghePicker() {
   guanghePickerVisible.value = true
 }
 
-function onGuanghePickerConfirm(names) {
+function onGuanghePickerConfirm(names: GuangheItem[]) {
   const key = guanghePickerFieldKey.value
   if (!key) return
   // 用最新选择替换当前字段值(picker 内部已支持回显已选项,确认时返回完整列表)
@@ -999,7 +1524,7 @@ function onGuanghePickerConfirm(names) {
   guanghePickerVisible.value = false
 }
 
-function removeGuangheItem(fieldKey, idx) {
+function removeGuangheItem(fieldKey: 'guangheProducts' | 'guangheShops', idx: number) {
   if (!Array.isArray(form[fieldKey])) return
   form[fieldKey] = form[fieldKey].filter((_, i) => i !== idx)
 }
@@ -1012,16 +1537,16 @@ function openJdPicker() {
     ElMessage.warning('请先选择一个京东账号')
     return
   }
-  jdPickerAccountId.value = accountId
+  jdPickerAccountId.value = accountId as string
   jdPickerVisible.value = true
 }
 
-function onJdPickerConfirm(items) {
+function onJdPickerConfirm(items: JdProduct[]) {
   form.jdProducts = items
   jdPickerVisible.value = false
 }
 
-function removeJdProduct(idx) {
+function removeJdProduct(idx: number) {
   if (!Array.isArray(form.jdProducts)) return
   form.jdProducts = form.jdProducts.filter((_, i) => i !== idx)
 }
@@ -1093,7 +1618,7 @@ watch([selectedPlatform, selectedAccountId], () => {
   }
   const platformKey = selectedPlatform.value
   if (platformKey) {
-    const platform = platformConfigs[platformKey] || {}
+    const platform: PlatformConfig = platformConfigs[platformKey] || {}
     const fields = platform.settingsFields || []
     for (const field of fields) {
       if (field.type === 'multiSelect' && !Array.isArray(form[field.key])) {
@@ -1148,12 +1673,12 @@ watch(form, (newVal) => {
   }
 }, { deep: true })
 
-function getAccountName(accountId) {
+function getAccountName(accountId: number | string) {
   const account = accountStore.accounts.find(a => a.id === accountId)
   return account ? account.name : '未知'
 }
 
-function resetAccountOverride(accountId) {
+function resetAccountOverride(accountId: number | string) {
   delete accountOverrides[accountId]
   ElMessage.success('已恢复为渠道默认设置')
 }
@@ -1163,7 +1688,7 @@ function resetAccountOverride(accountId) {
 //   - 选中平台:替换所选平台的 title,并替换该平台下所有已勾选账号的 accountOverrides.title
 //   - 什么都没选(默认):替换所有平台的 title + 所有已勾选账号的 accountOverrides.title
 // 直接绕过 watch(form) 的 diff,避免 diff 跳过更新。
-function fillTitleForAccount(accountId, title) {
+function fillTitleForAccount(accountId: number | string, title: string) {
   const existing = accountOverrides[accountId]
   accountOverrides[accountId] = existing
     ? { ...existing, title }
@@ -1173,7 +1698,7 @@ function fillTitleForAccount(accountId, title) {
   }
 }
 
-function fillTitleForPlatform(platformKey, title) {
+function fillTitleForPlatform(platformKey: string, title: string) {
   if (platformConfigs[platformKey]) {
     platformConfigs[platformKey].title = title
   }
@@ -1193,7 +1718,7 @@ function fillTitleForPlatform(platformKey, title) {
   }
 }
 
-function fillTitleForAllPlatformsAndAccounts(title) {
+function fillTitleForAllPlatformsAndAccounts(title: string) {
   for (const key of Object.keys(platformConfigs)) {
     platformConfigs[key].title = title
   }
@@ -1208,7 +1733,7 @@ function fillTitleForAllPlatformsAndAccounts(title) {
 }
 
 // ========== Auto-save ==========
-const currentDraftId = ref(null)
+const currentDraftId = ref<number | string | null>(null)
 const { hasChanges, startAutoSaveTimer } = useAutoSave(() => saveDraft())
 
 // ========== Tag Input ==========
@@ -1241,7 +1766,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(index) {
+function removeTag(index: number) {
   form.tags.splice(index, 1)
 }
 
@@ -1259,7 +1784,7 @@ useAutoExtractHashtags({
 })
 
 // ========== Douyin-specific Methods ==========
-function handleDouyinActivityChange(activity) {
+function handleDouyinActivityChange(activity: { challenge?: string[] } | null) {
   if (activity?.challenge?.length > 0) {
     for (const topic of activity.challenge) {
       if (form.tags && !form.tags.includes(topic)) {
@@ -1270,7 +1795,7 @@ function handleDouyinActivityChange(activity) {
   }
 }
 
-function handleDouyinHotspotChange(hotspot) {
+function handleDouyinHotspotChange(hotspot: { word: string } | null) {
   if (hotspot) {
     form.hotspotId = hotspot.word
     form.hotspotData = hotspot
@@ -1281,35 +1806,35 @@ function handleDouyinHotspotChange(hotspot) {
 }
 
 // 抖音关联热点 —— RemoteSearchSelect 数据源(后端搜索模式,必须传 keyword)
-async function fetchDouyinHotspots(keyword) {
-  const resp = await douyinImageApi.searchHotspot(selectedAccountId.value || '', keyword || '')
+async function fetchDouyinHotspots(keyword: string) {
+  const resp = (await douyinImageApi.searchHotspot(selectedAccountId.value || '', keyword || '')) as ApiResponse<{ sentences?: unknown[] }>
   return { list: resp.data?.sentences || [] }
 }
 // 热点字段映射:word 标题,hot_value 派生热度文案,word_cover.url_list.0 嵌套封面
-const douyinHotspotFieldMap = {
+const douyinHotspotFieldMap: Record<string, string | ((item: HotspotItem) => string)> = {
   label: 'word',
   key: 'sentence_id',
   desc: (item) => item.hot_value ? `热度 ${formatHotValue(item.hot_value)}` : '',
   cover: 'word_cover.url_list.0'
 }
-function formatHotValue(value) {
+function formatHotValue(value: number) {
   if (!value) return '0'
   return value >= 10000 ? (value / 10000).toFixed(1) + '万' : String(value)
 }
 
 // 京东小说 —— RemoteSearchSelect 数据源(后端搜索模式,必须传 keyword)
-async function fetchJdNovels(keyword) {
-  const resp = await jdApi.novelSearch(selectedAccountId.value || '', keyword || '')
+async function fetchJdNovels(keyword: string) {
+  const resp = (await jdApi.novelSearch(selectedAccountId.value || '', keyword || '')) as ApiResponse<{ novels?: unknown[] }>
   return { list: resp.data?.novels || [] }
 }
 // 小说字段映射:title 书名(做 modelValue label),image 封面,desc 由分类+阅读人数拼出
-const jdNovelFieldMap = {
+const jdNovelFieldMap: Record<string, string | ((item: JdNovelItem) => string)> = {
   label: 'title',
   key: 'title',
-  desc: (item) => [item.category, item.read_count ? `${item.read_count}人已读` : ''].filter(Boolean).join(' | '),
+  desc: (item) => [item.category, item.read_count ? `${item.read_count}人已读` : ''].filter((s): s is string => Boolean(s)).join(' | '),
   cover: 'image'
 }
-function handleJdNovelChange(novel) {
+function handleJdNovelChange(novel: { title: string; [key: string]: unknown } | null) {
   if (novel) {
     form.jdNovel = novel.title
     form.jdNovelData = novel
@@ -1319,7 +1844,7 @@ function handleJdNovelChange(novel) {
   }
 }
 
-function handleDouyinTagSelect(tag) {
+function handleDouyinTagSelect(tag: DouyinTag | null) {
   if (tag) {
     form.selectedTag = tag
     const m = { poi: 'location', miniapp: 'miniapp', game: 'gamepad', mark: 'mark', film: 'film' }
@@ -1333,7 +1858,7 @@ function handleDouyinTagSelect(tag) {
   }
 }
 
-function handleDouyinMixChange(mix) {
+function handleDouyinMixChange(mix: { mix_name: string; [key: string]: unknown } | null) {
   if (mix) {
     form.mixId = mix.mix_name
     form.mixData = mix
@@ -1345,8 +1870,8 @@ function handleDouyinMixChange(mix) {
 
 
 // B站合集 —— RemoteSearchSelect 数据源(前端过滤模式)
-async function fetchBiliCollections(keyword) {
-  const resp = await biliApi.getCollections(selectedAccountId.value)
+async function fetchBiliCollections(keyword: string) {
+  const resp = (await biliApi.getCollections(selectedAccountId.value)) as ApiResponse<{ list?: Array<{ name?: string }> }>
   const all = resp.data?.list || []
   const kw = keyword?.trim().toLowerCase()
   return {
@@ -1355,8 +1880,8 @@ async function fetchBiliCollections(keyword) {
 }
 
 // 抖音合集(mix)—— RemoteSearchSelect 数据源(前端过滤模式,空关键词清空)
-async function fetchDouyinMixes(keyword) {
-  const resp = await douyinImageApi.getMixList(selectedAccountId.value)
+async function fetchDouyinMixes(keyword: string) {
+  const resp = (await douyinImageApi.getMixList(selectedAccountId.value)) as ApiResponse<{ mix_list?: Array<{ mix_name?: string }> }>
   const all = resp.data?.mix_list || []
   const kw = keyword?.trim().toLowerCase()
   return {
@@ -1366,8 +1891,8 @@ async function fetchDouyinMixes(keyword) {
 
 
 // 微博合集 —— RemoteSearchSelect 数据源(后端一次返回全量,前端过滤)
-async function fetchWeiboCollections(keyword) {
-  const resp = await weiboApi.getCollections(selectedAccountId.value)
+async function fetchWeiboCollections(keyword: string) {
+  const resp = (await weiboApi.getCollections(selectedAccountId.value)) as ApiResponse<{ list?: Array<{ name?: string }> }>
   const all = resp.data?.list || []
   const kw = keyword?.trim().toLowerCase()
   return {
@@ -1376,7 +1901,7 @@ async function fetchWeiboCollections(keyword) {
 }
 
 // 微博合集选择回调
-function handleWeiboCollectionChange(col) {
+function handleWeiboCollectionChange(col: Record<string, unknown> | null) {
   if (col) {
     form.weiboCollectionData = col
   } else {
@@ -1385,8 +1910,8 @@ function handleWeiboCollectionChange(col) {
 }
 
 // 微信公众号合集 —— RemoteSearchSelect 数据源(后端一次返回全量,前端过滤)
-async function fetchGzhCollections(keyword) {
-  const resp = await weixinGzhApi.getCollections(selectedAccountId.value)
+async function fetchGzhCollections(keyword: string) {
+  const resp = (await weixinGzhApi.getCollections(selectedAccountId.value)) as ApiResponse<{ list?: Array<{ name?: string }> }>
   const all = resp.data?.list || []
   const kw = keyword?.trim().toLowerCase()
   return {
@@ -1395,7 +1920,7 @@ async function fetchGzhCollections(keyword) {
 }
 
 // 微信公众号合集选择回调
-function handleGzhCollectionChange(col) {
+function handleGzhCollectionChange(col: Record<string, unknown> | null) {
   if (col) {
     form.gzhCollectionData = col
   } else {
@@ -1405,7 +1930,7 @@ function handleGzhCollectionChange(col) {
 
 // 小红书合集选择回调:v-model 已把 collectionName 绑到 form.collectionName,
 // 这里把完整对象(含 id)存到 form.collectionData,并把 id 同步到 form.collectionId
-function handleXhsCollectionChange(col) {
+function handleXhsCollectionChange(col: { id?: string | number; [key: string]: unknown } | null) {
   if (col) {
     form.collectionId = col.id || ''
     form.collectionData = col
@@ -1417,15 +1942,15 @@ function handleXhsCollectionChange(col) {
 
 // 小红书合集 —— RemoteSearchSelect 数据源与字段映射
 // 后端一次返回全量合集,前端按关键词过滤(searchMode=frontend + load-all)
-async function fetchXhsCollections(keyword) {
-  const resp = await xhsApi.getCollections(selectedAccountId.value)
+async function fetchXhsCollections(keyword: string) {
+  const resp = (await xhsApi.getCollections(selectedAccountId.value)) as ApiResponse<{ list?: Array<{ name?: string }> }>
   const all = resp.data?.list || []
   const kw = keyword?.trim().toLowerCase()
   return {
     list: kw ? all.filter(c => c.name?.toLowerCase().includes(kw)) : all
   }
 }
-const xhsCollectionFieldMap = {
+const xhsCollectionFieldMap: Record<string, string | ((item: XhsCollectionItem) => string)> = {
   label: 'name',
   key: 'id',
   desc: (item) => item.note_num != null
@@ -1436,7 +1961,7 @@ const xhsCollectionFieldMap = {
 
 // B 站合集选择回调:v-model 已把 biliCollectionName 绑到 form,
 // 这里把完整对象存到 form.biliCollectionData
-function handleBiliCollectionChange(col) {
+function handleBiliCollectionChange(col: Record<string, unknown> | null) {
   if (col) {
     form.biliCollectionData = col
   } else {
@@ -1445,7 +1970,7 @@ function handleBiliCollectionChange(col) {
 }
 
 // 视频号合集选择回调
-function handleChannelsCollectionChange(col) {
+function handleChannelsCollectionChange(col: Record<string, unknown> | null) {
   if (col) {
     form.channelsCollectionData = col
   } else {
@@ -1454,7 +1979,7 @@ function handleChannelsCollectionChange(col) {
 }
 
 // 视频号位置选择回调
-function handleChannelsLocationChange(loc) {
+function handleChannelsLocationChange(loc: Record<string, unknown> | null) {
   if (loc) {
     form.channelsLocationData = loc
   } else {
@@ -1463,8 +1988,8 @@ function handleChannelsLocationChange(loc) {
 }
 
 // 视频号合集 —— RemoteSearchSelect 数据源(前端过滤模式,后端一次返回全量)
-async function fetchChannelsCollections(keyword) {
-  const resp = await channelsApi.getCollections(selectedAccountId.value)
+async function fetchChannelsCollections(keyword: string) {
+  const resp = (await channelsApi.getCollections(selectedAccountId.value)) as ApiResponse<{ list?: Array<{ name?: string }> }>
   const all = resp.data?.list || []
   const kw = keyword?.trim().toLowerCase()
   return {
@@ -1473,30 +1998,30 @@ async function fetchChannelsCollections(keyword) {
 }
 
 // 视频号位置 —— RemoteSearchSelect 数据源(后端搜索模式,必须传 keyword)
-async function fetchChannelsLocations(keyword) {
-  const resp = await channelsApi.getLocations(selectedAccountId.value, keyword || '')
+async function fetchChannelsLocations(keyword: string) {
+  const resp = (await channelsApi.getLocations(selectedAccountId.value, keyword || '')) as ApiResponse<{ list?: unknown[] }>
   return { list: resp.data?.list || [] }
 }
 
 // 视频号活动 —— RemoteSearchSelect 数据源(后端搜索模式,必须传 keyword)
 // DOM: option-item 内 .creator-name(发起人)+ .name(活动名) 两个 span,
 // label 拼成「creator-name + 空格 + name」,desc 单放 .name(后端已分好)
-async function fetchChannelsActivities(keyword) {
+async function fetchChannelsActivities(keyword: string) {
   // 活动是平台级字段:未选账号时退回到该平台第一个账号的 cookie 去搜
   const aid = selectedAccountId.value
     || accountStore.accounts.find(a => a.platform === '视频号')?.id
     || ''
-  const resp = await channelsApi.searchActivities(aid, keyword || '')
+  const resp = (await channelsApi.searchActivities(aid, keyword || '')) as ApiResponse<{ list?: unknown[] }>
   return { list: resp.data?.list || [] }
 }
-const channelsActivityFieldMap = {
+const channelsActivityFieldMap: Record<string, string | ((item: ChannelsActivityItem) => string)> = {
   key: 'activity_id',
   label: 'name',
   desc: (item) => item.creator_name ? `发起人: ${item.creator_name}` : ''
 }
 
 // 视频号活动选择回调:存完整对象到 form.channelsActivityData
-function handleChannelsActivityChange(act) {
+function handleChannelsActivityChange(act: Record<string, unknown> | null) {
   if (act) {
     form.channelsActivityData = act
   } else {
@@ -1514,16 +2039,16 @@ if (firstGroup) {
 // ========== Dialog State ==========
 const accountDialogVisible = ref(false)
 const videoUploadDialogVisible = ref(false)
-const videoUploadTarget = ref('landscape')
-const materialSelectRef = ref(null)
-const materialLibraryMode = ref('video')
-const materialLibraryCoverTarget = ref('landscape')
+const videoUploadTarget = ref<'landscape' | 'portrait'>('landscape')
+const materialSelectRef = ref<InstanceType<typeof MaterialSelectDialog> | null>(null)
+const materialLibraryMode = ref<'video' | 'cover'>('video')
+const materialLibraryCoverTarget = ref<'landscape' | 'portrait'>('landscape')
 const oneClickDialogOpen = ref(false)
-const materialLibraryVideoTarget = ref('landscape')
+const materialLibraryVideoTarget = ref<'landscape' | 'portrait'>('landscape')
 const batchPublishDialogVisible = ref(false)
 
 // ========== 发布前 Cookie 预检 ==========
-const prePublishCheckRef = ref(null)
+const prePublishCheckRef = ref<InstanceType<typeof PrePublishCheckDialog> | null>(null)
 const prePublishCheckVisible = ref(false)
 
 // ========== 批量设 (Batch Set) ==========
@@ -1546,7 +2071,7 @@ const batchSetPlatforms = computed(() => {
     return { key: p.key, name: p.name, logo: p.logo, count: selectedCount }
   })
 })
-function onBatchSetApply(checkedKeys, payload) {
+function onBatchSetApply(checkedKeys: string[], payload: BatchSetPayload) {
   applyBatchSet(checkedKeys, payload)
   // 如果当前查看的渠道在批量设范围内,强制刷新 form (watch [selectedPlatform,...] 不会自动触发)
   if (selectedPlatform.value && checkedKeys.includes(selectedPlatform.value)) {
@@ -1566,16 +2091,16 @@ function onBatchSetApply(checkedKeys, payload) {
 // Batch publish state
 const publishing = ref(false)
 const publishProgress = ref(0)
-const publishResults = ref([])
+const publishResults = ref<PublishResultItem[]>([])
 const currentPublishingAccount = ref('')
 const isCancelled = ref(false)
 
 // Selected accounts
-const publishAccountIds = reactive(new Set())
+const publishAccountIds = reactive(new Set<number | string>())
 
 // ========== Sidebar Methods ==========
 
-function toggleGroup(key) {
+function toggleGroup(key: string) {
   if (expandedGroups.value.has(key)) {
     // 再次点击已展开的平台:收起并取消平台选中
     expandedGroups.value.delete(key)
@@ -1591,12 +2116,12 @@ function toggleGroup(key) {
   selectedAccountId.value = null
 }
 
-function removePublishAccount(id) {
+function removePublishAccount(id: number | string) {
   publishAccountIds.delete(id)
   hasChanges.value = true
 }
 
-function selectAccount(account, group) {
+function selectAccount(account: AccountItem, group: AccountGroupItem) {
   selectedAccountId.value = account.id
   selectedPlatform.value = group.key
   // 互斥展开:只展开账号所属平台
@@ -1606,7 +2131,7 @@ function selectAccount(account, group) {
 
 // ========== Account Dialog ==========
 
-function onAccountConfirm(ids) {
+function onAccountConfirm(ids: Array<number | string>) {
   publishAccountIds.clear()
   ids.forEach(id => {
     publishAccountIds.add(id)
@@ -1632,43 +2157,43 @@ function clearVideo() {
 // ========== Cover Editor ==========
 
 // 当前激活 tab 对应的封面对象（按 orientation + ratio 路由到 4 个字段之一）
-const coverPortraitActiveCover = computed(() => {
+const coverPortraitActiveCover = computed<MediaAsset | null>(() => {
   const t = currentEditTarget.value
   if (!t) return null
   return coverPortraitActiveRatio.value === '9:16' ? t.coverPortrait916 : t.coverPortrait
 })
-const coverLandscapeActiveCover = computed(() => {
+const coverLandscapeActiveCover = computed<MediaAsset | null>(() => {
   const t = currentEditTarget.value
   if (!t) return null
   return coverLandscapeActiveRatio.value === '16:9' ? t.coverLandscape169 : t.coverLandscape
 })
 
 // 移除/更新当前激活 tab 的封面（v-model 回调）
-function onPortraitCoverChange(v) {
+function onPortraitCoverChange(v: MediaAsset | null) {
   const t = currentEditTarget.value
   if (!t) return
   if (coverPortraitActiveRatio.value === '9:16') t.coverPortrait916 = v
   else t.coverPortrait = v
 }
-function onLandscapeCoverChange(v) {
+function onLandscapeCoverChange(v: MediaAsset | null) {
   const t = currentEditTarget.value
   if (!t) return
   if (coverLandscapeActiveRatio.value === '16:9') t.coverLandscape169 = v
   else t.coverLandscape = v
 }
 
-function openCoverEditor(orientation = 'landscape', _ratio) {
+function openCoverEditor(orientation: 'landscape' | 'portrait' = 'landscape', _ratio?: string) {
   coverEditOrientation.value = orientation
   // 弹窗侧 CoverEditorDialog 不感知 ratio，保持原默认（orientation 主尺寸）打开；
   // 用户进入弹窗后可自行切换 9:16 / 16:9 tab 编辑。
   coverEditorRef.value?.open(orientation)
 }
 
-function triggerFrameExtraction(videoData, type) {
+function triggerFrameExtraction(videoData: MediaAsset | null, type: 'landscape' | 'portrait') {
   if (!videoData?.id) return
   const doExtract = async () => {
     try {
-      const resp = await frameApi.extractFrames(videoData.id)
+      const resp = (await frameApi.extractFrames(videoData.id)) as ApiResponse<{ frames?: MediaAsset[] }>
       if (resp.data) {
         const allFrames = resp.data.frames || []
         const recommended = pickRecommendedFrames(allFrames, 6)
@@ -1682,7 +2207,7 @@ function triggerFrameExtraction(videoData, type) {
   doExtract()
 }
 
-function pickRecommendedFrames(frames, count) {
+function pickRecommendedFrames<T>(frames: T[], count: number): T[] {
   if (frames.length <= count) return frames
   const result = [frames[0]]
   for (let i = 1; i < count - 1; i++) {
@@ -1693,8 +2218,8 @@ function pickRecommendedFrames(frames, count) {
   return result
 }
 
-async function onVideoUploaded(d) {
-  const videoData = {
+async function onVideoUploaded(d: UploadedFilePayload) {
+  const videoData: MediaAsset = {
     id: d.id,
     name: d.original_filename,
     url: getFileUrl(d.stored_path),
@@ -1728,7 +2253,7 @@ async function onVideoUploaded(d) {
 
 // ========== Material Library ==========
 
-async function selectFromLibrary(mode = 'video', videoOrCoverTarget = 'landscape') {
+async function selectFromLibrary(mode: 'video' | 'cover' = 'video', videoOrCoverTarget: 'landscape' | 'portrait' = 'landscape') {
   materialLibraryMode.value = mode
   if (mode === 'video') {
     materialLibraryVideoTarget.value = videoOrCoverTarget
@@ -1736,14 +2261,15 @@ async function selectFromLibrary(mode = 'video', videoOrCoverTarget = 'landscape
     materialLibraryCoverTarget.value = videoOrCoverTarget
   }
   materialsApi.list({ page_size: 200 }).then((response) => {
-    if (response.code === 200) {
-      appStore.setMaterials(response.data.items || [])
+    const res = response as ApiResponse<{ items?: unknown[] }>
+    if (res.code === 200) {
+      appStore.setMaterials(res.data.items || [])
     }
   }).catch((err) => console.error('预拉素材列表出错:', err))
   materialSelectRef.value?.open()
 }
 
-function onMaterialSelect(material) {
+function onMaterialSelect(material: MediaAsset) {
   // 公共区域选素材：写入 currentEditTarget（默认=commonConfig, 勾选=覆写对象）
   if (materialLibraryMode.value === 'cover') {
     if (materialLibraryCoverTarget.value === 'portrait') {
@@ -1785,7 +2311,7 @@ watch(accountOverrides, () => { hasChanges.value = true }, { deep: true })
 
 async function saveDraft() {
   try {
-    const draftData = {
+    const draftData: DraftDataShape = {
       commonConfig: {
         videoLandscape: commonConfig.videoLandscape
           ? { id: commonConfig.videoLandscape.id, name: commonConfig.videoLandscape.name, stored_path: commonConfig.videoLandscape.stored_path, url: commonConfig.videoLandscape.url, size: commonConfig.videoLandscape.size, type: commonConfig.videoLandscape.type }
@@ -1821,7 +2347,7 @@ async function saveDraft() {
       await draftApi.updateDraft(currentDraftId.value, { draft_data: draftData })
       ElMessage.success('草稿已更新')
     } else {
-      const resp = await draftApi.createDraft({ draft_data: draftData })
+      const resp = (await draftApi.createDraft({ draft_data: draftData })) as ApiResponse<{ id: number | string }>
       currentDraftId.value = resp.data.id
       ElMessage.success('草稿已保存')
     }
@@ -1830,9 +2356,9 @@ async function saveDraft() {
   }
 }
 
-async function restoreDraft(draftId) {
+async function restoreDraft(draftId: number | string) {
   try {
-    const resp = await draftApi.getDraft(draftId)
+    const resp = (await draftApi.getDraft(draftId)) as ApiResponse<DraftRecord>
     const data = resp.data
     const dd = data.draft_data
     if (!dd) {
@@ -1893,7 +2419,7 @@ async function restoreDraft(draftId) {
     // 兼容旧草稿格式：bilibili 的 tags 从字符串转数组
     if (dd.platformConfigs?.bilibili && typeof dd.platformConfigs.bilibili.tags === 'string') {
       const str = dd.platformConfigs.bilibili.tags
-      platformConfigs.bilibili.tags = str.split(/[,，\s]+/).map(t => t.replace(/^#/, '').trim()).filter(Boolean)
+      platformConfigs.bilibili.tags = str.split(/[,，\s]+/).map((t: string) => t.replace(/^#/, '').trim()).filter((t): t is string => Boolean(t))
     }
 
     // 兼容旧草稿格式：为缺少 tags 的平台补充空数组
@@ -2003,7 +2529,7 @@ async function restoreDraft(draftId) {
 onMounted(async () => {
   // 加载账号列表
   try {
-    const res = await accountApi.getAccounts()
+    const res = (await accountApi.getAccounts()) as ApiResponse<unknown[]>
     accountStore.setAccounts(res.data)
   } catch (e) {
     console.error('加载账号列表失败:', e)
@@ -2014,7 +2540,7 @@ onMounted(async () => {
 
   // 清理 publishAccountIds 中属于黑名单平台的账号（本地清理，不写后端）
   // Set 是发布页内存状态，重建一个新的 Set 来剔除被拉黑平台的账号
-  const filteredIds = new Set()
+  const filteredIds = new Set<number | string>()
   for (const id of publishAccountIds) {
     const acc = accountStore.accounts.find(a => a.id === id)
     if (!acc) continue
@@ -2055,7 +2581,7 @@ async function publishAll() {
   }
 
   // ===== Collect ALL errors first (collect-all-then-show-one) =====
-  const errors = []  // [{ type: '作品声明', accounts: ['账号A(B站)', ...] }, ...]
+  const errors: Array<{ type: string; accounts: string[] }> = []  // [{ type: '作品声明', accounts: ['账号A(B站)', ...] }, ...]
 
   // 1. 封面校验（扫 3 个源）
   const hasAnyCover = (() => {
@@ -2082,7 +2608,7 @@ async function publishAll() {
   const accountsWithoutReprintUrl = []
   const accountsWithoutTitle = []
   const accountsWithoutCover = []  // 格式: '账号X(平台Y)'
-  const DECLARATION_PLATFORMS = {
+  const DECLARATION_PLATFORMS: Record<string, string | string[]> = {
     xiaohongshu: 'aiContent',
     douyin: 'aiContent',
     kuaishou: 'aiContent',
@@ -2220,7 +2746,7 @@ async function publishAll() {
       const tags = merged.tags || []
       const parts = [desc]
       if (tags.length > 0) parts.push(tags.map(t => `#${t}`).join(' '))
-      const full = parts.filter(Boolean).join(' ').trim()
+      const full = parts.filter((p): p is string => Boolean(p)).join(' ').trim()
       const charCount = countCharsWithEmoji(full)
       if (charCount > 450) {
         iqiyiDescAccounts.push(
@@ -2252,7 +2778,7 @@ async function publishAll() {
       // 计算 desc + tags 拼接后的总字符数(emoji=3)
       const parts = [desc]
       if (tags.length > 0) parts.push(tags.map(t => `#${t}`).join(' '))
-      const full = parts.filter(Boolean).join(' ').trim()
+      const full = parts.filter((p): p is string => Boolean(p)).join(' ').trim()
       let charCount = 0
       for (const ch of full) {
         charCount += ch.codePointAt(0) > 0xFFFF ? 3 : 1
@@ -2381,7 +2907,7 @@ async function publishAll() {
   currentPublishingAccount.value = ''
   batchPublishDialogVisible.value = true
 
-  const allTasks = []
+  const allTasks: PublishTaskItem[] = []
   for (const group of accountGroups.value) {
     if (group.accounts.length === 0) continue
     for (const account of group.accounts) {
@@ -2620,7 +3146,7 @@ async function publishAll() {
       // 后端串行队列执行，前端轮询任务状态直到终态。根治「大视频上传
       // 期间 HTTP 长连接被传输层/代理层掐断 → 前端误判失败 → 继续发
       // 下一账号 → 多个浏览器并发发布」的问题。
-      const resp = await http.post('/postVideo', publishData)
+      const resp = await http.post<PostVideoResponse>('/postVideo', publishData)
       const taskId = resp?.data?.taskId
       if (!taskId) throw new Error('后端未返回发布任务 ID')
       const final = await pollPublishStatus(taskId)
@@ -2666,7 +3192,7 @@ async function publishAll() {
 // 轮询异步发布任务状态，直到 success / failed。
 // 用原生 fetch（同源）而非 axios：轮询期间的临时网络错误不应触发全局
 // 错误 toast；连续 30 次（约 1 分钟）查询失败才判定任务状态丢失。
-async function pollPublishStatus(taskId) {
+async function pollPublishStatus(taskId: string) {
   const POLL_INTERVAL_MS = 2000
   const MAX_CONSECUTIVE_ERRORS = 30
   let errors = 0
@@ -2697,7 +3223,7 @@ function cancelBatch() {
   ElMessage.info('正在取消发布...')
 }
 
-function handleOneClickFill(record) {
+function handleOneClickFill(record: PublishHistoryRecord) {
   const histConfig = record.account_configs || {}
   const channels = record.channels || []
   // 1. 复原账号选择：清空当前选中，按历史 channels 自动勾选对应平台下的所有账号
@@ -2737,7 +3263,7 @@ function handleOneClickFill(record) {
 }
 
 // ========== Utility ==========
-function formatSize(bytes) {
+function formatSize(bytes: number) {
   if (!bytes) return '0B'
   if (bytes < 1024) return bytes + 'B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB'
