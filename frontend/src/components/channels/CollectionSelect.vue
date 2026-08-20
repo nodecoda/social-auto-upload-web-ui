@@ -104,7 +104,7 @@ async function handleSearch() {
   console.log('[视频号合集] 触发搜索:', searchKeyword.value || '(全部)')
   loading.value = true
   try {
-    const resp = (await channelsApi.getCollections(props.accountId)) as ApiResponse<{ list?: any[] }>
+    const resp = (await channelsApi.getCollections(props.accountId)) as ApiResponse<{ list?: CollectionItem[] }>
     if (resp.code === 200) {
       allCollections.value = (resp.data?.list || []) as CollectionItem[]
       const kw = searchKeyword.value?.trim().toLowerCase()

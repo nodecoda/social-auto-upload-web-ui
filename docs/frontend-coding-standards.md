@@ -290,6 +290,7 @@ it('emits confirm with payload', async () => {
 | `allowJs` | `false`（原 `true`，0 个 .js 源文件） | 已收紧（2026-08 批 11） |
 | `defineProps` 运行时形式 | 4 处已泛型化 | BatchTagDialog/MaterialSelectDialog/PrePublishCheckDialog/MaterialUploader（批 13）；其余含 PropType/validator 按例外保留 |
 | 错误处理 `.message` 直访 | 2 处已收敛 | 改用 `getErrorMessage`（批 13） |
+| API 响应断言 `any[]` | 16 处已收敛 | 复用批 11/12 接口类型（批 14）；TagSelect 6 处多分支搜索响应保留例外 |
 | 平台 Select 列表 `any[]` | **0 处 ✓**（原 18 处） | 已全部收敛为接口（批 11 douyin 系 / 批 12 其余平台） |
 
 ---

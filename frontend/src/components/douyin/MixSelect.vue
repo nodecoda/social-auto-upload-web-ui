@@ -121,7 +121,7 @@ async function handleSearch() {
   console.log('触发合集搜索:', keyword)
   loading.value = true
   try {
-    const resp = (await douyinImageApi.getMixList(props.accountId)) as ApiResponse<{ mix_list?: any[] }>
+    const resp = (await douyinImageApi.getMixList(props.accountId)) as ApiResponse<{ mix_list?: MixItem[] }>
     console.log('合集搜索结果:', resp)
     if (resp.code === 200) {
       // 前端过滤合集列表

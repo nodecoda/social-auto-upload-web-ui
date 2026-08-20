@@ -244,9 +244,18 @@ function handleAlipayCompilationChange(fieldKey: string, comp: Record<string, an
 
 // ----- 支付宝/头条合集(compilation) RemoteSearchSelect 数据源(后端搜索模式) -----
 // 按 selectedPlatform 切换 api:头条用 toutiaoApi,其余用 alipayApi
+interface CompilationItem {
+  compilationId?: string | number
+  title: string
+  coverUrl?: string
+  category?: string
+  total?: number
+  [key: string]: unknown
+}
+
 async function fetchCompilation(keyword?: string) {
   const api = props.selectedPlatform === 'toutiao' ? toutiaoApi : alipayApi
-  const resp = (await api.searchCompilation(props.selectedAccountId, keyword || '')) as ApiResponse<{ list?: any[] }>
+  const resp = (await api.searchCompilation(props.selectedAccountId, keyword || '')) as ApiResponse<{ list?: CompilationItem[] }>
   return { list: resp.data?.list || [] }
 }
 

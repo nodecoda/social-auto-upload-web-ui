@@ -182,8 +182,13 @@ function addTag() {
 function removeTag(index: number) { form.tags.splice(index, 1) }
 
 // 贴图合集数据源(后端 type=贴图合集)
+interface GzhCollectionItem {
+  name: string
+  [key: string]: unknown
+}
+
 async function fetchGzhImageCollections(keyword: string) {
-  const resp = (await weixinGzhApi.getCollections(props.accountId, '贴图合集')) as ApiResponse<{ list?: any[] }>
+  const resp = (await weixinGzhApi.getCollections(props.accountId, '贴图合集')) as ApiResponse<{ list?: GzhCollectionItem[] }>
   const all = resp.data?.list || []
   const kw = keyword?.trim().toLowerCase()
   return {

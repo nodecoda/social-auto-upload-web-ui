@@ -166,7 +166,7 @@ async function fetchMusicList() {
   loading.value = true
   errorMsg.value = ''
   try {
-    const resp = (await alipayApi.musicList(props.accountId)) as ApiResponse<{ list?: any[] }>
+    const resp = (await alipayApi.musicList(props.accountId)) as ApiResponse<{ list?: MusicItem[] }>
     if (resp.code === 200) {
       allMusicList.value = (resp.data?.list || []) as MusicItem[]
       if (allMusicList.value.length === 0) {

@@ -53,7 +53,7 @@ interface PoiItem {
 }
 
 async function fetchPoi(keyword: string) {
-  const resp = (await xhsApi.searchPoi(props.accountId, keyword || '')) as ApiResponse<{ poi_list?: any[] }>
+  const resp = (await xhsApi.searchPoi(props.accountId, keyword || '')) as ApiResponse<{ poi_list?: PoiItem[] }>
   return { list: resp.data?.poi_list || [] }
 }
 

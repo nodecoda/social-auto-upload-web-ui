@@ -126,7 +126,7 @@ async function handleSearch() {
   console.log('触发音乐搜索:', keyword)
   loading.value = true
   try {
-    const resp = (await douyinImageApi.searchMusic(props.accountId || '', keyword)) as ApiResponse<{ music?: any[] }>
+    const resp = (await douyinImageApi.searchMusic(props.accountId || '', keyword)) as ApiResponse<{ music?: MusicItem[] }>
     console.log('音乐搜索结果:', resp)
     if (resp.code === 200) {
       musicList.value = (resp.data?.music || []) as MusicItem[]
