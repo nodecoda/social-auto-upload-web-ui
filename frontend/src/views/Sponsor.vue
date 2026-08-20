@@ -118,10 +118,20 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, onUnmounted, h } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted, h, type Component } from 'vue'
 import alipayImg from '@/assets/alipay.jpg'
 import weixinImg from '@/assets/weixin.jpg'
+
+interface QrCodeItem {
+  name: string
+  img: string
+  accent: string
+  iconBg: string
+  icon: Component
+  emoji: string
+  slogan: string
+}
 
 const AlipayIcon = {
   render: () => h('svg', { viewBox: '0 0 24 24', fill: 'currentColor' }, [
@@ -135,7 +145,7 @@ const WechatIcon = {
   ])
 }
 
-const qrcodes = [
+const qrcodes: QrCodeItem[] = [
   {
     name: '支付宝',
     img: alipayImg,
@@ -169,7 +179,7 @@ const dayCount = computed(() => {
 })
 
 // 每分钟刷新一次，跨天时自动 +1
-let timer = null
+let timer: number | null = null
 onMounted(() => {
   timer = setInterval(() => { now.value = Date.now() }, 60000)
 })
@@ -178,7 +188,7 @@ onUnmounted(() => {
 })
 
 // 装饰星星位置
-const randomStar = (i) => {
+const randomStar = (i: number) => {
   const seed = (i * 9301 + 49297) % 233280
   const r = seed / 233280
   const x = ((i * 37) % 100)
@@ -194,8 +204,8 @@ const randomStar = (i) => {
   }
 }
 
-const previewQr = ref(null)
-const openPreview = (qr) => { previewQr.value = qr }
+const previewQr = ref<QrCodeItem | null>(null)
+const openPreview = (qr: QrCodeItem) => { previewQr.value = qr }
 </script>
 
 <style lang="scss" scoped>

@@ -142,33 +142,51 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, type UploadFile } from 'element-plus'
 import { Plus, CaretTop, Paperclip, Upload, Refresh } from '@element-plus/icons-vue'
 import { listFeedback, submitFeedback as apiSubmit, voteFeedback as apiVote } from '@/api/feedback'
-import { http } from '@/utils/request'
+import { http, type ApiResponse } from '@/utils/request'
+
+interface FeedbackAttachment {
+  id: number
+  file_url: string
+}
+
+interface FeedbackItem {
+  id: number
+  status: number
+  content: string
+  email: string
+  created_at: string
+  vote_count?: number
+  assignee?: string
+  attachments?: FeedbackAttachment[]
+}
+
+type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger'
 
 const router = useRouter()
 
 const statusFilter = ref('all')
 const loading = ref(false)
-const list = ref([])
+const list = ref<FeedbackItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 
 const drawerVisible = ref(false)
-const currentFb = ref(null)
+const currentFb = ref<FeedbackItem | null>(null)
 
 const submitVisible = ref(false)
 const submitting = ref(false)
 const submitForm = ref({ email: '', content: '' })
-const submitFile = ref(null)
+const submitFile = ref<File | null>(null)
 
 const VOTED_LS_KEY = 'feedback_voted_ids'
-const votedIds = ref(new Set(JSON.parse(localStorage.getItem(VOTED_LS_KEY) || '[]')))
+const votedIds = ref<Set<number>>(new Set(JSON.parse(localStorage.getItem(VOTED_LS_KEY) || '[]')))
 
 function persistVotedIds() {
   localStorage.setItem(VOTED_LS_KEY, JSON.stringify([...votedIds.value]))
@@ -179,27 +197,28 @@ const sortedList = computed(() => {
     if ((b.vote_count || 0) !== (a.vote_count || 0)) {
       return (b.vote_count || 0) - (a.vote_count || 0)
     }
-    return new Date(b.created_at) - new Date(a.created_at)
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   })
 })
 
-function statusLabel(s) {
+function statusLabel(s: number) {
   return { 1: '待确认', 2: '处理中', 3: '已完成', 4: '已拒绝' }[s] || '未知'
 }
-function statusTagType(s) {
-  return { 1: 'warning', 2: 'primary', 3: 'success', 4: 'info' }[s] || 'info'
+function statusTagType(s: number): TagType {
+  const map: Record<number, TagType> = { 1: 'warning', 2: 'primary', 3: 'success', 4: 'info' }
+  return map[s] || 'info'
 }
-function truncate(text, n) {
+function truncate(text: string, n: number) {
   if (!text) return ''
   return text.length > n ? text.slice(0, n) + '…' : text
 }
-function maskEmail(email) {
+function maskEmail(email: string) {
   if (!email) return ''
   const [user, domain] = email.split('@')
   if (!domain) return email
   return user.slice(0, 2) + '***@' + domain
 }
-function formatTime(iso) {
+function formatTime(iso: string) {
   if (!iso) return ''
   const d = new Date(iso)
   return d.toLocaleString('zh-CN', { hour12: false })
@@ -208,13 +227,16 @@ function formatTime(iso) {
 async function loadList() {
   loading.value = true
   try {
-    const params = { page: page.value, pageSize: pageSize.value }
+    const params: { page: number; pageSize: number; includeAll?: boolean; status?: string } = {
+      page: page.value,
+      pageSize: pageSize.value
+    }
     if (statusFilter.value === 'all') {
       params.includeAll = true
     } else {
       params.status = statusFilter.value
     }
-    const res = await listFeedback(params)
+    const res = (await listFeedback(params)) as ApiResponse<{ list?: FeedbackItem[]; total?: number }>
     list.value = res.data?.list || []
     total.value = res.data?.total || 0
   } catch (e) {
@@ -229,18 +251,18 @@ function handleStatusChange() {
   page.value = 1
   loadList()
 }
-function onSizeChange(s) {
+function onSizeChange(s: number) {
   pageSize.value = s
   page.value = 1
   loadList()
 }
 
-function openDrawer(fb) {
+function openDrawer(fb: FeedbackItem) {
   currentFb.value = fb
   drawerVisible.value = true
 }
 
-async function handleVote(fb) {
+async function handleVote(fb: FeedbackItem) {
   // 后端从 settings 表读 email；前端不再传。前端只用来判断是否需要引导去设置。
   const localEmail = localStorage.getItem('global_user_email') || ''
   if (!localEmail) {
@@ -286,13 +308,13 @@ function openSubmitDialog() {
   submitFile.value = null
   submitVisible.value = true
 }
-function onFileChange(file) {
+function onFileChange(file: UploadFile) {
   if (file.size > 5 * 1024 * 1024) {
     ElMessage.error('文件超过 5MB')
     submitFile.value = null
     return false
   }
-  submitFile.value = file.raw
+  submitFile.value = file.raw as File
 }
 function onExceed() {
   ElMessage.warning('只能上传 1 个文件')
