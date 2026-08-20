@@ -96,7 +96,7 @@ import { Search, CircleClose, Promotion, Picture, Check, MagicStick } from '@ele
 
 // 服务端返回的选项项(其余字段透传)
 interface RemoteItem {
-  [key: string]: any
+  [key: string]: unknown
 }
 
 type FieldResolver = string | ((item: RemoteItem) => string)
@@ -109,16 +109,16 @@ const props = defineProps({
   },
   // 回显用的完整对象(原契约)
   data: {
-    type: Object as PropType<Record<string, any> | null>,
+    type: Object as PropType<RemoteItem | null>,
     default: null
   },
   /**
    * 数据源函数。调用方在此内联调 api + 取 list。
-   * 签名:(keyword?: string) => Promise<{ list: any[], total?: number }>
-   * 组件内部零硬编码 api。
+   * 签名:(keyword?: string) => Promise<{ list: unknown[], total?: number }>
+   * 组件内部零硬编码 api,item 形状由 fieldMap 解读。
    */
   fetcher: {
-    type: Function as PropType<(keyword: string) => Promise<{ list: any[]; total?: number }>>,
+    type: Function as PropType<(keyword: string) => Promise<{ list: unknown[]; total?: number }>>,
     required: true
   },
   /**
@@ -192,33 +192,34 @@ function resolveField(item: RemoteItem, mapping: FieldResolver) {
     try { return mapping(item) || '' } catch { return '' }
   }
   // 字符串:支持点路径嵌套,如 'cover_url.url_list.0'
-  return String(mapping).split('.').reduce((acc, key) => {
+  // 注:Object() 装箱原始值,保证任意 acc 上按键取值不抛错(原 any 版语义)
+  return String(mapping).split('.').reduce((acc: unknown, key) => {
     if (acc == null) return ''
     // 数组下标
     if (/^\d+$/.test(key) && Array.isArray(acc)) return acc[Number(key)]
-    return acc[key]
+    return (Object(acc) as Record<string, unknown>)[key]
   }, item) ?? ''
 }
 
-function getKey(item: any) {
+function getKey(item: RemoteItem) {
   return resolveField(item, props.fieldMap.key) || resolveField(item, props.fieldMap.label)
 }
-function getLabel(item: any) {
+function getLabel(item: RemoteItem) {
   return resolveField(item, props.fieldMap.label) || ''
 }
-function getDesc(item: any) {
+function getDesc(item: RemoteItem) {
   return resolveField(item, props.fieldMap.desc)
 }
-function getCover(item: any): string {
+function getCover(item: RemoteItem): string {
   return String(resolveField(item, props.fieldMap.cover) ?? '')
 }
 const hasCover = computed(() => props.fieldMap.cover != null)
-function isSelected(item: any) {
+function isSelected(item: RemoteItem) {
   return getLabel(item) === selectedValue.value && selectedValue.value !== ''
 }
 
-function onCoverError(e: any) {
-  e.target.style.display = 'none'
+function onCoverError(e: Event) {
+  ;(e.target as HTMLImageElement).style.display = 'none'
 }
 
 // ─────────── 搜索逻辑 ───────────
@@ -270,7 +271,7 @@ async function handleSearch() {
   loading.value = true
   try {
     const result = await props.fetcher(kw ?? '')
-    list.value = result?.list || []
+    list.value = (result?.list || []) as RemoteItem[]
     searched.value = true
   } catch (e) {
     console.error('[RemoteSearchSelect] 搜索失败:', e)
@@ -288,7 +289,7 @@ function handleClear() {
   searched.value = false
 }
 
-function handleChange(val: any) {
+function handleChange(val: string) {
   emit('update:modelValue', val)
   const item = list.value.find(it => getLabel(it) === val)
   // change 事件带完整对象 + _searchKeyword(原契约)
