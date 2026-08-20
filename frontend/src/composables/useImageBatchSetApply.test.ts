@@ -3,7 +3,7 @@ import { useImageBatchSetApply } from './useImageBatchSetApply'
 
 // xiaohongshu key → name '小红书' (来自 @/config/platforms 真实注册表)
 function setup() {
-  const panels = {
+  const panels: any = {
     xiaohongshu: {
       publicApi: { setPlatformConfig: vi.fn(), setAccountOverride: vi.fn() },
     },

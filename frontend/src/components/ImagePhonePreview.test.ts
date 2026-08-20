@@ -52,7 +52,7 @@ describe('ImagePhonePreview', () => {
     const w = mountIt({ images })
     const btn = w.findAll('button').find(b => b.text().includes('放大预览'))
     expect(btn).toBeTruthy()
-    await btn.trigger('click')
+    await btn!.trigger('click')
     expect(w.emitted('preview')).toBeTruthy()
   })
 
@@ -65,7 +65,7 @@ describe('ImagePhonePreview', () => {
   it('素材库按钮发出 library', async () => {
     const w = mountIt({ images })
     const btn = w.findAll('button').find(b => b.text().includes('素材库'))
-    await btn.trigger('click')
+    await btn!.trigger('click')
     expect(w.emitted('library')).toBeTruthy()
   })
 })

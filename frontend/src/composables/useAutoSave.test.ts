@@ -6,9 +6,9 @@ import { useAppStore } from '@/stores/app'
 import { useAutoSave } from './useAutoSave'
 
 describe('useAutoSave', () => {
-  let store
+  let store: ReturnType<typeof useAppStore>
 
-  let warnSpy
+  let warnSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.useFakeTimers()

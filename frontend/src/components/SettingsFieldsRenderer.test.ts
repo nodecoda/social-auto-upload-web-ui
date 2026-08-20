@@ -57,7 +57,7 @@ describe('SettingsFieldsRenderer', () => {
     const input = w.find('input[type="text"], input:not([type])')
     // 找标题输入框（placeholder）
     const title = w.findAll('input').find(i => i.attributes('placeholder') === '输入标题')
-    await title.setValue('我的标题')
+    await title!.setValue('我的标题')
     expect(w.props('form').caption).toBe('我的标题')
   })
 

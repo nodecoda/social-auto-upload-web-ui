@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import {
   ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElTag, ElDatePicker, ElMessage,
-} from '../../tests/stubs.js'
+} from '../../tests/stubs'
 import BatchSetDialog from './BatchSetDialog.vue'
 
 vi.mock('element-plus', () => ({ ElMessage }))
@@ -19,9 +19,9 @@ const mountIt = (over = {}) => mount(BatchSetDialog, {
 })
 
 /** 打开对话框(触发 watch 重置/预选) */
-const open = async (w) => { await w.setProps({ modelValue: true }); await w.vm.$nextTick() }
+const open = async (w: any) => { await w.setProps({ modelValue: true }); await w.vm.$nextTick() }
 
-const cardOf = (w, name) => w.findAll('.channel-card').find(c => c.text().includes(name))
+const cardOf = (w: any, name: string) => w.findAll('.channel-card').find((c: any) => c.text().includes(name))
 
 describe('BatchSetDialog', () => {
   beforeEach(() => {
@@ -81,8 +81,8 @@ describe('BatchSetDialog', () => {
     const btns = w.findAll('button')
     const partial = btns.find(b => b.text().includes('仅应用已填写'))
     const full = btns.find(b => b.text().includes('全量应用'))
-    expect(partial.attributes('disabled')).toBeDefined()
-    expect(full.attributes('disabled')).toBeDefined()
+    expect(partial!.attributes('disabled')).toBeDefined()
+    expect(full!.attributes('disabled')).toBeDefined()
   })
 
   it('回车添加标签,重复/空标签不重复添加,关闭标签可移除', async () => {
@@ -123,7 +123,7 @@ describe('BatchSetDialog', () => {
     const w = mountIt()
     await open(w)
     const cancel = w.findAll('button').find(b => b.text().includes('取消'))
-    await cancel.trigger('click')
+    await cancel!.trigger('click')
     expect(w.emitted('update:modelValue')).toEqual([[false]])
   })
 
@@ -138,9 +138,9 @@ describe('BatchSetDialog', () => {
     await w.find('.el-date-picker-stub').setValue('2026-08-20 10:00:00')
 
     const partial = w.findAll('button').find(b => b.text().includes('仅应用已填写'))
-    await partial.trigger('click')
+    await partial!.trigger('click')
 
-    const [keys, payload] = w.emitted('apply')[0]
+    const [keys, payload] = w.emitted('apply')![0]
     expect(keys).toEqual(['douyin'])
     expect(payload).toEqual({
       title: '我的标题',
@@ -156,8 +156,8 @@ describe('BatchSetDialog', () => {
     const w = mountIt()
     await open(w)
     const full = w.findAll('button').find(b => b.text().includes('全量应用'))
-    await full.trigger('click')
-    const [keys, payload] = w.emitted('apply')[0]
+    await full!.trigger('click')
+    const [keys, payload] = w.emitted('apply')![0]
     expect(keys).toEqual(['douyin', 'xiaohongshu'])
     expect(payload).toMatchObject({ title: '', description: '', tags: [], scheduleTime: '', mode: 'full' })
   })

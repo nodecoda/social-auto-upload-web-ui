@@ -11,7 +11,7 @@ const DEFAULTS = {
   enableTimer: 0,
 }
 
-function setup(accountId = null, extra = {}) {
+function setup(accountId: number | null = null, extra = {}) {
   const props = reactive({ accountId, disabled: false })
   const emit = vi.fn()
   const api = useChannelForm(DEFAULTS, { props, emit }, extra)
