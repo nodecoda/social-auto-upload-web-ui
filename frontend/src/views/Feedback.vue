@@ -5,7 +5,7 @@
         <h1 class="page-title">一键反馈</h1>
         <p class="page-subtitle">查看、提交、投票反馈，与作者一起改进产品</p>
       </div>
-      <el-button type="primary" :icon="Plus" @click="openSubmitDialog">提交反馈</el-button>
+      <el-button type="primary" :icon="Plus" @click="submitVisible = true">提交反馈</el-button>
     </div>
 
     <div class="filter-bar">
@@ -22,36 +22,14 @@
 
     <div v-loading="loading" class="card-grid">
       <el-empty v-if="!loading && sortedList.length === 0" description="暂无反馈" />
-      <div
+      <FeedbackCard
         v-for="fb in sortedList"
         :key="fb.id"
-        class="feedback-card"
-        @click="openDrawer(fb)"
-      >
-        <div class="card-top">
-          <el-tag :type="statusTagType(fb.status)" size="small">
-            {{ statusLabel(fb.status) }}
-          </el-tag>
-          <button
-            :class="['vote-btn', { voted: votedIds.has(fb.id) }]"
-            :disabled="votedIds.has(fb.id)"
-            @click.stop="handleVote(fb)"
-          >
-            <el-icon><CaretTop /></el-icon>
-            <span>{{ votedIds.has(fb.id) ? '已支持' : '我也支持' }}</span>
-            <span class="vote-num">{{ fb.vote_count || 0 }}</span>
-          </button>
-        </div>
-        <div class="card-content">{{ truncate(fb.content, 80) }}</div>
-        <div class="card-meta">
-          <span class="meta-email">{{ maskEmail(fb.email) }}</span>
-          <span class="meta-time">{{ formatTime(fb.created_at) }}</span>
-        </div>
-        <div v-if="fb.attachments && fb.attachments.length" class="card-attachments">
-          <el-icon><Paperclip /></el-icon>
-          {{ fb.attachments.length }} 个附件
-        </div>
-      </div>
+        :fb="fb"
+        :voted="votedIds.has(fb.id)"
+        @vote="handleVote"
+        @open="openDrawer"
+      />
     </div>
 
     <div v-if="total > 0" class="pagination-wrapper">
@@ -109,65 +87,29 @@
     </el-drawer>
 
     <!-- 提交反馈对话框 -->
-    <el-dialog v-model="submitVisible" title="提交反馈" width="500px">
-      <el-form :model="submitForm" label-width="80px">
-        <el-form-item label="邮箱" required>
-          <el-input v-model="submitForm.email" placeholder="your@email.com" />
-        </el-form-item>
-        <el-form-item label="内容" required>
-          <el-input v-model="submitForm.content" type="textarea" :rows="5" placeholder="详细描述您遇到的问题或建议" />
-        </el-form-item>
-        <el-form-item label="附件">
-          <el-upload
-            :auto-upload="false"
-            :limit="1"
-            :on-change="onFileChange"
-            :on-exceed="onExceed"
-            :on-remove="onFileRemove"
-            accept=".png,.jpg,.jpeg,.gif,.bmp,.webp,.pdf,.doc,.docx,.xlsx,.xls,.pptx,.ppt"
-            list-type="picture"
-          >
-            <el-button :icon="Upload">选择文件 (≤5MB)</el-button>
-            <template #tip>
-              <div class="el-upload__tip">支持图片、PDF、Office 文档，单文件不超过 5MB</div>
-            </template>
-          </el-upload>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="submitVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmit">提交</el-button>
-      </template>
-    </el-dialog>
+    <FeedbackSubmitDialog
+      v-model="submitVisible"
+      @submit-success="loadList"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox, type UploadFile } from 'element-plus'
-import { Plus, CaretTop, Paperclip, Upload, Refresh } from '@element-plus/icons-vue'
-import { listFeedback, submitFeedback as apiSubmit, voteFeedback as apiVote } from '@/api/feedback'
-import { http, type ApiResponse } from '@/utils/request'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Refresh } from '@element-plus/icons-vue'
+import { listFeedback, voteFeedback as apiVote } from '@/api/feedback'
+import { type ApiResponse } from '@/utils/request'
 import { getErrorMessage } from '@/utils/error'
-
-interface FeedbackAttachment {
-  id: number
-  file_url: string
-}
-
-interface FeedbackItem {
-  id: number
-  status: number
-  content: string
-  email: string
-  created_at: string
-  vote_count?: number
-  assignee?: string
-  attachments?: FeedbackAttachment[]
-}
-
-type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger'
+import FeedbackCard from '@/components/FeedbackCard.vue'
+import FeedbackSubmitDialog from '@/components/FeedbackSubmitDialog.vue'
+import {
+  type FeedbackItem,
+  statusLabel,
+  statusTagType,
+  formatTime,
+} from '@/components/feedbackShared'
 
 const router = useRouter()
 
@@ -182,9 +124,6 @@ const drawerVisible = ref(false)
 const currentFb = ref<FeedbackItem | null>(null)
 
 const submitVisible = ref(false)
-const submitting = ref(false)
-const submitForm = ref({ email: '', content: '' })
-const submitFile = ref<File | null>(null)
 
 const VOTED_LS_KEY = 'feedback_voted_ids'
 const votedIds = ref<Set<number>>(new Set(JSON.parse(localStorage.getItem(VOTED_LS_KEY) || '[]')))
@@ -201,29 +140,6 @@ const sortedList = computed(() => {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   })
 })
-
-function statusLabel(s: number) {
-  return { 1: '待确认', 2: '处理中', 3: '已完成', 4: '已拒绝' }[s] || '未知'
-}
-function statusTagType(s: number): TagType {
-  const map: Record<number, TagType> = { 1: 'warning', 2: 'primary', 3: 'success', 4: 'info' }
-  return map[s] || 'info'
-}
-function truncate(text: string, n: number) {
-  if (!text) return ''
-  return text.length > n ? text.slice(0, n) + '…' : text
-}
-function maskEmail(email: string) {
-  if (!email) return ''
-  const [user, domain] = email.split('@')
-  if (!domain) return email
-  return user.slice(0, 2) + '***@' + domain
-}
-function formatTime(iso: string) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return d.toLocaleString('zh-CN', { hour12: false })
-}
 
 async function loadList() {
   loading.value = true
@@ -301,66 +217,6 @@ async function promptForEmail() {
   }
 }
 
-function openSubmitDialog() {
-  submitForm.value = {
-    email: localStorage.getItem('global_user_email') || '',
-    content: ''
-  }
-  submitFile.value = null
-  submitVisible.value = true
-}
-function onFileChange(file: UploadFile) {
-  if ((file.size ?? 0) > 5 * 1024 * 1024) {
-    ElMessage.error('文件超过 5MB')
-    submitFile.value = null
-    return false
-  }
-  submitFile.value = file.raw as File
-}
-function onExceed() {
-  ElMessage.warning('只能上传 1 个文件')
-}
-function onFileRemove() {
-  submitFile.value = null
-}
-
-async function handleSubmit() {
-  const email = submitForm.value.email.trim()
-  const content = submitForm.value.content.trim()
-  if (!email || !content) {
-    ElMessage.error('邮箱和内容必填')
-    return
-  }
-  // 用户在对话框里可能改了 email，把它同步回 settings + localStorage
-  const globalEmail = localStorage.getItem('global_user_email') || ''
-  if (email !== globalEmail) {
-    localStorage.setItem('global_user_email', email)
-    // 同步回后端 settings（让下次 list/vote 也能用上）
-    try {
-      await http.put('/api/v2/settings', { feedbackEmail: email })
-    } catch (_) { /* 后端同步失败不影响本次提交 */ }
-  }
-
-  submitting.value = true
-  try {
-    const fd = new FormData()
-    // 后端优先用 settings 里的 email，这里也传作为覆盖（保持兼容性）
-    fd.append('email', email)
-    fd.append('content', content)
-    if (submitFile.value) {
-      fd.append('files', submitFile.value)
-    }
-    await apiSubmit(fd)
-    ElMessage.success('提交成功')
-    submitVisible.value = false
-    await loadList()
-  } catch (e) {
-    // 错误已由 request.js 拦截器处理
-  } finally {
-    submitting.value = false
-  }
-}
-
 onMounted(async () => {
   const email = localStorage.getItem('global_user_email')
   if (!email) {
@@ -423,27 +279,8 @@ onMounted(async () => {
   min-height: 200px;
 }
 
-.feedback-card {
-  padding: 16px;
-  border-radius: 12px;
-  background: $bg-elevated;
-  border: 1px solid $border;
-  cursor: pointer;
-  transition: all 0.2s;
 
-  &:hover {
-    border-color: $brand-start;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  }
-}
 
-.card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
 
 .vote-btn {
   display: inline-flex;
@@ -490,29 +327,11 @@ onMounted(async () => {
   }
 }
 
-.card-content {
-  font-size: 14px;
-  line-height: 1.6;
-  color: $text-primary;
-  margin-bottom: 12px;
-  word-break: break-word;
-}
 
-.card-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: $text-muted;
-  margin-bottom: 8px;
-}
 
-.card-attachments {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: $text-muted;
-}
+
+
+
 
 .pagination-wrapper {
   display: flex;
