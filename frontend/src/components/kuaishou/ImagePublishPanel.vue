@@ -45,7 +45,7 @@
 
     <div class="setting-card">
       <div class="setting-label">选择音乐</div>
-      <KuaishouMusicSelect :account-id="accountId" v-model="form.selectedMusicId" :data="form.selectedMusicData" @change="handleMusicChange" />
+      <KuaishouMusicSelect :account-id="accountId" v-model="form.selectedMusicId" :data="form.selectedMusicData as MusicItem | null" @change="handleMusicChange" />
     </div>
   </div>
 </template>
@@ -58,7 +58,7 @@ import { imagePublishApi } from '@/api/imagePublish'
 import { PLATFORMS } from '@/config/platforms'
 import { useChannelForm } from '@/composables/useChannelForm'
 import { useAutoExtractHashtags } from '@/utils/hashtag'
-import KuaishouMusicSelect from './MusicSelect.vue'
+import KuaishouMusicSelect, { type MusicItem } from './MusicSelect.vue'
 import { getErrorMessage } from '@/utils/error'
 
 const props = defineProps({
@@ -82,9 +82,9 @@ const declarationOptions = computed(() => {
 
 function handleMusicChange(music: Record<string, unknown> | null) {
   if (music) {
-    form.selectedMusicId = music.musicId
+    form.selectedMusicId = music.musicId as string
     form.selectedMusicData = music
-    form.musicTitle = music.title
+    form.musicTitle = music.title as string
   } else {
     form.selectedMusicId = ''
     form.selectedMusicData = null
@@ -92,25 +92,11 @@ function handleMusicChange(music: Record<string, unknown> | null) {
   }
 }
 
-// 公共数据/附加参数接口(见 publishFn 标注)
-// 公共数据/附加参数接口(见 publishFn 标注)
-interface PublishCommonData {
-  images: Array<{ id: number | string }>
-  coverImage?: { stored_path?: string } | null
-}
-
-// 批量发布场景的附加参数(均可选)
-interface PublishExtra {
-  batchId?: string
-  landscapeCoverMaterialId?: string
-  portraitCoverMaterialId?: string
-}
-
 const { form, hasAccountOverride, resetOverride, publicApi } = useChannelForm(
   KS_DEFAULTS,
   { props, emit },
   {
-    publishFn: async (accountId, accountName, commonData: PublishCommonData, merged, extra?: PublishExtra) => {
+    publishFn: async (accountId, accountName, commonData, merged, extra?) => {
       const account = accountStore.accounts.find(a => a.id === accountId)
       if (!account) {
         emit('publish-result', { accountName, status: 'fail', message: '账号不存在' })
@@ -167,7 +153,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(index: number) { form.tags.splice(index, 1) }
+function removeTag(index: number) { form.tags?.splice(index, 1) }
 
 // 自动提取描述中的 #xxx 到标签数组(快手最多 4 个)
 useAutoExtractHashtags({

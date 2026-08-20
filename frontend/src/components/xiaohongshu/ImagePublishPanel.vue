@@ -90,25 +90,11 @@ const aiContentOptions = computed(() => aiContentField?.options || [])
 
 const XHS_DEFAULTS = { ...PLATFORMS.XIAOHONGSHU.defaultSettings, tags: [] as string[], isOriginal: false }
 
-// 公共数据/附加参数接口(见 publishFn 标注)
-// 公共数据/附加参数接口(见 publishFn 标注)
-interface PublishCommonData {
-  images: Array<{ id: number | string }>
-  coverImage?: { stored_path?: string } | null
-}
-
-// 批量发布场景的附加参数(均可选)
-interface PublishExtra {
-  batchId?: string
-  landscapeCoverMaterialId?: string
-  portraitCoverMaterialId?: string
-}
-
 const { form, hasAccountOverride, resetOverride, publicApi } = useChannelForm(
   XHS_DEFAULTS,
   { props, emit },
   {
-    publishFn: async (accountId, accountName, commonData: PublishCommonData, merged, extra?: PublishExtra) => {
+    publishFn: async (accountId, accountName, commonData, merged, extra?) => {
       const account = accountStore.accounts.find(a => a.id === accountId)
       if (!account) {
         emit('publish-result', { accountName, status: 'fail', message: '账号不存在' })
@@ -155,7 +141,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(index: number) { form.tags.splice(index, 1) }
+function removeTag(index: number) { form.tags?.splice(index, 1) }
 
 // 自动提取描述中的 #xxx 到标签数组,小红书标签上限 10
 useAutoExtractHashtags({

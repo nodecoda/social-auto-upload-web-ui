@@ -85,7 +85,7 @@ const accountStore = useAccountStore()
 // 支付宝图集默认字段
 // authorStatement 不在面板显示(图集下拉只有「内容由AI生成」一项,后端兜底默认填它)
 // 音乐数据形状(与 MusicDrawer 的 select 事件一致)
-interface AlipayMusicItem {
+type AlipayMusicItem = {
   musicId: string | number
   title: string
   coverUrl?: string
@@ -101,25 +101,11 @@ const ALIPAY_DEFAULTS = {
   authorStatement: '',
 }
 
-// 支付宝图集默认字段上方:公共数据/附加参数接口(见下方 publishFn 标注)
-// 公共区传下的通用数据(images 必含 id,coverImage 可选)
-interface PublishCommonData {
-  images: Array<{ id: number | string }>
-  coverImage?: { stored_path?: string } | null
-}
-
-// 批量发布场景的附加参数(均可选)
-interface PublishExtra {
-  batchId?: string
-  landscapeCoverMaterialId?: string
-  portraitCoverMaterialId?: string
-}
-
 const { form, hasAccountOverride, resetOverride, publicApi } = useChannelForm(
   ALIPAY_DEFAULTS,
   { props, emit },
   {
-    publishFn: async (accountId, accountName, commonData: PublishCommonData, merged, extra?: PublishExtra) => {
+    publishFn: async (accountId, accountName, commonData, merged, extra?) => {
       const account = accountStore.accounts.find(a => a.id === accountId)
       if (!account) {
         emit('publish-result', { accountName, status: 'fail', message: '账号不存在' })
@@ -172,7 +158,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(index: number) { form.tags.splice(index, 1) }
+function removeTag(index: number) { form.tags?.splice(index, 1) }
 
 // 自动提取描述中的 #xxx 到标签数组(alipay 发布时拼成 #话题1 #话题2)
 useAutoExtractHashtags({

@@ -73,7 +73,7 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
-interface MusicItem {
+export interface MusicItem {
   musicId: string | number
   title: string
   author?: string

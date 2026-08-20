@@ -82,7 +82,7 @@ const emit = defineEmits<{
 
 const loading = ref(false)
 const mixList = ref<MixItem[]>([])
-interface MixItem {
+export interface MixItem {
   mix_id: string | number
   mix_name: string
   cover_url?: { url_list?: string[] }
