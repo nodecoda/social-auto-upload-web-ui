@@ -103,7 +103,10 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'select'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'select', payload: Record<string, any>): void
+}>()
 
 const visible = ref(props.modelValue)
 const keyword = ref('')

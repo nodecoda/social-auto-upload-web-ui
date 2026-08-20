@@ -205,6 +205,7 @@ interface PlatformAccount {
   platform: string
   status: string
   avatar?: string
+  [key: string]: unknown
 }
 
 interface AccountGroup {

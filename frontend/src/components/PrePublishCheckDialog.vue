@@ -173,7 +173,10 @@ const props = defineProps({
   mode: { type: String, default: 'pre-publish' },
 })
 
-const emit = defineEmits(['update:modelValue', 'all-valid'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'all-valid'): void
+}>()
 
 // 文案随模式切换 — 复用同一套 4 阶段交互，仅提示语不同
 const title = computed(() =>

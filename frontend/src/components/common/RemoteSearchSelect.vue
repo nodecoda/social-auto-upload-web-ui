@@ -164,7 +164,10 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'change'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string): void
+  (e: 'change', payload: RemoteItem & { _searchKeyword: string } | null): void
+}>()
 
 const loading = ref(false)
 const list = ref<any[]>([])

@@ -56,7 +56,10 @@ const props = defineProps({
   disabledKeys: { type: Array as PropType<string[]>, default: (): any[] => [] }
 })
 
-const emit = defineEmits(['update:modelValue', 'confirm'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'confirm', payload: string[]): void
+}>()
 
 const selectedKeys = ref<string[]>([])
 

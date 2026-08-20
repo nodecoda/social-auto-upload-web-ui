@@ -190,7 +190,13 @@ const DEFAULT_CHUNK_SIZE = 50 * 1024 * 1024
 const CHUNK_CONCURRENCY = 3
 const CHUNK_RETRY_MAX = 3
 
-const emit = defineEmits(['update:modelValue', 'uploaded', 'all-uploaded', 'error', 'closed'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'uploaded', payload: Record<string, any>): void
+  (e: 'all-uploaded', payload: unknown[]): void
+  (e: 'error', payload: unknown): void
+  (e: 'closed'): void
+}>()
 
 const visible = computed({
   get: () => props.modelValue,
@@ -307,7 +313,7 @@ async function uploadSimple(item: UploadFileItem) {
       item.status = 'success'
       item.percent = 100
       item.response = resp.data
-      emit('uploaded', resp.data)
+      emit('uploaded', resp.data as Record<string, any>)
     } else {
       item.status = 'failed'
       item.error = resp.msg || '上传失败'
@@ -407,7 +413,7 @@ async function uploadByChunks(item: UploadFileItem) {
     item.status = 'success'
     item.percent = 100
     item.response = mergeResp.data
-    emit('uploaded', mergeResp.data)
+    emit('uploaded', mergeResp.data as Record<string, any>)
   } catch (err) {
     if (item.cancelling) {
       // 用户主动取消，状态已由 cancelUpload 设置

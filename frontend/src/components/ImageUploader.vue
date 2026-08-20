@@ -125,7 +125,10 @@ const props = defineProps({
   columns: { type: Number, default: 5 },
 })
 
-const emit = defineEmits(['update:modelValue', 'open-material-library'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: UploadImageItem[]): void
+  (e: 'open-material-library', index: number): void
+}>()
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const gridRef = ref<HTMLElement | null>(null)

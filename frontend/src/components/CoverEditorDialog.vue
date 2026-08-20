@@ -148,7 +148,9 @@ const props = defineProps({
   coverSecondary: { type: Object as PropType<CoverImageData | null>, default: null },
 })
 
-const emit = defineEmits(['coverSaved'])
+const emit = defineEmits<{
+  (e: 'coverSaved', payload: { orientation: string; ratio: string; cover: CoverImageData }): void
+}>()
 
 const visible = ref(false)
 // 当前编辑方向（由 open(orientation) 同步设置，不依赖 props 异步更新，避免切换横竖版时 ratio 错乱）

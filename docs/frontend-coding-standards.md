@@ -277,10 +277,10 @@ it('emits confirm with payload', async () => {
 
 | 项 | 状态 | 处置 |
 |---|---|---|
-| `defineEmits([...])` 数组形式 | **48 处待改** | 批量迁移为泛型签名（Rule 3.2） |
+| `defineEmits([...])` 数组形式 | **0 处 ✓**（原 48 处） | 已批量迁移为泛型签名（Rule 3.2，2026-08 批 10） |
 | v-for 缺 `:key` | 0 处 ✓ | 已全部合规（多行写法） |
 | `:key="index"` | 11 处 | 按例外保留（纯追加/静态，Rule 6） |
-| Options API / `this.` | 0 处 ✓ | Dashboard.vue 双 script 块属例外，可精简 |
+| Options API / `this.` | 0 处 ✓ | Dashboard.vue 双 script 块已精简为纯 `<script setup>` |
 | `defineProps([` 数组形式 | 0 处 ✓ | — |
 | `v-if` + `v-for` 同元素 | 0 处 ✓ | — |
 | 组件文件名 PascalCase | ✓ | — |

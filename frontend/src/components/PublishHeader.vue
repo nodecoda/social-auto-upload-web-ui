@@ -42,7 +42,12 @@ defineProps({
   disableOneClick: { type: Boolean, default: false },
 })
 
-defineEmits(['save-draft', 'one-click', 'batch-set', 'publish'])
+defineEmits<{
+  (e: 'save-draft'): void
+  (e: 'one-click'): void
+  (e: 'batch-set'): void
+  (e: 'publish'): void
+}>()
 </script>
 
 <style lang="scss" scoped>

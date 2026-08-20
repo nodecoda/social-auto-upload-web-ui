@@ -123,7 +123,10 @@ const props = defineProps({
   title: { type: String, default: '批量设置' },
 })
 
-const emit = defineEmits(['update:modelValue', 'apply'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'apply', payload: string[], options: { title: string; description: string; tags: string[]; scheduleTime: string; mode: 'full' | 'partial' }): void
+}>()
 
 const formTitle = ref('')
 const formDescription = ref('')

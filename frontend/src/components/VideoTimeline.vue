@@ -55,7 +55,9 @@ const props = defineProps({
   extracting: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: number): void
+}>()
 
 const trackRef = ref<HTMLElement | null>(null)
 const thumbWidth = THUMB_WIDTH

@@ -37,7 +37,10 @@ const props = defineProps({
   }
 })
 
-defineEmits(['update:modelValue', 'change'])
+defineEmits<{
+  (e: 'update:modelValue', value: string): void
+  (e: 'change', payload: any): void
+}>()
 
 // 走全局公共组件 RemoteSearchSelect:后端搜索模式(必须传 keyword,空关键词不请求)。
 // 与视频号位置 fetchChannelsLocations 保持一致风格。

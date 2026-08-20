@@ -67,7 +67,10 @@ const props = defineProps({
   data: { type: Object as PropType<Record<string, any> | null>, default: null },
 })
 
-const emit = defineEmits(['update:modelValue', 'change'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string | null): void
+  (e: 'change', payload: Record<string, any> | null): void
+}>()
 
 const loading = ref(false)
 const musicList = ref<any[]>([])

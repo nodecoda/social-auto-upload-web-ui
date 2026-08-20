@@ -104,7 +104,10 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   accountId: { type: [String, Number] as PropType<string | number | null>, default: '' },
 })
-const emit = defineEmits(['update:modelValue', 'select'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'select', payload: any): void
+}>()
 
 const visible = ref(props.modelValue)
 const loading = ref(false)

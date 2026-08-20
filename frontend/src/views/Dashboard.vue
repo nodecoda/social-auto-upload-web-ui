@@ -156,7 +156,7 @@
         :data="recentMaterials"
         style="width: 100%"
         v-loading="loading"
-        :header-cell-style="{ background: 'transparent', borderBottom: `1px solid ${$options.borderColor}` }"
+        :header-cell-style="{ background: 'transparent', borderBottom: `1px solid ${borderColor}` }"
         class="materials-table"
       >
         <el-table-column prop="original_filename" label="文件名" min-width="260">
@@ -198,6 +198,9 @@
 </template>
 
 <script setup lang="ts">
+// 表格边框色（CSS 变量引用，随主题切换）
+const borderColor = 'var(--border)'
+
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -414,12 +417,6 @@ const fetchDashboardData = async () => {
   }
 }
 
-</script>
-<script lang="ts">
-// Expose border color for template usage（用 CSS 变量，随主题切换）
-export default {
-  borderColor: 'var(--border)'
-}
 </script>
 
 <style lang="scss" scoped>

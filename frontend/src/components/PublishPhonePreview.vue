@@ -58,7 +58,11 @@ defineProps({
   modeTab: { type: String, default: 'portrait' },
 })
 
-defineEmits(['upload', 'library', 'remove'])
+defineEmits<{
+  (e: 'upload'): void
+  (e: 'library'): void
+  (e: 'remove'): void
+}>()
 </script>
 
 <style lang="scss" scoped>

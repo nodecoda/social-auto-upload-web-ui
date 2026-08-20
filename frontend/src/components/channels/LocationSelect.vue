@@ -66,7 +66,10 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'change'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string): void
+  (e: 'change', payload: Record<string, any> | null): void
+}>()
 
 const loading = ref(false)
 const locationList = ref<any[]>([])

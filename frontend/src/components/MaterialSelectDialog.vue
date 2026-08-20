@@ -239,7 +239,9 @@ const props = defineProps({
   multiple: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['select'])
+const emit = defineEmits<{
+  (e: 'select', payload: { id: number | string; name: string; url: string; stored_path: string; size?: number; type?: string; duration?: number }): void
+}>()
 
 const visible = ref(false)
 const loading = ref(false)

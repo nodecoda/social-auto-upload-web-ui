@@ -1382,14 +1382,14 @@ const editorSource = computed(() => {
 })
 
 // 确定性写回：直接按 orientation + ratio 映射到具体字段
-function onCoverSaved({ orientation, ratio, cover }: { orientation: string; ratio: string; cover: MediaAsset | null }) {
+function onCoverSaved({ orientation, ratio, cover }: { orientation: string; ratio: string; cover: { url?: string; _fromFrame?: number } | null }) {
   const t = currentEditTarget.value
   if (orientation === 'landscape') {
-    if (ratio === '4:3') t.coverLandscape = cover
-    else if (ratio === '16:9') t.coverLandscape169 = cover
+    if (ratio === '4:3') t.coverLandscape = cover as MediaAsset | null
+    else if (ratio === '16:9') t.coverLandscape169 = cover as MediaAsset | null
   } else {
-    if (ratio === '3:4') t.coverPortrait = cover
-    else if (ratio === '9:16') t.coverPortrait916 = cover
+    if (ratio === '3:4') t.coverPortrait = cover as MediaAsset | null
+    else if (ratio === '9:16') t.coverPortrait916 = cover as MediaAsset | null
   }
 }
 
@@ -1791,7 +1791,7 @@ useAutoExtractHashtags({
 })
 
 // ========== Douyin-specific Methods ==========
-function handleDouyinActivityChange(activity: { challenge?: string[] } | null) {
+function handleDouyinActivityChange(activity: any) {
   if (activity?.challenge && activity.challenge.length > 0) {
     for (const topic of activity.challenge) {
       if (form.tags && !form.tags.includes(topic)) {
@@ -1802,7 +1802,7 @@ function handleDouyinActivityChange(activity: { challenge?: string[] } | null) {
   }
 }
 
-function handleDouyinHotspotChange(hotspot: { word: string } | null) {
+function handleDouyinHotspotChange(hotspot: Record<string, any> | null) {
   if (hotspot) {
     form.hotspotId = hotspot.word
     form.hotspotData = hotspot
@@ -1841,7 +1841,7 @@ const jdNovelFieldMap: Record<string, string | ((item: JdNovelItem) => string)> 
   desc: (item) => [item.category, item.read_count ? `${item.read_count}人已读` : ''].filter((s): s is string => Boolean(s)).join(' | '),
   cover: 'image'
 }
-function handleJdNovelChange(novel: { title: string; [key: string]: unknown } | null) {
+function handleJdNovelChange(novel: Record<string, any> | null) {
   if (novel) {
     form.jdNovel = novel.title
     form.jdNovelData = novel
@@ -1851,7 +1851,7 @@ function handleJdNovelChange(novel: { title: string; [key: string]: unknown } | 
   }
 }
 
-function handleDouyinTagSelect(tag: DouyinTag | null) {
+function handleDouyinTagSelect(tag: any | null) {
   if (tag) {
     form.selectedTag = tag
     const m: Record<string, string> = { poi: 'location', miniapp: 'miniapp', game: 'gamepad', mark: 'mark', film: 'film' }
@@ -1865,7 +1865,7 @@ function handleDouyinTagSelect(tag: DouyinTag | null) {
   }
 }
 
-function handleDouyinMixChange(mix: { mix_name: string; [key: string]: unknown } | null) {
+function handleDouyinMixChange(mix: Record<string, any> | null) {
   if (mix) {
     form.mixId = mix.mix_name
     form.mixData = mix
@@ -2130,7 +2130,7 @@ function removePublishAccount(id: number | string) {
   hasChanges.value = true
 }
 
-function selectAccount(account: AccountItem, group: AccountGroupItem) {
+function selectAccount(account: AccountItem, group: { key: string }) {
   selectedAccountId.value = account.id
   selectedPlatform.value = group.key
   // 互斥展开:只展开账号所属平台
@@ -2227,7 +2227,7 @@ function pickRecommendedFrames<T>(frames: T[], count: number): T[] {
   return result
 }
 
-async function onVideoUploaded(d: UploadedFilePayload) {
+async function onVideoUploaded(d: Record<string, any>) {
   const videoData: MediaAsset = {
     id: d.id,
     name: d.original_filename,
@@ -3234,7 +3234,7 @@ function cancelBatch() {
   ElMessage.info('正在取消发布...')
 }
 
-function handleOneClickFill(record: PublishHistoryRecord) {
+function handleOneClickFill(record: Record<string, any>) {
   const histConfig = record.account_configs || {}
   const channels = record.channels || []
   // 1. 复原账号选择：清空当前选中，按历史 channels 自动勾选对应平台下的所有账号

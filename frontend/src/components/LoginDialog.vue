@@ -132,7 +132,11 @@ const props = defineProps({
   account: { type: Object as PropType<LoginAccount | null>, default: null }
 })
 
-const emit = defineEmits(['update:modelValue', 'success', 'fail'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'success', payload: { platform: string; accountId?: number | string }): void
+  (e: 'fail', payload: { platform: string; errMsg: string }): void
+}>()
 
 const appStore = useAppStore()
 

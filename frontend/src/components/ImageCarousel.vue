@@ -88,7 +88,9 @@ const props = defineProps({
   initialIndex: { type: Number, default: 0 },
 })
 
-const emit = defineEmits(['change'])
+const emit = defineEmits<{
+  (e: 'change', index: number): void
+}>()
 
 const currentIndex = ref(props.initialIndex)
 const previewVisible = ref(false)

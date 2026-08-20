@@ -81,7 +81,10 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['config-changed', 'publish-result'])
+const emit = defineEmits<{
+  (e: 'config-changed'): void
+  (e: 'publish-result', payload: { accountName: string; status: 'success' | 'fail'; message: string }): void
+}>()
 
 const accountStore = useAccountStore()
 

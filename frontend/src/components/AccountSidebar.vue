@@ -78,8 +78,10 @@ import { getDefaultAvatar, proxyAvatar } from '@/utils/avatar'
 interface PlatformAccount {
   id: number | string
   name: string
+  platform: string
   status: string
   avatar?: string
+  [key: string]: unknown
 }
 
 interface AccountGroup {
@@ -108,7 +110,12 @@ const props = defineProps({
   hasAccountOverride: { type: Function as PropType<(id: number | string) => boolean>, required: true },
 })
 
-defineEmits(['toggle-group', 'select-account', 'remove-account', 'open-account-dialog'])
+defineEmits<{
+  (e: 'toggle-group', key: string): void
+  (e: 'select-account', account: PlatformAccount, group: { key: string } & Record<string, any>): void
+  (e: 'remove-account', id: number | string): void
+  (e: 'open-account-dialog'): void
+}>()
 
 // 过滤逻辑:
 // 1. 永远过滤掉被渠道黑名单禁用的平台分组
