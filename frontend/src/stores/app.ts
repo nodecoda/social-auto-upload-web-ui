@@ -2,6 +2,19 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { settingsApi } from '@/api/v2'
 
+export interface MaterialItem {
+  id: number | string
+  original_filename: string
+  file_type: 'image' | 'video'
+  mime_type?: string
+  stored_path: string
+  thumbnail_url?: string
+  storage_type?: string
+  file_size?: number
+  duration?: number
+  upload_time?: string
+}
+
 export const useAppStore = defineStore('app', () => {
   // 是否是第一次进入账号管理页面
   const isFirstTimeAccountManagement = ref(true)
@@ -52,7 +65,7 @@ export const useAppStore = defineStore('app', () => {
   const isAccountRefreshing = ref(false)
 
   // 素材列表数据
-  const materials = ref<any[]>([])
+  const materials = ref<MaterialItem[]>([])
   
   // 设置账号管理页面已访问
   const setAccountManagementVisited = () => {
@@ -71,7 +84,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // 更新素材列表
-  const setMaterials = (materialList: any[]) => {
+  const setMaterials = (materialList: MaterialItem[]) => {
     materials.value = materialList
   }
 
