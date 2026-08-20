@@ -236,8 +236,8 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive, computed, watch, nextTick, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, reactive, computed, watch, nextTick, onMounted, type Ref } from 'vue'
 import { PictureFilled, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAccountStore } from '@/stores/account'
@@ -247,6 +247,7 @@ import { imagePublishApi } from '@/api/imagePublish'
 import { draftApi } from '@/api/draft'
 import { getFileUrl } from '@/utils/storage'
 import { platformList, getPlatformByKey, platformNameToKey } from '@/config/platforms'
+import { type ApiResponse } from '@/utils/request'
 import { useRoute } from 'vue-router'
 
 import AccountSidebar from '@/components/AccountSidebar.vue'
@@ -272,6 +273,224 @@ import AlipayImagePublishPanel from '@/components/alipay/ImagePublishPanel.vue'
 import WeixinGzhImagePublishPanel from '@/components/weixin_gzh/ImagePublishPanel.vue'
 import PrePublishCheckDialog from '@/components/PrePublishCheckDialog.vue'
 
+// ========== 类型定义 ==========
+
+/** 上传图片条目（与 ImageUploader 的 UploadImageItem 结构一致） */
+interface ImageFile {
+  id: number | string
+  name: string
+  url: string
+  stored_path?: string
+  size?: number
+  type?: string
+  uploading: boolean
+  progress: number
+}
+
+/** 封面图片（与 ImageCoverUpload 的 CoverImage 结构一致） */
+interface CoverImage {
+  id?: number | string
+  name?: string
+  url: string
+  stored_path?: string
+  size?: number
+  type?: string
+}
+
+/** 平台/账号级覆写（spec §3.4）：媒体字段必有，文本字段可选（与 panel 内部 override 结构兼容） */
+interface MediaOverride {
+  images: ImageFile[]
+  coverImage: CoverImage | null
+  title?: string
+  description?: string
+  tags?: string[]
+  enableTimer?: number | boolean
+  scheduleTime?: string
+  aiContent?: string
+  isOriginal?: boolean
+  music?: unknown
+  authorStatement?: string
+}
+
+/** panel 内部账号覆写条目（useChannelForm 文本字段 diff；媒体字段不在此层，旧草稿可能残留 coverImage） */
+interface PanelOverrideEntry {
+  title?: string
+  description?: string
+  tags?: string[]
+  enableTimer?: number | boolean
+  scheduleTime?: string
+  aiContent?: string
+  isOriginal?: boolean
+  music?: unknown
+  authorStatement?: string
+  coverImage?: CoverImage | null
+}
+
+/** panel 渠道默认配置（仅声明本页读取的标准字段，平台特定字段走 unknown 索引） */
+interface PanelDefaultConfig {
+  title?: string
+  description?: string
+  tags?: string[]
+  images?: ImageFile[]
+  coverImage?: CoverImage | null
+  enableTimer?: number | boolean
+  scheduleTime?: string
+  aiContent?: string
+  isOriginal?: boolean
+  music?: unknown
+  authorStatement?: string
+  [key: string]: unknown
+}
+
+/** 4 级优先级合并后的账号级发布配置（mergeConfig 返回值） */
+interface MergedConfig {
+  title: string
+  description: string
+  tags: string[]
+  images: ImageFile[]
+  coverImage: CoverImage | null
+  enableTimer: number | boolean
+  scheduleTime: string
+  aiContent: string
+  isOriginal: boolean
+  music: unknown
+  authorStatement: string
+}
+
+/** 账号条目（accountStore.accounts 的元素） */
+interface AccountItem {
+  id: number | string
+  name: string
+  platform: string
+  status: string
+  avatar?: string
+  type?: string
+  filePath?: string
+  fans?: number
+  likes?: number
+  follows?: number
+  stats?: unknown[]
+  tags?: unknown[]
+}
+
+/** 发布结果条目（BatchPublishDialog 展示用） */
+interface PublishResultItem {
+  label: string
+  status: string
+  message?: string
+}
+
+/** 单账号发布任务 */
+interface PublishTask {
+  account: AccountItem
+  groupKey: string
+  merged: MergedConfig
+}
+
+/** 素材选择弹窗 select 事件载荷（与 MaterialSelectDialog 结构一致） */
+interface MaterialSelection {
+  id: number | string
+  name: string
+  url: string
+  stored_path: string
+  size?: number
+  type?: string
+  duration?: number
+}
+
+/** 发布结果事件（panel publish-result emit） */
+interface PublishResultEvent {
+  accountName: string
+  status: string
+  message?: string
+}
+
+/** 一键填充：历史模板中的单账号配置 */
+interface TemplateAccountConfig {
+  account_id: number | string
+  title?: string
+  description?: string
+  tags?: string[]
+  aiContent?: string
+  [key: string]: unknown
+}
+
+/** 一键填充：历史发布模板（含 account_configs） */
+interface PublishTemplateRecord {
+  id: number | string
+  type: string
+  account_configs?: TemplateAccountConfig[]
+  [key: string]: unknown
+}
+
+/** 批量设置 payload（BatchSetDialog apply 事件） */
+interface BatchSetPayload {
+  title: string
+  description: string
+  tags: string[]
+  scheduleTime: string
+  mode: 'full' | 'partial'
+}
+
+/** 保存草稿的数据结构 */
+interface DraftDataShape {
+  commonConfig: {
+    images: Array<Pick<ImageFile, 'id' | 'name' | 'url' | 'stored_path' | 'size' | 'type'>>
+    coverImage: CoverImage | null
+  }
+  platformConfigs: Record<string, PanelDefaultConfig>
+  panelAccountOverrides: Record<string, PanelOverrideEntry>
+  platformOverrides: Record<string, MediaOverride>
+  accountOverrides: Record<string, MediaOverride>
+  platformChecked: Record<string, boolean>
+  accountChecked: Record<string, boolean>
+  publishAccountIds: Array<number | string>
+  selectedPlatform: string | null
+  selectedAccountId: number | string | null
+  expandedGroups: string[]
+}
+
+/** 加载草稿时使用的宽松结构（兼容旧格式迁移字段） */
+interface DraftDataLoose {
+  commonConfig?: {
+    images?: ImageFile[]
+    coverImage?: CoverImage | null
+    topics?: string[]
+  }
+  platformConfigs?: Record<string, PanelDefaultConfig>
+  panelAccountOverrides?: Record<string, PanelOverrideEntry>
+  accountOverrides?: Record<string, MediaOverride>
+  platformOverrides?: Record<string, MediaOverride>
+  platformChecked?: Record<string, boolean>
+  accountChecked?: Record<string, boolean>
+  publishAccountIds?: Array<number | string>
+  selectedPlatform?: string | null
+  selectedAccountId?: number | string | null
+  expandedGroups?: string[]
+  douyinSelections?: Record<string, unknown>
+}
+
+/** 后端草稿记录（getDraft 响应 data） */
+interface DraftRecord {
+  id: number | string
+  draft_data?: DraftDataLoose
+}
+
+/** panel 暴露的配置结构（getConfigs 返回值） */
+interface PanelConfigs {
+  platformConfig: PanelDefaultConfig
+  accountOverrides: Record<string, PanelOverrideEntry>
+}
+
+/** 渠道 panel 公共方法接口（useChannelForm publicApi 的结构化标注） */
+interface PanelApi {
+  getConfigs(): PanelConfigs
+  restoreConfigs(config: PanelDefaultConfig, overrides?: Record<string, PanelOverrideEntry>): void
+  validate(accountId: number | string): { valid: boolean; errors: string[] }
+  hasAccountOverride(accountId: number | string): boolean
+  publish(accountId: number | string, accountName: string, commonData: unknown, extra?: unknown): Promise<unknown>
+}
+
 // ========== Stores & Config ==========
 const accountStore = useAccountStore()
 const appStore = useAppStore()
@@ -284,9 +503,9 @@ const IMAGE_PLATFORM_KEYS = ['xiaohongshu', 'douyin', 'kuaishou', 'weibo', 'alip
 const IMAGE_PLATFORMS = platformList.filter(p => IMAGE_PLATFORM_KEYS.includes(p.key))
 
 // ========== Left Sidebar State ==========
-const expandedGroups = ref(new Set())
-const selectedPlatform = ref(null)
-const selectedAccountId = ref(null)
+const expandedGroups = ref(new Set<string>())
+const selectedPlatform = ref<string | null>(null)
+const selectedAccountId = ref<number | string | null>(null)
 
 const imageAccountGroups = computed(() => {
   return IMAGE_PLATFORMS.map(p => ({
@@ -317,20 +536,20 @@ const currentPlatformConfig = computed(() =>
 )
 
 // ========== Public Config ==========
-const commonConfig = reactive({
+const commonConfig = reactive<MediaOverride>({
   images: [],
   coverImage: null,
 })
 
 // ========== 平台/账号级覆写（spec §3.4）—— 公共区域的媒体字段覆写 ==========
-const platformOverrides = reactive({})         // { [platformKey]: { images, coverImage } }
-const platformChecked = reactive({})           // { [platformKey]: boolean }
-const accountOverrides = reactive({})          // { [accountId]: { images, coverImage } }
-const accountChecked = reactive({})            // { [accountId]: boolean }
+const platformOverrides = reactive<Record<string, MediaOverride>>({})         // { [platformKey]: { images, coverImage } }
+const platformChecked = reactive<Record<string, boolean>>({})           // { [platformKey]: boolean }
+const accountOverrides = reactive<Record<string, MediaOverride>>({})          // { [accountId]: { images, coverImage } }
+const accountChecked = reactive<Record<string, boolean>>({})            // { [accountId]: boolean }
 
 // 当前编辑目标：公共区域 v-model 的实际绑定对象
 // 勾选账号 → accountOverrides[id]；勾选平台 → platformOverrides[key]；默认 → commonConfig
-const currentEditTarget = computed(() => {
+const currentEditTarget = computed<MediaOverride>(() => {
   const aid = selectedAccountId.value
   if (aid && accountChecked[aid] && accountOverrides[aid]) return accountOverrides[aid]
   const pk = selectedPlatform.value
@@ -338,7 +557,7 @@ const currentEditTarget = computed(() => {
   return commonConfig
 })
 
-function hasPlatformOverrideContent(platformKey) {
+function hasPlatformOverrideContent(platformKey: string): boolean {
   const ov = platformOverrides[platformKey]
   if (!ov) return false
   return !!(
@@ -347,7 +566,7 @@ function hasPlatformOverrideContent(platformKey) {
   )
 }
 
-function hasAccountOverrideContent(accountId) {
+function hasAccountOverrideContent(accountId: number | string): boolean {
   const ov = accountOverrides[accountId]
   if (!ov) return false
   return !!(
@@ -359,24 +578,31 @@ function hasAccountOverrideContent(accountId) {
 const currentPreviewIndex = ref(0)
 
 // ========== Auto-save ==========
-const currentDraftId = ref(null)
+const currentDraftId = ref<number | string | null>(null)
 
 const { hasChanges, startAutoSaveTimer } = useAutoSave(() => saveDraft())
 
 // ========== Channel Panel Refs & Helpers ==========
-const douyinPanelRef = ref(null)
-const xiaohongshuPanelRef = ref(null)
-const kuaishouPanelRef = ref(null)
-const weiboPanelRef = ref(null)
-const alipayPanelRef = ref(null)
-const weixinGzhPanelRef = ref(null)
+const douyinPanelRef = ref<InstanceType<typeof DouyinImagePublishPanel> | null>(null)
+const xiaohongshuPanelRef = ref<InstanceType<typeof XiaohongshuImagePublishPanel> | null>(null)
+const kuaishouPanelRef = ref<InstanceType<typeof KuaishouImagePublishPanel> | null>(null)
+const weiboPanelRef = ref<InstanceType<typeof WeiboImagePublishPanel> | null>(null)
+const alipayPanelRef = ref<InstanceType<typeof AlipayImagePublishPanel> | null>(null)
+const weixinGzhPanelRef = ref<InstanceType<typeof WeixinGzhImagePublishPanel> | null>(null)
 
-function getPanel(key) {
-  const map = { douyin: douyinPanelRef, xiaohongshu: xiaohongshuPanelRef, kuaishou: kuaishouPanelRef, weibo: weiboPanelRef, alipay: alipayPanelRef, weixin_gzh: weixinGzhPanelRef }
+function getPanel(key: string): PanelApi | null {
+  const map: Record<string, Ref<PanelApi | null>> = {
+    douyin: douyinPanelRef,
+    xiaohongshu: xiaohongshuPanelRef,
+    kuaishou: kuaishouPanelRef,
+    weibo: weiboPanelRef,
+    alipay: alipayPanelRef,
+    weixin_gzh: weixinGzhPanelRef,
+  }
   return map[key]?.value
 }
 
-function getAccountDisplayName(accountId) {
+function getAccountDisplayName(accountId: number | string): string {
   const account = accountStore.accounts.find(a => a.id === accountId)
   return account ? account.name : '未知'
 }
@@ -385,11 +611,11 @@ function onChannelConfigChanged() {
   hasChanges.value = true
 }
 
-function onPublishResult({ accountName, status, message }) {
+function onPublishResult({ accountName, status, message }: PublishResultEvent) {
   publishResults.value.push({ label: accountName, status, message })
 }
 
-function hasAccountOverride(accountId) {
+function hasAccountOverride(accountId: number | string): boolean {
   // Task 10：新增覆写层勾选 + panel 内部 accountOverrides 任一为真都算
   if (accountChecked[accountId] && hasAccountOverrideContent(accountId)) return true
   for (const key of ['douyin', 'xiaohongshu', 'kuaishou', 'weibo', 'alipay', 'weixin_gzh']) {
@@ -401,7 +627,7 @@ function hasAccountOverride(accountId) {
 
 // ========== Override Section: Interaction ==========
 
-function onPlatformCheckChange(checked) {
+function onPlatformCheckChange(checked: boolean) {
   if (!checked && hasPlatformOverrideContent(selectedPlatform.value)) {
     ElMessageBox.confirm(
       '取消个性化配置后，本渠道的覆写将丢失，恢复使用公共默认，是否继续？',
@@ -418,7 +644,7 @@ function onPlatformCheckChange(checked) {
   }
 }
 
-function onAccountCheckChange(checked) {
+function onAccountCheckChange(checked: boolean) {
   if (!checked && hasAccountOverrideContent(selectedAccountId.value)) {
     ElMessageBox.confirm(
       '取消个性化配置后，本账号的覆写将丢失，恢复使用渠道默认，是否继续？',
@@ -437,11 +663,12 @@ function onAccountCheckChange(checked) {
 
 // ========== 4 级优先级合并（spec §3.3 / §3.4） ==========
 // accountOv > platformOv > platformDefault > common
-function resolveAccountConfig(platformKey, accountId) {
+function resolveAccountConfig(platformKey: string, accountId: number | string): MergedConfig {
   const accountOv = (accountChecked[accountId] && accountOverrides[accountId]) || null
   const platformOv = (platformChecked[platformKey] && platformOverrides[platformKey]) || null
   // panel 内部状态(含 channel-specific 的 accountOverrides，如标题/描述)
-  const panelConfigs = getPanel(platformKey)?.getConfigs?.() || {}
+  const panelConfigs: { platformConfig?: PanelDefaultConfig; accountOverrides?: Record<string, PanelOverrideEntry> } =
+    getPanel(platformKey)?.getConfigs?.() || {}
   const platformDefault = panelConfigs.platformConfig || null
   // panel 内部的 accountOverrides 也需要参与合并(标题/描述/标签等文本字段
   // 在 useChannelForm 的 watch(form) 里同步到 panel 内部 accountOverrides)
@@ -449,7 +676,13 @@ function resolveAccountConfig(platformKey, accountId) {
   return mergeConfig(commonConfig, platformDefault, platformOv, accountOv, panelAccountOv)
 }
 
-function mergeConfig(common, platformDefault, platformOv, accountOv, panelAccountOv = null) {
+function mergeConfig(
+  common: MediaOverride,
+  platformDefault: PanelDefaultConfig | null,
+  platformOv: MediaOverride | null,
+  accountOv: MediaOverride | null,
+  panelAccountOv: PanelOverrideEntry | null = null
+): MergedConfig {
   // 合并优先级：accountOv > panelAccountOv > platformOv > platformDefault > ''
   // accountOv: 顶层媒体覆写(图片/封面等)
   // panelAccountOv: panel 内部账号覆写(标题/描述/标签等文本字段)
@@ -480,14 +713,14 @@ if (firstGroup) {
 // ========== Dialog State ==========
 const accountDialogVisible = ref(false)
 const batchPublishDialogVisible = ref(false)
-const prePublishCheckRef = ref(null)
+const prePublishCheckRef = ref<InstanceType<typeof PrePublishCheckDialog> | null>(null)
 const prePublishCheckVisible = ref(false)
 const oneClickDialogOpen = ref(false)
 const batchSetDialogOpen = ref(false)
 
 // 构造 panelKey → panel 引用值的映射,供 useImageBatchSetApply 按 key 索引;
 // 传入 reactive proxy,使其属性访问时返回当前 panel 引用值 (component instance)
-const panelsProxy = reactive({
+const panelsProxy = reactive<Record<string, PanelApi | null>>({
   get douyin() { return douyinPanelRef.value },
   get xiaohongshu() { return xiaohongshuPanelRef.value },
   get kuaishou() { return kuaishouPanelRef.value },
@@ -507,29 +740,29 @@ const batchSetPlatforms = computed(() => {
     return { key: p.key, name: p.name, logo: p.logo, count: selectedCount }
   })
 })
-function onBatchSetApply(checkedKeys, payload) {
+function onBatchSetApply(checkedKeys: string[], payload: BatchSetPayload) {
   applyImageBatchSet(checkedKeys, payload)
   ElMessage.success(`已批量设置到 ${checkedKeys.length} 个渠道`)
 }
 
 // Refs
-const imageUploaderRef = ref(null)
-const materialSelectDialogRef = ref(null)
-const imagePreviewDialogRef = ref(null)
+const imageUploaderRef = ref<InstanceType<typeof ImageUploader> | null>(null)
+const materialSelectDialogRef = ref<InstanceType<typeof MaterialSelectDialog> | null>(null)
+const imagePreviewDialogRef = ref<InstanceType<typeof ImagePreviewDialog> | null>(null)
 
 // Batch publish state
 const publishing = ref(false)
 const publishProgress = ref(0)
-const publishResults = ref([])
+const publishResults = ref<PublishResultItem[]>([])
 const currentPublishingAccount = ref('')
 const isCancelled = ref(false)
 
 // Selected accounts for publishing
-const publishAccountIds = reactive(new Set())
+const publishAccountIds = reactive(new Set<number | string>())
 
 // ========== Sidebar Methods ==========
 
-function toggleGroup(key) {
+function toggleGroup(key: string) {
   if (expandedGroups.value.has(key)) {
     // 再次点击已展开的平台:收起并取消平台选中
     expandedGroups.value.delete(key)
@@ -545,12 +778,12 @@ function toggleGroup(key) {
   selectedAccountId.value = null
 }
 
-function removePublishAccount(id) {
+function removePublishAccount(id: number | string) {
   publishAccountIds.delete(id)
   hasChanges.value = true
 }
 
-function selectAccount(account, group) {
+function selectAccount(account: AccountItem, group: { key: string }) {
   selectedAccountId.value = account.id
   selectedPlatform.value = group.key
   // 互斥展开:只展开账号所属平台
@@ -560,7 +793,7 @@ function selectAccount(account, group) {
 
 // ========== Account Dialog ==========
 
-function onAccountConfirm(ids) {
+function onAccountConfirm(ids: Array<number | string>) {
   publishAccountIds.clear()
   ids.forEach(id => {
     publishAccountIds.add(id)
@@ -575,7 +808,7 @@ function triggerUpload() {
   imageUploaderRef.value?.triggerUpload?.()
 }
 
-function onCarouselChange(index) {
+function onCarouselChange(index: number) {
   currentPreviewIndex.value = index
 }
 
@@ -583,7 +816,7 @@ function openPreviewDialog() {
   imagePreviewDialogRef.value?.open(currentPreviewIndex.value)
 }
 
-function openMaterialLibraryForImage(index) {
+function openMaterialLibraryForImage(index: number) {
   materialSelectMode.value = 'image'
   materialSelectDialogRef.value?.open()
   materialTargetIndex.value = index
@@ -595,9 +828,9 @@ function openMaterialLibraryForCover() {
 }
 
 const materialTargetIndex = ref(-1)
-const materialSelectMode = ref('image')
+const materialSelectMode = ref<'image' | 'cover'>('image')
 
-function onMaterialSelected(material) {
+function onMaterialSelected(material: MaterialSelection) {
   const imageData = {
     id: material.id,
     name: material.name,
@@ -639,8 +872,8 @@ function onMaterialSelected(material) {
 
 async function saveDraft() {
   try {
-    const allPlatformConfigs = {}
-    const panelAccountOverrides = {}
+    const allPlatformConfigs: Record<string, PanelDefaultConfig> = {}
+    const panelAccountOverrides: Record<string, PanelOverrideEntry> = {}
     for (const key of ['douyin', 'xiaohongshu', 'kuaishou', 'weibo', 'alipay', 'weixin_gzh']) {
       const panel = getPanel(key)
       if (panel) {
@@ -650,7 +883,7 @@ async function saveDraft() {
       }
     }
 
-    const draftData = {
+    const draftData: DraftDataShape = {
       commonConfig: {
         images: commonConfig.images.map(img => ({ id: img.id, name: img.name, url: img.url, stored_path: img.stored_path, size: img.size, type: img.type })),
         coverImage: commonConfig.coverImage || null,
@@ -673,7 +906,7 @@ async function saveDraft() {
       await imagePublishApi.saveDraft({ id: currentDraftId.value, draft_data: draftData })
       ElMessage.success('草稿已更新')
     } else {
-      const resp = await imagePublishApi.saveDraft({ draft_data: draftData })
+      const resp = (await imagePublishApi.saveDraft({ draft_data: draftData })) as ApiResponse<{ id: number | string }>
       if (resp.code === 200) {
         currentDraftId.value = resp.data.id
         ElMessage.success('草稿已保存')
@@ -697,7 +930,7 @@ async function publishAll() {
   }
 
   // Task 10：用 4 级合并后的数据校验（标题必须存在）
-  const accountsWithoutTitle = []
+  const accountsWithoutTitle: string[] = []
   for (const group of imageAccountGroups.value) {
     if (group.accounts.length === 0) continue
     for (const account of group.accounts) {
@@ -750,7 +983,7 @@ async function publishAll() {
   const publishExtra = { batchId, landscapeCoverMaterialId: coverMaterialId, portraitCoverMaterialId: coverMaterialId }
 
   // Task 10：4 级合并为每个账号生成 merged commonData（images / coverImage 走合并后值）
-  const allTasks = []
+  const allTasks: PublishTask[] = []
   for (const group of imageAccountGroups.value) {
     if (group.accounts.length === 0) continue
     for (const account of group.accounts) {
@@ -784,15 +1017,15 @@ async function publishAll() {
     if (panel) {
       // 备份 panel 原状态（含 platformConfig 中的平台特定字段如 selectedMusic / hotspotId / mini_link / activities 等）
       const originalConfigs = panel.getConfigs()
-      const originalPlatformConfig = originalConfigs.platformConfig || {}
-      const originalAccountOverrides = originalConfigs.accountOverrides || {}
+      const originalPlatformConfig: PanelDefaultConfig = originalConfigs.platformConfig || {}
+      const originalAccountOverrides: Record<string, PanelOverrideEntry> = originalConfigs.accountOverrides || {}
 
       // 选择性更新 platformConfig 的 9 个标准字段，保留其他平台特定字段不被覆盖
       const STANDARD_FIELDS = [
         'title', 'description', 'tags', 'images', 'coverImage',
         'enableTimer', 'scheduleTime', 'aiContent', 'isOriginal'
-      ]
-      const updatedPlatformConfig = { ...originalPlatformConfig }
+      ] as const
+      const updatedPlatformConfig: Record<string, unknown> = { ...originalPlatformConfig }
       for (const field of STANDARD_FIELDS) {
         if (field in merged) {
           updatedPlatformConfig[field] = Array.isArray(merged[field])
@@ -843,7 +1076,7 @@ function cancelBatch() {
 }
 
 // ========== One-click fill ==========
-function handleOneClickFill(record) {
+function handleOneClickFill(record: PublishTemplateRecord) {
   const histConfigs = record.account_configs || []
   if (histConfigs.length === 0) {
     ElMessage.warning('历史记录中没有账号配置')
@@ -879,13 +1112,13 @@ function handleOneClickFill(record) {
 
     const configs = panel.getConfigs()
     const newOverrides = { ...configs.accountOverrides }
-    const existing = newOverrides[accountId] || {}
+    const existing = newOverrides[accountId]
     newOverrides[accountId] = {
       ...existing,
-      title: hist.title ?? existing.title ?? '',
-      description: hist.description ?? existing.description ?? '',
-      tags: hist.tags ?? existing.tags ?? [],
-      aiContent: hist.aiContent ?? existing.aiContent ?? '',
+      title: hist.title ?? existing?.title ?? '',
+      description: hist.description ?? existing?.description ?? '',
+      tags: hist.tags ?? existing?.tags ?? [],
+      aiContent: hist.aiContent ?? existing?.aiContent ?? '',
     }
     panel.restoreConfigs(configs.platformConfig, newOverrides)
     filled++
@@ -904,7 +1137,7 @@ function handleOneClickFill(record) {
 }
 
 // ========== Old Draft Migration ==========
-function migrateOldDraftFormat(dd) {
+function migrateOldDraftFormat(dd: DraftDataLoose) {
   if (dd.commonConfig?.topics && Array.isArray(dd.commonConfig.topics)) {
     for (const key of ['douyin', 'xiaohongshu', 'kuaishou', 'weibo', 'alipay', 'weixin_gzh']) {
       if (dd.platformConfigs?.[key]) {
@@ -941,9 +1174,9 @@ function migrateOldDraftFormat(dd) {
 }
 
 // ========== Load Draft ==========
-async function loadDraft(draftId) {
+async function loadDraft(draftId: number | string) {
   try {
-    const resp = await draftApi.getDraft(draftId)
+    const resp = (await draftApi.getDraft(draftId)) as ApiResponse<DraftRecord>
     if (resp.code !== 200) return
     const draft = resp.data
     const dd = draft.draft_data
@@ -1010,7 +1243,7 @@ async function loadDraft(draftId) {
       for (const [key, val] of Object.entries(dd.platformConfigs)) {
         const panel = getPanel(key)
         if (panel && val) {
-          const ownOverrides = {}
+          const ownOverrides: Record<string, PanelOverrideEntry> = {}
           if (panelOverridesSource) {
             const ownAccountIds = new Set(
               accountStore.accounts
@@ -1035,7 +1268,7 @@ async function loadDraft(draftId) {
   }
 }
 
-function getPlatformKeyByName(platformName) {
+function getPlatformKeyByName(platformName: string): string {
   const platform = IMAGE_PLATFORMS.find(p => p.name === platformName)
   return platform?.key || ''
 }
@@ -1048,7 +1281,7 @@ onMounted(async () => {
 
   if (accountStore.accounts.length === 0) {
     try {
-      const res = await accountApi.getAccounts()
+      const res = (await accountApi.getAccounts()) as ApiResponse<AccountItem[]>
       if (res.code === 200 && res.data) {
         accountStore.setAccounts(res.data)
       }
@@ -1062,7 +1295,7 @@ onMounted(async () => {
 
   // 清理 publishAccountIds 中属于黑名单平台的账号（本地清理，不写后端）
   // publishAccountIds 是 reactive Set，用 clear + add 模式重建
-  const filteredIds = new Set()
+  const filteredIds = new Set<number | string>()
   for (const id of publishAccountIds) {
     const acc = accountStore.accounts.find(a => a.id === id)
     if (!acc) continue
