@@ -22,29 +22,14 @@
     </template>
 
     <!-- Toolbar: search + type filter -->
-    <div class="msd-toolbar">
-      <div class="msd-search">
-        <el-input
-          v-model="searchKeyword"
-          placeholder="按文件名搜索..."
-          clearable
-          :prefix-icon="Search"
-          @input="onSearchInput"
-          @clear="onSearchClear"
-        />
-      </div>
-      <div class="msd-type-filter">
-        <button
-          v-for="opt in typeOptions"
-          :key="opt.value"
-          :class="['msd-type-btn', { active: typeFilter === opt.value }]"
-          @click="onTypeChange(opt.value)"
-        >
-          <el-icon :size="14"><component :is="opt.icon" /></el-icon>
-          <span>{{ opt.label }}</span>
-        </button>
-      </div>
-    </div>
+    <MaterialSelectToolbar
+      v-model="searchKeyword"
+      :type-options="typeOptions"
+      :type-filter="typeFilter"
+      @search-input="onSearchInput"
+      @search-clear="onSearchClear"
+      @type-change="onTypeChange"
+    />
 
     <!-- Body -->
     <div class="msd-body" v-loading="loading">
@@ -112,7 +97,6 @@
 <script setup lang="ts">
 import { ref, computed, type PropType } from 'vue'
 import {
-  Search,
   Check,
   Picture,
   PictureFilled,
@@ -120,6 +104,8 @@ import {
   Grid,
 } from '@element-plus/icons-vue'
 import MaterialCard from './MaterialCard.vue'
+import MaterialSelectToolbar from './MaterialSelectToolbar.vue'
+
 import { materialsApi } from '@/api/materials'
 import { getFileUrl } from '@/utils/storage'
 
@@ -408,77 +394,6 @@ $bg-card-hover: rgba($overlay-rgb, 0.05);
 .msd-header-filter-hint {
   margin-left: 4px;
   color: $brand-1;
-}
-
-// ===== Toolbar（独立容器，搜索 + 分段控件） =====
-.msd-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
-  margin: 12px 16px 0;
-  background: $overlay-hover;
-  border: 1px solid $border;
-  border-radius: 12px;
-}
-
-.msd-search {
-  flex: 1;
-  max-width: 320px;
-
-  :deep(.el-input__wrapper) {
-    background: $bg-elevated;
-    border: 1px solid transparent;
-    border-radius: 20px;
-    box-shadow: none;
-    padding: 6px 14px;
-    transition: all 0.2s ease;
-    &:hover { border-color: rgba($overlay-rgb, 0.16); }
-    &.is-focus {
-      border-color: rgba($brand-1, 0.5);
-      box-shadow: 0 0 0 3px rgba($brand-1, 0.12);
-    }
-    .el-input__inner {
-      height: 28px;
-      color: $text-1;
-      &::placeholder { color: $text-3; }
-    }
-    .el-input__prefix .el-icon { color: $text-2; }
-  }
-}
-
-// 类型筛选：分段控件（segmented control）风格
-.msd-type-filter {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  background: $bg-elevated;
-  border: 1px solid $border;
-  border-radius: 10px;
-}
-
-.msd-type-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  background: transparent;
-  border: none;
-  border-radius: 7px;
-  color: $text-2;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-
-  &:hover { color: $text-1; background: $bg-card-hover; }
-
-  &.active {
-    color: #fff;
-    background: linear-gradient(135deg, rgba($brand-1, 0.9), rgba($brand-2, 0.9));
-    box-shadow: 0 2px 8px rgba($brand-1, 0.3);
-  }
 }
 
 // ===== Body =====
