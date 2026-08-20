@@ -1085,7 +1085,7 @@ class IqiyiPlatform(BasePlatform):
                         logger.info("页面文本命中成功关键词: %r", kw)
                         logger.info("[发布] Video published successfully")
                         return True
-                except Exception:
+                except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                     continue
 
             # 所有判定都不满足 → 视为跳转到了非成功页（如内容管理页）

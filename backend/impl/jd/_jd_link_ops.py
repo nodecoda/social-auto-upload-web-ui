@@ -550,7 +550,7 @@ async def scrape_novels(frame) -> list[dict]:
                 "category": category,
                 "read_count": read_count,
             })
-        except Exception:
+        except Exception:  # noqa: S112 -- 单条链接解析失败,跳过继续
             continue
     return items
 

@@ -277,7 +277,7 @@ class JingmaiPlatform(BasePlatform):
                     try:
                         await frame.wait_for_selector(selector, timeout=500)
                         return frame
-                    except Exception:
+                    except Exception:  # noqa: S112 -- frame 可能正被 SPA 重建,跳过后下轮重枚举
                         # frame 可能正被 SPA 重建（detached），跳过后下轮重枚举
                         continue
                 await asyncio.sleep(0.5)

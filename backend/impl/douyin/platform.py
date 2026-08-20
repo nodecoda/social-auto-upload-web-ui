@@ -999,7 +999,7 @@ class DouyinPlatform(BasePlatform):
                     portrait_tab_idx = i
                 if "横" in text:
                     landscape_tab_idx = i
-            except Exception:
+            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                 continue
         logger.info("[封面] 封面tab索引 - 竖版: %s, 横版: %s", portrait_tab_idx, landscape_tab_idx)
 

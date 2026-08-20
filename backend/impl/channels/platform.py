@@ -231,7 +231,7 @@ async def _apply_location(page, location_name: str = "") -> None:
             continue
         try:
             name = (await name_el.inner_text()).strip()
-        except Exception:
+        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
             continue
         if name == location_name:
             await opt.click()
@@ -321,7 +321,7 @@ async def _apply_activity(page, activity_name: str = "", activity_id: str = "") 
             continue
         try:
             name = (await name_el.inner_text()).strip()
-        except Exception:
+        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
             continue
         if name != activity_name:
             continue
@@ -451,7 +451,7 @@ async def _select_mark_tag_option(page, tag_name: str) -> bool:
     for i in range(count):
         try:
             main_text = (await options.nth(i).locator(".option-main").first.inner_text(timeout=1000)).strip()
-        except Exception:
+        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
             continue
         if main_text == tag_name:
             await options.nth(i).click()
@@ -521,7 +521,7 @@ async def _fill_shoot_date_in_dialog(dialog, shoot_date: str) -> None:
                 logger.info("[视频标注] 拍摄时间已填入: %s", shoot_date)
                 await asyncio.sleep(0.3)
                 return
-        except Exception:
+        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
             continue
     logger.warning("[视频标注] 未在日历中找到可选日期: %s", shoot_date)
 
@@ -625,7 +625,7 @@ async def _confirm_mark_tag_dialog(page, dialog=None) -> bool:
                 btn = cand
                 logger.info("[视频标注] 定位到确定按钮: %s", selector)
                 break
-        except Exception:
+        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
             continue
     if btn is None:
         logger.warning("[视频标注] 未找到弹窗确定按钮")
@@ -713,7 +713,7 @@ async def _fill_repost_source_dialog(page, repost_source: str) -> None:
                     filled = True
                     await asyncio.sleep(0.5)  # 等「完成」按钮解锁
                     break
-            except Exception:
+            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                 continue
         if not filled:
             logger.warning("[视频标注] 未找到转载来源输入框, 仅确认弹窗")
@@ -812,7 +812,7 @@ async def _wait_for_cover_ready(page, *, action: str = "") -> None:
         for i in range(count):
             try:
                 text = (await popover.nth(i).inner_text(timeout=1000)).strip()
-            except Exception:
+            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                 continue
             if any(kw in text for kw in _COVER_BLOCKING_KEYWORDS):
                 blocking = text
@@ -834,7 +834,7 @@ async def _wait_for_cover_ready(page, *, action: str = "") -> None:
             for i in range(count):
                 try:
                     text = (await popover.nth(i).inner_text(timeout=1000)).strip()
-                except Exception:
+                except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                     continue
                 if any(kw in text for kw in _COVER_BLOCKING_KEYWORDS):
                     still_blocking = text
@@ -889,7 +889,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
                 if await dialog.count() and await dialog.is_visible():
                     logger.info(f"[设置封面] found cover dialog (text: {text_hint})")
                     return dialog
-            except Exception:
+            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                 continue
         try:
             fallback = page.locator("div.weui-desktop-dialog").first
@@ -957,7 +957,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
                     file_input = locator
                     logger.info(f"[设置封面] found file input: {selector}")
                     break
-            except Exception:
+            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                 continue
         if not file_input:
             try:
@@ -992,7 +992,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
                             logger.info(f"[设置封面] {cover_type} crop confirmed: {selector}")
                             await page.wait_for_timeout(1000)
                             break
-                    except Exception:
+                    except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                         continue
             except Exception as exc:
                 logger.info(f"[设置封面] WARNING: {cover_type} crop confirm error: {exc}")
@@ -1014,7 +1014,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
                     confirmed = True
                     await page.wait_for_timeout(1000)
                     break
-            except Exception:
+            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                 continue
         if not confirmed:
             logger.info(f"[设置封面] WARNING: {cover_type} cover confirm button not found")
@@ -1041,7 +1041,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
             await candidate.wait_for(state="visible", timeout=3000)
             visible_entries.append((candidate, ctype, thumb))
             logger.info(f"[设置封面] cover entry found: {selector} ({ctype})")
-        except Exception:
+        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
             continue
 
     if not visible_entries:
@@ -1112,7 +1112,7 @@ async def _dismiss_i_know_dialog(page) -> bool:
                 logger.info("[发布] 检测到「我知道了」弹窗,已点击关闭")
                 await asyncio.sleep(0.5)  # 等弹窗动画消失
                 return True
-        except Exception:
+        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
             continue
     return False
 

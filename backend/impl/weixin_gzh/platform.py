@@ -208,7 +208,7 @@ class WeixinGzhPlatform(BasePlatform):
                                 logger.info("[登录] 找到二维码图片，选择器: %s", selector)
                                 break
                             src = None
-                    except Exception:
+                    except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                         continue
 
                 if src:
@@ -1084,7 +1084,7 @@ class WeixinGzhPlatform(BasePlatform):
                             target_page = p
                             candidate_holder["page"] = p
                             break
-                    except Exception:
+                    except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                         continue
                 if target_page is not None:
                     break
@@ -1135,7 +1135,7 @@ class WeixinGzhPlatform(BasePlatform):
                                 target_page = p
                                 candidate_holder["page"] = p
                                 break
-                        except Exception:
+                        except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                             continue
                     if target_page is not None:
                         break
@@ -2129,7 +2129,7 @@ class WeixinGzhPlatform(BasePlatform):
                             target_page = p
                             new_page_holder["page"] = p
                             break
-                    except Exception:
+                    except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                         continue
                 if target_page is not None:
                     break
@@ -2174,7 +2174,7 @@ class WeixinGzhPlatform(BasePlatform):
                 img_input = loc
                 logger.info("[发布图集] 找到图片上传 input, 选择器: %s", sel)
                 break
-            except Exception:
+            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                 continue
         if img_input is None:
             raise RuntimeError("[发布图集] 未找到图片上传 input")

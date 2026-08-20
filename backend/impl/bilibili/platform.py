@@ -1045,7 +1045,7 @@ class BilibiliPlatform(BasePlatform):
                     tag_input = loc
                     logger.info(f"[填写标签] found tag input: {sel}")
                     break
-            except Exception:
+            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                 continue
 
         if tag_input is None:
@@ -1066,7 +1066,7 @@ class BilibiliPlatform(BasePlatform):
                         if await loc.count() > 0 and await loc.is_visible():
                             current_input = loc
                             break
-                    except Exception:
+                    except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                         continue
                 if current_input is None:
                     logger.info("[填写标签] tag input lost, stopping")
@@ -1204,7 +1204,7 @@ class BilibiliPlatform(BasePlatform):
                             strategy, sel,
                         )
                         break
-                    except Exception:
+                    except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                         continue
                 if dialog_opened:
                     break
@@ -1233,7 +1233,7 @@ class BilibiliPlatform(BasePlatform):
                     await cand.wait_for(state="visible", timeout=5000)
                     dialog = cand
                     break
-                except Exception:
+                except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
                     continue
             if dialog is None:
                 # 兜底:弹窗容器选择器都没命中,但若页面已出现图片上传 input,
