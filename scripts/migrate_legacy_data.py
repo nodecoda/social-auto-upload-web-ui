@@ -313,7 +313,7 @@ def main(argv: list[str] | None = None) -> int:
     target = args.target or default_target()
     api_base = args.api_base.rstrip("/")
 
-    print(f"[1/5] 解析源/目标路径...")
+    print("[1/5] 解析源/目标路径...")
     print(f"      源: {source}")
     print(f"      目标: {target}")
     if not source.exists():
@@ -321,11 +321,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     # 阶段 2: 备份
-    print(f"[2/5] 备份当前 data ...")
+    print("[2/5] 备份当前 data ...")
     if args.skip_backup:
-        print(f"      ⊘ 已跳过（--skip-backup）")
+        print("      ⊘ 已跳过（--skip-backup）")
     elif not target.exists():
-        print(f"      ⊘ 目标 data 不存在，跳过")
+        print("      ⊘ 目标 data 不存在，跳过")
     else:
         try:
             backup_path = backup_data(target, dry_run=args.dry_run)
@@ -333,7 +333,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"ERROR: 备份失败: {e}", file=sys.stderr)
             return 2
         if backup_path is None:
-            print(f"      ⊘ 已跳过")
+            print("      ⊘ 已跳过")
         elif args.dry_run:
             print(f"      ⊘ dry-run 模式，预览路径 {backup_path}")
         else:
@@ -346,12 +346,12 @@ def main(argv: list[str] | None = None) -> int:
     # 阶段 3: 后端探测
     print(f"[3/5] 探测后端健康状态 ({api_base})...")
     if not args.dry_run and not check_backend(api_base):
-        print(f"ERROR: 后端不可达，请先执行 start.bat / start.sh 启动后端", file=sys.stderr)
+        print("ERROR: 后端不可达，请先执行 start.bat / start.sh 启动后端", file=sys.stderr)
         return 3
-    print(f"      ✓ 后端正常")
+    print("      ✓ 后端正常")
 
     # 阶段 4: 拷贝
-    print(f"[4/5] 拷贝 cookies/cookiesFile/db ...")
+    print("[4/5] 拷贝 cookies/cookiesFile/db ...")
     copy_stats: dict = {}
     for sub in ["cookies", "cookiesFile", "db"]:
         src_sub = source / sub
@@ -367,22 +367,22 @@ def main(argv: list[str] | None = None) -> int:
     # 阶段 4.5: 修正 db 中 drafts / materials 表结构（缺表建表，缺列补列）
     db_file = target / "db" / "database.db"
     if db_file.exists():
-        print(f"[4.5/5] 修正 drafts / materials 表结构...")
+        print("[4.5/5] 修正 drafts / materials 表结构...")
         try:
             align_db_tables(db_file, dry_run=args.dry_run)
         except sqlite3.Error as e:
             print(f"      ⚠ 表结构修正失败: {e}", file=sys.stderr)
     else:
-        print(f"[4.5/5] ⊘ db/database.db 不存在，跳过表结构修正")
+        print("[4.5/5] ⊘ db/database.db 不存在，跳过表结构修正")
 
     # 阶段 5: 迁移素材
-    print(f"[5/5] 迁移素材库 (videoFile/)...")
+    print("[5/5] 迁移素材库 (videoFile/)...")
     vf = source / "videoFile"
     upload_ok = 0
     upload_fail = 0
     upload_skip = 0
     if not vf.exists():
-        print(f"      ⊘ videoFile/ 源目录不存在，跳过")
+        print("      ⊘ videoFile/ 源目录不存在，跳过")
     else:
         files = sorted(p for p in vf.rglob("*") if p.is_file())
         total = len(files)
