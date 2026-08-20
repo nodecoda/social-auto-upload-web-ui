@@ -1,5 +1,25 @@
 import { getPlatformByKey } from '@/config/platforms'
 
+/** 批量设置载荷（full 全量 / partial 仅已填字段） */
+export interface BatchSetPayload {
+  title?: string
+  description?: string
+  tags?: string[]
+  scheduleTime?: string
+  mode?: 'full' | 'partial'
+}
+
+/** 渠道/账号级配置字典（批量设写入目标，值类型动态） */
+export type BatchSetConfig = Record<string, unknown>
+
+/** 批量设所需的最小依赖面（结构类型，真实 store/状态兼容） */
+export interface BatchSetRefs {
+  platformConfigs: Record<string, Record<string, unknown>>
+  accountOverrides: Record<string | number, Record<string, unknown>>
+  accountChecked: Record<string | number, boolean>
+  accountStore: { accounts: Array<{ id: number | string; platform: string }> }
+}
+
 /**
  * 视频发布批量设 composable。
  * 把 payload (title/description/tags/scheduleTime) 写入 checkedPlatformKeys 中每个渠道的:
@@ -12,10 +32,10 @@ import { getPlatformByKey } from '@/config/platforms'
  * @param {object} refs  { platformConfigs, accountOverrides, accountChecked, accountStore }
  * @returns {{ applyBatchSet: (checkedPlatformKeys: string[], payload: { title: string, description: string, tags: string[], scheduleTime: string }) => void }}
  */
-export function useBatchSetApply({ platformConfigs, accountOverrides, accountChecked, accountStore }: { platformConfigs: any; accountOverrides: any; accountChecked: any; accountStore: any }) {
-  function applyBatchSet(checkedPlatformKeys: string[], payload: any) {
+export function useBatchSetApply({ platformConfigs, accountOverrides, accountChecked, accountStore }: BatchSetRefs) {
+  function applyBatchSet(checkedPlatformKeys: string[], payload: BatchSetPayload) {
     const { title, description, tags, scheduleTime } = payload
-    const mode = payload.mode || 'full'
+    const mode = payload.mode ?? 'full'
     const tagsCopy = Array.isArray(tags) ? [...tags] : []
     const scheduleTimeValue = scheduleTime || ''
 
@@ -39,7 +59,7 @@ export function useBatchSetApply({ platformConfigs, accountOverrides, accountChe
       //    故批量设置应替换该渠道下所有账号，无论是否已个性化。
       const platformCfg = getPlatformByKey(pk)
       if (!platformCfg) continue
-      const accounts = (accountStore?.accounts || []).filter((a: any) => a.platform === platformCfg.name)
+      const accounts = (accountStore?.accounts || []).filter((a) => a.platform === platformCfg.name)
       for (const acc of accounts) {
         if (!accountOverrides[acc.id]) accountOverrides[acc.id] = {}
         if (!isPartial || hasTitle) accountOverrides[acc.id].title = title
