@@ -14,14 +14,14 @@
 - **验证**：vue-tsc 0 错 / vitest 261 / vite build 全绿
 
 ### F2. 超长模板 view 拆分
-- **状态**：进行中（4/6 完成）
+- **状态**：✅ 完成（6/6）
 - **范围**：6 个模板超 100 行的视图
-  - ✅ `views/Feedback.vue`（131→95 行，PR #79 + #80：FeedbackCard / FeedbackSubmitDialog / feedbackShared）
+  - ✅ `views/Feedback.vue`（131→95 行，PR #80：FeedbackCard / FeedbackSubmitDialog / feedbackShared）
   - ✅ `views/PublishHistory.vue`（104→67 行，PR #79）
   - ✅ `views/Sponsor.vue`（119→96 行，PR #81：SponsorQrCard）
   - ✅ `views/PublishHistoryDetail.vue`（131→80 行，PR #82：DetailAccountHeader / BatchMetaCard / publishHistoryShared）
-  - ⬜ `views/Settings.vue`（192 行）
-  - ⬜ `views/AccountManagement.vue`（132 行）
+  - ✅ `views/Settings.vue`（192→95 行，PR #83：ProxySettingsCard / PublishSettingsCard / BlacklistCard）
+  - ✅ `views/AccountManagement.vue`（479→133 行，PR #84 + #85：AccountCard / accountCardShared / ImportAccountDialog）
 - **目标**：拆子组件至模板 ≤100 行，对齐规范 Rule 7
 - **风险**：高 —— 无视觉回归测试，建议触碰该视图时顺手拆，或引入组件级测试后处理
 
