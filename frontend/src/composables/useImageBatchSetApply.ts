@@ -27,8 +27,8 @@ export type BatchPanelIndex = Record<string, BatchPanelApi | null | undefined> &
  * @param {object} refs  { panels, accountStore } — panels 用 platformKey 索引
  * @returns {{ applyImageBatchSet: (checkedPlatformKeys: string[], payload: { title: string, description: string, tags: string[], scheduleTime: string }) => void }}
  */
-export function useImageBatchSetApply({ panels, accountStore }: { panels: BatchPanelIndex; accountStore: { accounts: Array<{ id: number | string; platform: string }> } }) {
-  function applyImageBatchSet(checkedPlatformKeys: string[], payload: BatchSetPayload) {
+export function useImageBatchSetApply({ panels, accountStore }: { panels: BatchPanelIndex; accountStore: { accounts: Array<{ id: number | string; platform: string }> } }): { applyImageBatchSet: (checkedPlatformKeys: string[], payload: BatchSetPayload) => void } {
+  function applyImageBatchSet(checkedPlatformKeys: string[], payload: BatchSetPayload): void {
     const { title, description, tags, scheduleTime } = payload
     const mode = payload.mode ?? 'full'
     const tagsCopy = Array.isArray(tags) ? [...tags] : []

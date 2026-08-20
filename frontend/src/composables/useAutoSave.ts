@@ -1,7 +1,7 @@
-import { ref, watch, onBeforeUnmount } from 'vue'
+import { ref, watch, onBeforeUnmount, type Ref } from 'vue'
 import { useAppStore } from '@/stores/app'
 
-export function useAutoSave(saveFn: () => void) {
+export function useAutoSave(saveFn: () => void): { hasChanges: Ref<boolean>; startAutoSaveTimer: () => void; stopAutoSaveTimer: () => void } {
   const appStore = useAppStore()
   const autoSaveTimer = ref<ReturnType<typeof setInterval> | null>(null)
   const hasChanges = ref(false)

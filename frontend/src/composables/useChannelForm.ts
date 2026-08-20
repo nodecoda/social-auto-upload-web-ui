@@ -69,12 +69,35 @@ export interface ChannelPublishExtra {
   portraitCoverMaterialId?: string
 }
 
+/** useChannelForm 返回值(公开 API 契约,模板/面板消费) */
+export interface UseChannelFormReturn {
+  form: ChannelFormData
+  platformConfig: ChannelFormData
+  accountOverrides: Record<string, ChannelFormData>
+  hasAccountOverride: (accountId: string | number) => boolean
+  resetOverride: () => void
+  getMergedConfig: (accountId: string | number) => ChannelFormData
+  publicApi: {
+    publish: (accountId: string | number, accountName: string, commonData: ChannelPublishCommonData, extra?: ChannelPublishExtra) => Promise<void>
+    getConfigs: () => { platformConfig: ChannelFormData; accountOverrides: Record<string, ChannelFormData> }
+    restoreConfigs: (config: ChannelFormData, overrides?: Record<string, ChannelFormData>) => void
+    syncTitle: (title: string) => void
+    syncDescription: (desc: string) => void
+    syncTags: (tags: string[]) => void
+    validate: (accountId: string | number) => { valid: boolean; errors: string[] }
+    setPlatformConfig: (partial: Record<string, unknown>) => void
+    setAccountOverride: (accountId: string | number, partial: Record<string, unknown>) => void
+    getCheckedAccountIds: () => number[]
+    hasAccountOverride: (accountId: string | number) => boolean
+  }
+}
+
 interface ChannelFormOptions {
   publishFn?: (accountId: string | number, accountName: string, commonData: ChannelPublishCommonData, merged: ChannelFormData, extra?: ChannelPublishExtra) => Promise<unknown>
   validateFn?: (accountId: string | number, merged: ChannelFormData) => { valid: boolean; errors: string[] }
 }
 
-export function useChannelForm(defaults: ChannelFormData, { props, emit }: { props: { accountId: string | number | null }; emit: (event: 'config-changed') => void }, options: ChannelFormOptions = {}) {
+export function useChannelForm(defaults: ChannelFormData, { props, emit }: { props: { accountId: string | number | null }; emit: (event: 'config-changed') => void }, options: ChannelFormOptions = {}): UseChannelFormReturn {
   const { publishFn, validateFn } = options
   // ===== 内部状态 =====
   const platformConfig = reactive<ChannelFormData>({ ...defaults })

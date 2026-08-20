@@ -32,8 +32,8 @@ export interface BatchSetRefs {
  * @param {object} refs  { platformConfigs, accountOverrides, accountChecked, accountStore }
  * @returns {{ applyBatchSet: (checkedPlatformKeys: string[], payload: { title: string, description: string, tags: string[], scheduleTime: string }) => void }}
  */
-export function useBatchSetApply({ platformConfigs, accountOverrides, accountChecked, accountStore }: BatchSetRefs) {
-  function applyBatchSet(checkedPlatformKeys: string[], payload: BatchSetPayload) {
+export function useBatchSetApply({ platformConfigs, accountOverrides, accountChecked, accountStore }: BatchSetRefs): { applyBatchSet: (checkedPlatformKeys: string[], payload: BatchSetPayload) => void } {
+  function applyBatchSet(checkedPlatformKeys: string[], payload: BatchSetPayload): void {
     const { title, description, tags, scheduleTime } = payload
     const mode = payload.mode ?? 'full'
     const tagsCopy = Array.isArray(tags) ? [...tags] : []

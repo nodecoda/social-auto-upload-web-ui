@@ -306,7 +306,7 @@ interface MediaOverride {
   tags?: string[]
   enableTimer?: number | boolean
   scheduleTime?: string
-  aiContent?: string
+  aiContent?: string | boolean
   isOriginal?: boolean
   music?: Record<string, unknown> | null
   authorStatement?: string
@@ -319,7 +319,7 @@ interface PanelOverrideEntry {
   tags?: string[]
   enableTimer?: number | boolean
   scheduleTime?: string
-  aiContent?: string
+  aiContent?: string | boolean
   isOriginal?: boolean
   music?: Record<string, unknown> | null
   authorStatement?: string
@@ -336,7 +336,7 @@ interface PanelDefaultConfig {
   coverImage?: CoverImage | null
   enableTimer?: number | boolean
   scheduleTime?: string
-  aiContent?: string
+  aiContent?: string | boolean
   isOriginal?: boolean
   music?: Record<string, unknown> | null
   authorStatement?: string
@@ -352,7 +352,7 @@ interface MergedConfig {
   coverImage: CoverImage | null
   enableTimer: number | boolean
   scheduleTime: string
-  aiContent: string
+  aiContent: string | boolean
   isOriginal: boolean
   music: Record<string, unknown> | null
   authorStatement: string
@@ -412,7 +412,7 @@ interface TemplateAccountConfig {
   title?: string
   description?: string
   tags?: string[]
-  aiContent?: string
+  aiContent?: string | boolean
   [key: string]: unknown
 }
 
