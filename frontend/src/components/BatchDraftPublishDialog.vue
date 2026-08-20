@@ -88,7 +88,10 @@ const props = defineProps({
   failures: { type: Array as PropType<FailureItem[]>, default: (): any[] => [] },      // [{draft_id, reason}]
 })
 
-const emit = defineEmits(['update:visible', 'confirm'])
+const emit = defineEmits<{
+  (e: 'update:visible', value: boolean): void
+  (e: 'confirm', payload: Array<number | string>): void
+}>()
 
 const submitting = ref(false)
 const selectedIds = ref<Array<number | string>>([])

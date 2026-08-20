@@ -522,7 +522,7 @@ async function onBatchPublish() {
   dialogVisible.value = true
 }
 
-async function onDialogConfirm(confirmedIds: number[]) {
+async function onDialogConfirm(confirmedIds: Array<number | string>) {
   dialogVisible.value = false
   if (!confirmedIds || confirmedIds.length === 0) return
 

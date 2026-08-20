@@ -130,6 +130,7 @@ interface JdProduct {
   price?: string
   shop_name?: string
   trace?: JdPickerTrace
+  [key: string]: unknown
 }
 
 interface JdPickerResponse {
@@ -142,7 +143,10 @@ const props = defineProps({
   initSelected: { type: Array as PropType<Array<JdProduct | string>>, default: (): any[] => [] },
 })
 
-const emit = defineEmits(['update:modelValue', 'confirm'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'confirm', payload: JdProduct[]): void
+}>()
 
 const MAX_SELECTED = 10
 const pageSize = 10

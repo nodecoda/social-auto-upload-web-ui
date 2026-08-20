@@ -59,7 +59,10 @@ defineProps({
   currentAccount: { type: String, default: '' },
 })
 
-defineEmits(['update:modelValue', 'cancel'])
+defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'cancel'): void
+}>()
 </script>
 
 <style lang="scss" scoped>

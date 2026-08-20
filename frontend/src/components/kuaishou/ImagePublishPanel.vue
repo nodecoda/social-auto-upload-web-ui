@@ -66,7 +66,10 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['config-changed', 'publish-result'])
+const emit = defineEmits<{
+  (e: 'config-changed'): void
+  (e: 'publish-result', payload: { accountName: string; status: 'success' | 'fail'; message: string }): void
+}>()
 
 const accountStore = useAccountStore()
 
@@ -77,7 +80,7 @@ const declarationOptions = computed(() => {
   return field?.options || []
 })
 
-function handleMusicChange(music: Record<string, any>) {
+function handleMusicChange(music: Record<string, any> | null) {
   if (music) {
     form.selectedMusicId = music.musicId
     form.selectedMusicData = music

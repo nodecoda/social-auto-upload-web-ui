@@ -132,7 +132,10 @@ const props = defineProps({
   modelValue: { type: Boolean, required: true }
 })
 
-const emit = defineEmits(['update:modelValue', 'done'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'done'): void
+}>()
 
 const accountStore = useAccountStore()
 // store 的 accounts/allTags 类型未精确标注 (ref([])), 按实际结构使用

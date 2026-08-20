@@ -30,7 +30,9 @@ defineProps({
   selected: Boolean,
 })
 
-defineEmits(['click'])
+defineEmits<{
+  (e: 'click'): void
+}>()
 </script>
 
 <style scoped>

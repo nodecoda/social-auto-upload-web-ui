@@ -52,13 +52,14 @@ import { Picture, Edit, Delete } from '@element-plus/icons-vue'
 import { getFileUrl } from '@/utils/storage'
 
 interface CoverImage {
-  id?: number | string
-  name?: string
+  id: number | string
+  name: string
   stored_path?: string
   url: string
   size?: number
   type?: string
   _fromFrame?: boolean
+  [key: string]: unknown
 }
 
 const props = defineProps({
@@ -73,12 +74,12 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
 })
 
-defineEmits([
-  'update:modelValue',     // 移除当前激活 tab 的封面 → null
-  'update:activeRatio',    // 切换 tab
-  'edit',                  // 编辑当前激活 tab 的封面
-  'open-library',          // 从素材库选择（预留）
-])
+defineEmits<{
+  (e: 'update:modelValue', value: CoverImage | null): void
+  (e: 'update:activeRatio', value: string): void
+  (e: 'edit'): void
+  (e: 'open-library'): void
+}>()
 </script>
 
 <style scoped lang="scss">

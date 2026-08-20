@@ -110,7 +110,10 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'change'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: Record<string, any> | null): void
+  (e: 'change', payload: Record<string, any> | null): void
+}>()
 
 const selectedType = ref('')
 const loading = ref(false)

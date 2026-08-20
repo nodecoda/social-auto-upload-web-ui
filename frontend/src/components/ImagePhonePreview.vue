@@ -61,7 +61,12 @@ defineProps({
   previewIndex: { type: Number, default: 0 },
 })
 
-defineEmits(['upload', 'library', 'preview', 'carousel-change'])
+defineEmits<{
+  (e: 'upload'): void
+  (e: 'library'): void
+  (e: 'preview'): void
+  (e: 'carousel-change', index: number): void
+}>()
 </script>
 
 <style lang="scss" scoped>

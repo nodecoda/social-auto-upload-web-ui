@@ -64,6 +64,7 @@ interface PublishTemplate {
   thumbnail_path?: string
   first_image_id?: number | string
   coverSrc?: string
+  [key: string]: unknown
 }
 
 interface MaterialRecord {
@@ -75,7 +76,10 @@ const props = defineProps({
   modelValue: { type: Boolean, required: true },
   type: { type: String, required: true },
 })
-const emit = defineEmits(['update:modelValue', 'pick'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'pick', payload: PublishTemplate): void
+}>()
 
 const loading = ref(false)
 const list = ref<PublishTemplate[]>([])

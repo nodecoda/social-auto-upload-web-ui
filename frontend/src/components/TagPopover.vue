@@ -61,7 +61,10 @@ const props = defineProps({
   selectedTags: { type: Array as PropType<TagItem[]>, default: (): any[] => [] }
 })
 
-const emit = defineEmits(['update:visible', 'changed'])
+const emit = defineEmits<{
+  (e: 'update:visible', value: boolean): void
+  (e: 'changed'): void
+}>()
 
 const accountStore = useAccountStore()
 const keyword = ref('')

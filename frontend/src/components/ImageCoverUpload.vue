@@ -76,7 +76,10 @@ const props = defineProps({
   modelValue: { type: Object as PropType<CoverImage | null>, default: null },
 })
 
-const emit = defineEmits(['update:modelValue', 'open-library'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: CoverImage | null): void
+  (e: 'open-library'): void
+}>()
 const uploaderVisible = ref(false)
 
 function onUploaded(d: Record<string, any>) {

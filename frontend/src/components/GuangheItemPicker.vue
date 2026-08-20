@@ -144,6 +144,7 @@ interface GuangheItem {
   buy_count?: string
   disabled?: boolean
   trace?: GuangheTrace
+  [key: string]: unknown
 }
 
 interface GuangheFilters {
@@ -167,7 +168,10 @@ const props = defineProps({
   initSelected: { type: Array as PropType<Array<GuangheItem | string>>, default: (): any[] => [] },
 })
 
-const emit = defineEmits(['update:modelValue', 'confirm'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'confirm', payload: GuangheItem[]): void
+}>()
 
 const MAX_SELECTED = 6
 

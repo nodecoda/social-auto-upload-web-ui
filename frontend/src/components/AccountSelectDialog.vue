@@ -165,7 +165,10 @@ const props = defineProps({
   publishAccountIds: { type: Set as PropType<Set<number | string>>, required: true },
 })
 
-const emit = defineEmits(['update:modelValue', 'confirm'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'confirm', payload: Array<number | string>): void
+}>()
 
 const accountStore = useAccountStore()
 const appStore = useAppStore()
