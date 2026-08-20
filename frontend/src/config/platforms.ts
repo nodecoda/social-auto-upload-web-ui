@@ -35,6 +35,9 @@ import { CHANNELS_MARK_TAGS, CHANNELS_SHOOT_REGIONS } from './channels-mark-tags
  */
 export const DECLARATION_NONE = '内容无需添加声明'
 
+/** el-date-picker disabled 回调的日期参数（Date 或 dayjs 对象） */
+type DateLike = Date | { toDate: () => Date }
+
 export const PLATFORMS = {
   XIAOHONGSHU: {
     id: 1,
@@ -241,20 +244,20 @@ export const PLATFORMS = {
           maxDate.setDate(maxDate.getDate() + 7);
           return time.getTime() < today.getTime() || time.getTime() > maxDate.getTime();
         },
-        disabledHours: (_role: unknown, comparingDate: any) => {
+        disabledHours: (_role: unknown, comparingDate: DateLike | null | undefined) => {
           if (!comparingDate) return [];
           const now = new Date();
-          const d = comparingDate.toDate ? comparingDate.toDate() : comparingDate;
+          const d = 'toDate' in comparingDate ? comparingDate.toDate() : comparingDate;
           const isToday = d.getFullYear() === now.getFullYear()
             && d.getMonth() === now.getMonth()
             && d.getDate() === now.getDate();
           if (!isToday) return [];
           return Array.from({ length: now.getHours() + 1 }, (_, i) => i);
         },
-        disabledMinutes: (hour: number, _role: unknown, comparingDate: any) => {
+        disabledMinutes: (hour: number, _role: unknown, comparingDate: DateLike | null | undefined) => {
           if (!comparingDate) return [];
           const now = new Date();
-          const d = comparingDate.toDate ? comparingDate.toDate() : comparingDate;
+          const d = 'toDate' in comparingDate ? comparingDate.toDate() : comparingDate;
           const isToday = d.getFullYear() === now.getFullYear()
             && d.getMonth() === now.getMonth()
             && d.getDate() === now.getDate();
@@ -479,20 +482,20 @@ export const PLATFORMS = {
           maxDate.setDate(maxDate.getDate() + 7);
           return time.getTime() < today.getTime() || time.getTime() > maxDate.getTime();
         },
-        disabledHours: (_role: unknown, comparingDate: any) => {
+        disabledHours: (_role: unknown, comparingDate: DateLike | null | undefined) => {
           if (!comparingDate) return [];
           const now = new Date();
-          const d = comparingDate.toDate ? comparingDate.toDate() : comparingDate;
+          const d = 'toDate' in comparingDate ? comparingDate.toDate() : comparingDate;
           const isToday = d.getFullYear() === now.getFullYear()
             && d.getMonth() === now.getMonth()
             && d.getDate() === now.getDate();
           if (!isToday) return [];
           return Array.from({ length: now.getHours() + 1 }, (_, i) => i);
         },
-        disabledMinutes: (hour: number, _role: unknown, comparingDate: any) => {
+        disabledMinutes: (hour: number, _role: unknown, comparingDate: DateLike | null | undefined) => {
           if (!comparingDate) return [];
           const now = new Date();
-          const d = comparingDate.toDate ? comparingDate.toDate() : comparingDate;
+          const d = 'toDate' in comparingDate ? comparingDate.toDate() : comparingDate;
           const isToday = d.getFullYear() === now.getFullYear()
             && d.getMonth() === now.getMonth()
             && d.getDate() === now.getDate();
@@ -569,20 +572,20 @@ export const PLATFORMS = {
           maxDate.setMonth(maxDate.getMonth() + 1);
           return time.getTime() < today.getTime() || time.getTime() > maxDate.getTime();
         },
-        disabledHours: (_role: unknown, comparingDate: any) => {
+        disabledHours: (_role: unknown, comparingDate: DateLike | null | undefined) => {
           if (!comparingDate) return [];
           const now = new Date();
-          const d = comparingDate.toDate ? comparingDate.toDate() : comparingDate;
+          const d = 'toDate' in comparingDate ? comparingDate.toDate() : comparingDate;
           const isToday = d.getFullYear() === now.getFullYear()
             && d.getMonth() === now.getMonth()
             && d.getDate() === now.getDate();
           if (!isToday) return [];
           return Array.from({ length: now.getHours() + 1 }, (_, i) => i);
         },
-        disabledMinutes: (hour: number, _role: unknown, comparingDate: any) => {
+        disabledMinutes: (hour: number, _role: unknown, comparingDate: DateLike | null | undefined) => {
           if (!comparingDate) return [];
           const now = new Date();
-          const d = comparingDate.toDate ? comparingDate.toDate() : comparingDate;
+          const d = 'toDate' in comparingDate ? comparingDate.toDate() : comparingDate;
           const isToday = d.getFullYear() === now.getFullYear()
             && d.getMonth() === now.getMonth()
             && d.getDate() === now.getDate();
@@ -701,7 +704,7 @@ export const PLATFORMS = {
         ] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
     ],
-    defaultSettings: { title: '', description: '', guangheClaim: '', guangheLinkType: '', guangheProducts: [] as any[], guangheShops: [] as any[], scheduleTime: '' },
+    defaultSettings: { title: '', description: '', guangheClaim: '', guangheLinkType: '', guangheProducts: [] as unknown[], guangheShops: [] as unknown[], scheduleTime: '' },
   },
   JINGMAI: {
     id: 19,
@@ -733,7 +736,7 @@ export const PLATFORMS = {
       title: '',
       description: '',
       jdRelatedType: '',
-      jdProducts: [] as any[],
+      jdProducts: [] as unknown[],
       jdNovel: '',
       jdDeclaration: '',
       scheduleTime: '',
