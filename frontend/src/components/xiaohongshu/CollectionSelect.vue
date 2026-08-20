@@ -47,14 +47,15 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type PropType } from 'vue'
 import { Search, Loading } from '@element-plus/icons-vue'
 import { xhsApi } from '@/api/xiaohongshu'
+import { type ApiResponse } from '@/utils/request'
 
 const props = defineProps({
   accountId: {
-    type: [String, Number],
+    type: [String, Number] as PropType<string | number | null>,
     required: true
   },
   // v-model 存合集名称(发布时按名称匹配定位)
@@ -64,7 +65,7 @@ const props = defineProps({
   },
   // 回显用的完整对象(含 id)
   data: {
-    type: Object,
+    type: Object as PropType<Record<string, any> | null>,
     default: null
   }
 })
@@ -72,11 +73,11 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const loading = ref(false)
-const collectionList = ref([])
+const collectionList = ref<any[]>([])
 const selectedName = ref(props.modelValue)
 const searchKeyword = ref('')
 // 缓存全量列表(后端一次返回),供前端按关键词过滤
-const allCollections = ref([])
+const allCollections = ref<any[]>([])
 
 // 切换账号时清空
 watch(() => props.accountId, () => {
@@ -103,7 +104,7 @@ async function handleSearch() {
   loading.value = true
   try {
     // 后端一次返回全量合集,前端按关键词过滤
-    const resp = await xhsApi.getCollections(props.accountId)
+    const resp = (await xhsApi.getCollections(props.accountId)) as ApiResponse<{ list?: any[] }>
     if (resp.code === 200) {
       allCollections.value = resp.data?.list || []
       const kw = searchKeyword.value?.trim().toLowerCase()

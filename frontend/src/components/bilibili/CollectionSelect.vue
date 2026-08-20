@@ -44,14 +44,15 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type PropType } from 'vue'
 import { Search, Loading } from '@element-plus/icons-vue'
 import { biliApi } from '@/api/bilibili'
+import { type ApiResponse } from '@/utils/request'
 
 const props = defineProps({
   accountId: {
-    type: [String, Number],
+    type: [String, Number] as PropType<string | number | null>,
     required: true
   },
   modelValue: {
@@ -59,7 +60,7 @@ const props = defineProps({
     default: ''
   },
   data: {
-    type: Object,
+    type: Object as PropType<Record<string, any> | null>,
     default: null
   }
 })
@@ -67,10 +68,10 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const loading = ref(false)
-const collectionList = ref([])
+const collectionList = ref<any[]>([])
 const selectedName = ref(props.modelValue)
 const searchKeyword = ref('')
-const allCollections = ref([])
+const allCollections = ref<any[]>([])
 
 // 切换账号时清空
 watch(() => props.accountId, () => {
@@ -96,7 +97,7 @@ async function handleSearch() {
   console.log('[B站合集] 触发搜索:', searchKeyword.value || '(全部)')
   loading.value = true
   try {
-    const resp = await biliApi.getCollections(props.accountId)
+    const resp = (await biliApi.getCollections(props.accountId)) as ApiResponse<{ list?: any[] }>
     if (resp.code === 200) {
       allCollections.value = resp.data?.list || []
       const kw = searchKeyword.value?.trim().toLowerCase()

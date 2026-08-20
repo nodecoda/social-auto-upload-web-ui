@@ -86,8 +86,9 @@
   </el-drawer>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type PropType } from 'vue'
+import { type ApiResponse } from '@/utils/request'
 import { Search, VideoPlay, Loading, InfoFilled } from '@element-plus/icons-vue'
 import { douyinImageApi } from '@/api/douyinImage'
 
@@ -97,7 +98,7 @@ const props = defineProps({
     default: false
   },
   accountId: {
-    type: [String, Number],
+    type: [String, Number] as PropType<string | number | null>,
     default: ''
   }
 })
@@ -107,10 +108,10 @@ const emit = defineEmits(['update:modelValue', 'select'])
 const visible = ref(props.modelValue)
 const keyword = ref('')
 const loading = ref(false)
-const musicList = ref([])
+const musicList = ref<any[]>([])
 const searched = ref(false)
-const hoverId = ref(null)
-const listRef = ref(null)
+const hoverId = ref<string | number | null>(null)
+const listRef = ref<HTMLElement | null>(null)
 
 // 分页
 const cursor = ref(0)
@@ -124,7 +125,7 @@ watch(visible, (val) => {
   emit('update:modelValue', val)
 })
 
-let searchTimer = null
+let searchTimer: number | null = null
 
 function handleSearch() {
   if (searchTimer) clearTimeout(searchTimer)
@@ -151,11 +152,11 @@ async function searchMusic() {
 
   loading.value = true
   try {
-    const resp = await douyinImageApi.searchMusic(
+    const resp = (await douyinImageApi.searchMusic(
       props.accountId || '',
       keyword.value,
       cursor.value
-    )
+    )) as ApiResponse<{ music?: any[]; has_more?: number; cursor?: number }>
 
     if (resp.code === 200) {
       const data = resp.data

@@ -55,22 +55,31 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
+<script setup lang="ts">
+import { ref, type PropType } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Upload, Delete, FolderOpened } from '@element-plus/icons-vue'
 import { getFileUrl } from '@/utils/storage'
 import MaterialUploader from '@/components/MaterialUploader.vue'
 
+interface CoverImage {
+  id?: number | string
+  name?: string
+  url: string
+  stored_path?: string
+  size?: number
+  type?: string
+}
+
 const props = defineProps({
   label: { type: String, default: '封面图片' },
-  modelValue: { type: Object, default: null },
+  modelValue: { type: Object as PropType<CoverImage | null>, default: null },
 })
 
 const emit = defineEmits(['update:modelValue', 'open-library'])
 const uploaderVisible = ref(false)
 
-function onUploaded(d) {
+function onUploaded(d: Record<string, any>) {
   emit('update:modelValue', {
     id: d.id,
     name: d.original_filename,

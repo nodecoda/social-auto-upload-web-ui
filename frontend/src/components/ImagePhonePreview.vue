@@ -45,12 +45,19 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import { type PropType } from 'vue'
 import { FullScreen, Upload, Picture } from '@element-plus/icons-vue'
 import ImageCarousel from '@/components/ImageCarousel.vue'
 
+interface PhoneImageItem {
+  url: string
+  name?: string
+  id?: number | string
+}
+
 defineProps({
-  images: { type: Array, default: () => [] },
+  images: { type: Array as PropType<PhoneImageItem[]>, default: () => [] },
   previewIndex: { type: Number, default: 0 },
 })
 

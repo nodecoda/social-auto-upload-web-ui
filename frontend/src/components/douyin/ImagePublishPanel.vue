@@ -57,8 +57,8 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script setup lang="ts">
+import { ref, computed, type PropType } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAccountStore } from '@/stores/account'
 import { imagePublishApi } from '@/api/imagePublish'
@@ -72,7 +72,7 @@ import DouyinMixSelect from './MixSelect.vue'
 import { useAutoExtractHashtags } from '@/utils/hashtag'
 
 const props = defineProps({
-  accountId: { type: [Number, Object], default: null },
+  accountId: { type: [Number, Object] as PropType<number | string | null>, default: null },
   disabled: { type: Boolean, default: false },
 })
 
@@ -87,11 +87,25 @@ const declarationOptions = computed(() => {
   return field?.options || []
 })
 
+// 公共数据/附加参数接口(见 publishFn 标注)
+// 公共数据/附加参数接口(见 publishFn 标注)
+interface PublishCommonData {
+  images: Array<{ id: number | string }>
+  coverImage?: { stored_path?: string } | null
+}
+
+// 批量发布场景的附加参数(均可选)
+interface PublishExtra {
+  batchId?: string
+  landscapeCoverMaterialId?: string
+  portraitCoverMaterialId?: string
+}
+
 const { form, hasAccountOverride, resetOverride, publicApi } = useChannelForm(
   DOUYIN_DEFAULTS,
   { props, emit },
   {
-    publishFn: async (accountId, accountName, commonData, merged, extra) => {
+    publishFn: async (accountId, accountName, commonData: PublishCommonData, merged, extra?: PublishExtra) => {
       const account = accountStore.accounts.find(a => a.id === accountId)
       if (!account) {
         emit('publish-result', { accountName, status: 'fail', message: '账号不存在' })

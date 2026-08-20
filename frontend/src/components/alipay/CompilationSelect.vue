@@ -57,15 +57,16 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type PropType } from 'vue'
 import { Search, Loading, Picture } from '@element-plus/icons-vue'
 import { alipayApi } from '@/api/alipay'
 import { toutiaoApi } from '@/api/toutiao'
+import { type ApiResponse } from '@/utils/request'
 
 const props = defineProps({
   accountId: {
-    type: [String, Number],
+    type: [String, Number] as PropType<string | number | null>,
     default: ''
   },
   modelValue: {
@@ -73,20 +74,20 @@ const props = defineProps({
     default: ''
   },
   data: {
-    type: Object,
+    type: Object as PropType<Record<string, any> | null>,
     default: null
   },
   platform: {
     type: String,
     default: 'alipay', // 'alipay' | 'toutiao'
-    validator: (value) => ['alipay', 'toutiao'].includes(value)
+    validator: (value: string) => ['alipay', 'toutiao'].includes(value)
   }
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const loading = ref(false)
-const compilationList = ref([])
+const compilationList = ref<any[]>([])
 const selectedCompilationId = ref(props.modelValue || '')
 const searchKeyword = ref('')
 
@@ -144,7 +145,7 @@ async function handleSearch() {
   loading.value = true
   try {
     const api = getApi()
-    const resp = await api.searchCompilation(props.accountId, keyword)
+    const resp = (await api.searchCompilation(props.accountId, keyword)) as ApiResponse<{ list?: any[] }>
     console.log(`[${getPlatformName()}合集] 搜索结果:`, resp)
     if (resp.code === 200) {
       compilationList.value = resp.data?.list || []

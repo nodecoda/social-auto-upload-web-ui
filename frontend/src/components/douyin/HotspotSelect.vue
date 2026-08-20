@@ -56,14 +56,15 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type PropType } from 'vue'
 import { Search, Loading, TrendCharts } from '@element-plus/icons-vue'
 import { douyinImageApi } from '@/api/douyinImage'
+import { type ApiResponse } from '@/utils/request'
 
 const props = defineProps({
   accountId: {
-    type: [String, Number],
+    type: [String, Number] as PropType<string | number | null>,
     default: ''
   },
   modelValue: {
@@ -71,7 +72,7 @@ const props = defineProps({
     default: ''
   },
   data: {
-    type: Object,
+    type: Object as PropType<Record<string, any> | null>,
     default: null
   }
 })
@@ -79,7 +80,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const loading = ref(false)
-const hotspotList = ref([])
+const hotspotList = ref<any[]>([])
 const selectedHotspot = ref(props.modelValue)
 const searchKeyword = ref('')
 
@@ -101,7 +102,7 @@ async function handleSearch() {
   console.log('触发热点搜索:', keyword)
   loading.value = true
   try {
-    const resp = await douyinImageApi.searchHotspot(props.accountId || '', keyword)
+    const resp = (await douyinImageApi.searchHotspot(props.accountId || '', keyword)) as ApiResponse<{ sentences?: any[] }>
     console.log('热点搜索结果:', resp)
     if (resp.code === 200) {
       hotspotList.value = resp.data?.sentences || []

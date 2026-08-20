@@ -92,19 +92,20 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type PropType } from 'vue'
+import { type ApiResponse } from '@/utils/request'
 import { Search, Loading, Location, Connection, Menu, Goods } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { douyinImageApi } from '@/api/douyinImage'
 
 const props = defineProps({
   accountId: {
-    type: [String, Number],
+    type: [String, Number] as PropType<string | number | null>,
     default: ''
   },
   modelValue: {
-    type: Object,
+    type: Object as PropType<Record<string, any> | null>,
     default: () => null
   }
 })
@@ -113,7 +114,7 @@ const emit = defineEmits(['update:modelValue', 'change'])
 
 const selectedType = ref('')
 const loading = ref(false)
-const tagList = ref([])
+const tagList = ref<any[]>([])
 const selectedTagId = ref('')
 const searchKeyword = ref('')
 
@@ -193,10 +194,10 @@ async function handleSearch() {
   console.log(`触发${selectedType.value}标签搜索:`, keyword)
   loading.value = true
   try {
-    let resp
+    let resp: ApiResponse<Record<string, any>>
     switch (selectedType.value) {
       case 'poi':
-        resp = await douyinImageApi.searchPoi(props.accountId || '', keyword)
+        resp = (await douyinImageApi.searchPoi(props.accountId || '', keyword)) as ApiResponse<Record<string, any>>
         console.log('位置搜索结果:', resp)
         if (resp.code === 200) {
           tagList.value = (resp.data?.poi_list || []).map(poi => ({
@@ -210,7 +211,7 @@ async function handleSearch() {
         }
         break
       case 'miniapp':
-        resp = await douyinImageApi.searchMiniapp(props.accountId || '', keyword)
+        resp = (await douyinImageApi.searchMiniapp(props.accountId || '', keyword)) as ApiResponse<Record<string, any>>
         console.log('小程序搜索结果:', resp)
         if (resp.code === 200) {
           tagList.value = (resp.data?.anchor_list || []).map(anchor => ({
@@ -226,7 +227,7 @@ async function handleSearch() {
         }
         break
       case 'game':
-        resp = await douyinImageApi.searchGame(props.accountId || '', keyword)
+        resp = (await douyinImageApi.searchGame(props.accountId || '', keyword)) as ApiResponse<Record<string, any>>
         console.log('游戏搜索结果:', resp)
         if (resp.code === 200) {
           // 注意：游戏数据在 resp.data.data.mount_games 中
@@ -242,7 +243,7 @@ async function handleSearch() {
         }
         break
       case 'mark':
-        resp = await douyinImageApi.searchMarkSpu(props.accountId || '', keyword)
+        resp = (await douyinImageApi.searchMarkSpu(props.accountId || '', keyword)) as ApiResponse<Record<string, any>>
         console.log('标记万物搜索结果:', resp)
         if (resp.code === 200) {
           // 注意：标记万物数据在 resp.data.data.spu_list 中
@@ -258,7 +259,7 @@ async function handleSearch() {
         }
         break
       case 'film':
-        resp = await douyinImageApi.searchMedium(props.accountId || '', keyword)
+        resp = (await douyinImageApi.searchMedium(props.accountId || '', keyword)) as ApiResponse<Record<string, any>>
         console.log('影视演绎搜索结果:', resp)
         if (resp.code === 200) {
           const raw = resp.data

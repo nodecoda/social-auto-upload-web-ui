@@ -45,15 +45,16 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type PropType } from 'vue'
 import { Search, Loading } from '@element-plus/icons-vue'
 import { vivoApi } from '@/api/vivo'
+import { type ApiResponse } from '@/utils/request'
 
 const props = defineProps({
   // 位置是平台级,但搜索需账号 cookie,故透传 selectedAccountId
   accountId: {
-    type: [String, Number],
+    type: [String, Number] as PropType<string | number | null>,
     default: ''
   },
   // v-model 存位置名称
@@ -63,7 +64,7 @@ const props = defineProps({
   },
   // 回显用的完整对象(含 address)
   data: {
-    type: Object,
+    type: Object as PropType<Record<string, any> | null>,
     default: null
   }
 })
@@ -71,7 +72,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const loading = ref(false)
-const positionList = ref([])
+const positionList = ref<any[]>([])
 const selectedName = ref(props.modelValue)
 const searchKeyword = ref('')
 
@@ -103,7 +104,7 @@ async function handleSearch() {
   console.log('[VIVO位置] 触发搜索:', kw)
   loading.value = true
   try {
-    const resp = await vivoApi.searchPosition(props.accountId, kw)
+    const resp = (await vivoApi.searchPosition(props.accountId, kw)) as ApiResponse<{ position_list?: any[] }>
     if (resp.code === 200) {
       positionList.value = resp.data?.position_list || []
       console.log('[VIVO位置] 列表:', positionList.value.length, '条')
