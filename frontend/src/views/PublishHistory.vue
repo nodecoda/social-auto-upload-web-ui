@@ -7,113 +7,31 @@
     <HistoryStatsCards :stats="stats" />
 
     <!-- Filter toolbar -->
-    <div class="filter-card">
-      <div class="filter-row">
-        <div class="filter-controls">
-          <el-select
-            v-model="timeRange"
-            placeholder="时间范围"
-            class="filter-select"
-            @change="handleFilterChange"
-          >
-            <el-option label="今天" value="today" />
-            <el-option label="最近7天" value="7days" />
-            <el-option label="最近30天" value="30days" />
-            <el-option label="全部" value="all" />
-          </el-select>
-
-          <el-select
-            v-model="typeFilter"
-            placeholder="类型"
-            class="filter-select"
-            @change="handleFilterChange"
-          >
-            <el-option label="全部" value="all" />
-            <el-option label="视频" value="video" />
-            <el-option label="图集" value="image" />
-          </el-select>
-
-          <el-select
-            v-model="platformFilter"
-            placeholder="平台"
-            class="filter-select"
-            @change="handleFilterChange"
-          >
-            <el-option label="全部" value="all" />
-            <el-option v-for="p in platformList" :key="p.key" :label="p.name" :value="p.key" />
-          </el-select>
-
-          <el-select
-            v-model="statusFilter"
-            placeholder="状态"
-            class="filter-select"
-            @change="handleFilterChange"
-          >
-            <el-option label="全部" value="all" />
-            <el-option label="全部成功" value="success" />
-            <el-option label="部分失败" value="partial" />
-            <el-option label="全部失败" value="failed" />
-          </el-select>
-        </div>
-
-        <div class="filter-actions">
-          <el-button
-            v-if="!selectMode"
-            class="select-trigger-btn"
-            :icon="Select"
-            :disabled="batches.length === 0"
-            @click="toggleSelectMode"
-          >
-            多选
-          </el-button>
-          <el-button
-            class="refresh-btn"
-            :icon="Refresh"
-            @click="fetchHistory"
-            :loading="loading"
-          >
-            刷新
-          </el-button>
-        </div>
-      </div>
-    </div>
+    <HistoryFilterBar
+      v-model:time-range="timeRange"
+      v-model:type-filter="typeFilter"
+      v-model:platform-filter="platformFilter"
+      v-model:status-filter="statusFilter"
+      :select-mode="selectMode"
+      :batches-count="batches.length"
+      :loading="loading"
+      @change="handleFilterChange"
+      @select-mode-toggle="toggleSelectMode"
+      @refresh="fetchHistory"
+    />
 
     <!-- Batch operations toolbar -->
-    <div class="batch-toolbar" v-if="selectMode">
-      <el-checkbox
-        :model-value="isAllSelected"
-        :indeterminate="isIndeterminate"
-        class="toolbar-select-all"
-        @change="toggleSelectAll"
-      >
-        全选
-      </el-checkbox>
-
-      <div class="selected-info">
-        <el-icon class="selected-icon"><Check /></el-icon>
-        <span>已选 <strong>{{ selection.size }}</strong> / {{ batches.length }}</span>
-      </div>
-
-      <div class="toolbar-spacer"></div>
-
-      <el-button
-        size="default"
-        :icon="Delete"
-        type="danger"
-        :disabled="selection.size === 0 || isDeleting"
-        @click="onBatchDelete"
-      >
-        批量删除<template v-if="selection.size > 0"> ({{ selection.size }})</template>
-      </el-button>
-      <el-button
-        size="default"
-        :icon="Close"
-        class="toolbar-exit"
-        @click="toggleSelectMode"
-      >
-        退出多选
-      </el-button>
-    </div>
+    <HistoryBatchToolbar
+      v-if="selectMode"
+      :is-all-selected="isAllSelected"
+      :is-indeterminate="isIndeterminate"
+      :selection-size="selection.size"
+      :total-count="batches.length"
+      :is-deleting="isDeleting"
+      @toggle-select-all="toggleSelectAll"
+      @batch-delete="onBatchDelete"
+      @exit-select-mode="toggleSelectMode"
+    />
 
     <!-- 卡片网格 -->
     <div class="cards-grid" v-loading="loading">
@@ -121,54 +39,16 @@
         <el-icon class="empty-icon"><Clock /></el-icon>
         <p>暂无发布记录</p>
       </div>
-      <div
+      <HistoryCard
         v-for="batch in batches"
         :key="batch.id"
-        class="batch-card"
-        :class="{
-          'is-selected': selection.has(batch.id),
-          'select-mode': selectMode,
-        }"
-        @click="onCardClick(batch.id)"
-      >
-        <div
-          v-if="selectMode"
-          class="card-selector"
-          :class="{ 'is-checked': selection.has(batch.id) }"
-          @click.stop="toggleSelection(batch.id, !selection.has(batch.id))"
-        >
-          <el-icon class="selector-icon"><Check /></el-icon>
-        </div>
-        <div class="card-cover">
-          <img v-if="batch.cover_url" :src="batch.cover_url" :alt="batch.title" />
-          <div v-else class="cover-placeholder">
-            <el-icon :size="32"><Picture /></el-icon>
-          </div>
-        </div>
-        <div class="card-body">
-          <h3 class="card-title">{{ batch.title || '无标题' }}</h3>
-          <ChannelSummary
-            :channels="computeChannelsSummary(batch.items)"
-            :overflow-key="batch.id"
-          />
-          <div class="card-meta">
-            <span class="meta-time">{{ formatCardTime(batch.created_at) }}</span>
-            <span class="status-tag" :class="`status-${batch.status}`">{{ statusLabel(batch.status) }}</span>
-          </div>
-          <div class="card-stats">
-            <PublishStats compact />
-          </div>
-        </div>
-
-        <!-- 单条删除按钮（非多选模式下显示） -->
-        <button
-          v-if="!selectMode"
-          class="card-delete-btn"
-          @click.stop="confirmDelete(batch)"
-        >
-          <el-icon><Delete /></el-icon>
-        </button>
-      </div>
+        :batch="batch"
+        :select-mode="selectMode"
+        :selection="selection"
+        @card-click="onCardClick"
+        @toggle-selection="toggleSelection"
+        @delete="confirmDelete"
+      />
     </div>
 
     <!-- Pagination -->
@@ -186,41 +66,21 @@
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type CheckboxValueType } from 'element-plus'
-import { Clock, Picture, Refresh, Upload, CircleCheck, Calendar, Delete, Check, Select, Close } from '@element-plus/icons-vue'
+import { Clock } from '@element-plus/icons-vue'
 import { historyApi, statsApi } from '@/api/v2'
 import HistoryStatsCards, { type StatsSummary } from '@/components/HistoryStatsCards.vue'
-import { platformList, getPlatformByKey } from '@/config/platforms'
+import HistoryFilterBar from '@/components/HistoryFilterBar.vue'
+import HistoryBatchToolbar from '@/components/HistoryBatchToolbar.vue'
+import HistoryCard, { type HistoryBatch } from '@/components/HistoryCard.vue'
 import { type ApiResponse } from '@/utils/request'
-import ChannelSummary from '@/components/ChannelSummary.vue'
-import PublishStats from '@/components/PublishStats.vue'
 import { getErrorMessage } from '@/utils/error'
 
 // ── 类型定义(与后端 /api/v2/history、/api/v2/stats 响应结构对齐)──
 
-/** 发布明细(单个账号一条) */
-interface HistoryDetailItem {
-  id: string
-  account_name: string
-  platform: string // 中文平台名(如 '抖音')
-  status?: string
-}
-
-/** 发布批次(卡片) */
-interface HistoryBatch {
-  id: string
-  type?: string
-  title: string
-  description?: string
-  cover_url?: string
-  status: string
-  created_at?: string
-  items: HistoryDetailItem[]
-}
 
 /** /api/v2/stats 响应 data 结构(仅声明本页使用的字段) */
 interface StatsData {
@@ -236,13 +96,6 @@ interface BatchDeleteFailed {
   reason: string
 }
 
-/** computeChannelsSummary 返回的平台汇总(与 ChannelSummary 组件 props 结构一致) */
-interface ChannelGroup {
-  platform: string
-  name: string
-  count: number
-  logo?: string
-}
 
 const router = useRouter()
 const batches = ref<HistoryBatch[]>([])
@@ -262,46 +115,6 @@ const total = ref(0)
 const selection = ref<Set<string>>(new Set())   // 选中的批次 id
 const selectMode = ref(false)              // 多选模式开关
 const isDeleting = ref(false)
-
-function computeChannelsSummary(items: HistoryDetailItem[]): ChannelGroup[] {
-  const groups: Record<string, ChannelGroup> = {}
-  for (const it of items || []) {
-    const key = it.platform
-    if (!groups[key]) {
-      const cfg = getPlatformByKey(platformList.find(p => p.name === key)?.key ?? '')
-      // 兜底用 undefined 替代原 null:二者均 falsy,模板 v-if="ch.logo" 行为一致,
-      // 同时与 ChannelSummaryItem.logo?: string 类型兼容
-      groups[key] = { platform: key, name: it.platform, count: 0, logo: cfg?.logo || undefined }
-    }
-    groups[key].count++
-  }
-  return Object.values(groups)
-}
-
-function statusLabel(status: string): string {
-  return ({
-    pending: '等待中',
-    running: '发布中',
-    success: '全部成功',
-    partial: '部分失败',
-    failed: '全部失败',
-    cancelled: '已取消',
-  }[status] || status)
-}
-
-function formatCardTime(iso?: string): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  const now = new Date()
-  const diff = (now.getTime() - d.getTime()) / 1000
-  if (diff < 86400) {
-    if (diff < 60) return '刚刚'
-    if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`
-    return `${Math.floor(diff / 3600)} 小时前`
-  }
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
 
 async function fetchHistory() {
   loading.value = true
@@ -505,112 +318,8 @@ onMounted(() => { fetchHistory(); fetchStats() })
   }
 
   // ========== Filter Toolbar ==========
-  .filter-card {
-    background: $bg-elevated;
-    border: 1px solid $border;
-    border-radius: $radius-card;
-    padding: 16px 20px;
-    margin-top: 24px;
-
-    .filter-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .filter-controls {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .filter-select {
-      width: 140px;
-
-      :deep(.el-input__wrapper) {
-        background: rgba($overlay-rgb, 0.04);
-        border: 1px solid $border;
-        border-radius: $radius-base;
-        box-shadow: none;
-
-        &:hover {
-          border-color: $border-active;
-        }
-
-        &.is-focus {
-          border-color: $brand-start;
-        }
-      }
-
-      :deep(.el-input__inner) {
-        color: $text-secondary;
-        font-size: 13px;
-      }
-
-      :deep(.el-input__suffix) {
-        color: $text-muted;
-      }
-    }
-
-    .refresh-btn {
-      background: rgba($overlay-rgb, 0.04);
-      border: 1px solid $border;
-      border-radius: $radius-base;
-      color: $text-secondary;
-      font-size: 13px;
-
-      &:hover {
-        border-color: $border-active;
-        color: $brand-start;
-        background: rgba($brand-start, 0.06);
-      }
-    }
-
-    .filter-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .select-trigger-btn {
-      background: rgba($overlay-rgb, 0.04);
-      border: 1px solid $border;
-      border-radius: $radius-base;
-      color: $text-secondary;
-      font-size: 13px;
-
-      &:hover {
-        border-color: rgba($brand-start, 0.4);
-        color: lighten($brand-start, 12%);
-        background: rgba($brand-start, 0.1);
-      }
-
-      &.is-disabled,
-      &.is-disabled:hover {
-        opacity: 0.5;
-        background: rgba($overlay-rgb, 0.04);
-        border-color: $border;
-        color: $text-muted;
-      }
-    }
-  }
 
   // ========== Batch Operations Toolbar ==========
-  .batch-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 16px;
-    flex-wrap: wrap;
-    padding: 10px 16px;
-    border-radius: $radius-card;
-    border: 1px solid $border-active;
-    background: linear-gradient(135deg, rgba($brand-start, 0.1), rgba($brand-end, 0.06));
-    box-shadow: 0 0 24px rgba($brand-start, 0.08);
-    backdrop-filter: blur(8px);
-  }
 
   .toolbar-select-all {
     :deep(.el-checkbox__label) {
@@ -663,39 +372,6 @@ onMounted(() => { fetchHistory(); fetchStats() })
     gap: 16px;
   }
 
-  .batch-card {
-    position: relative;
-    border: 1px solid $border;
-    border-radius: $radius-card;
-    background: $bg-elevated;
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    flex-direction: column;
-
-    &:hover {
-      border-color: rgba($brand-start, 0.5);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-      transform: translateY(-1px);
-    }
-
-    &.select-mode {
-      cursor: pointer;
-    }
-
-    &.is-selected {
-      border-color: rgba($brand-start, 0.8);
-      background: linear-gradient(135deg, rgba($brand-start, 0.15), rgba($brand-end, 0.08));
-      box-shadow:
-        0 0 0 2px $brand-start,
-        0 8px 32px rgba($brand-start, 0.35);
-      transform: translateY(-2px);
-
-      // 多选模式下隐藏单条删除按钮,避免误触
-      .card-delete-btn { display: none; }
-    }
-  }
 
   // 单条删除按钮(右上角,hover 显示)
   .card-delete-btn {
