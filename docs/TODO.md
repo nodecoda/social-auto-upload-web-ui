@@ -42,3 +42,27 @@
 - ✅ 治理轮 G2：规范更新 + 治理报告
 - ✅ 验证基线：vue-tsc 0 错 / vitest 326 用例 / vite build
 - ✅ 回归测试基线（2026-08-21）：F2 拆分组件纯函数（PR #86，37）+ 组件级（PR #87，28 + PR #89，24），vitest 326 → 350 用例
+
+---
+
+## 后端（域重构/路由迁移，进行中）
+
+> 目标：app.py 瘦身（1520 → 装配层），路由按域拆入 `blueprints/`，行为等价、前端无感知。
+> 迁移纪律：路由路径/响应/SSE 协议不变；每批一个 PR，全量 pytest 绿 + ruff 无新增才合并。
+
+### B1. 账号管理域（P1）— ✅ done（2026-08-21，PR #90）
+- 7 路由迁入 `blueprints/account_bp.py`：checkAccount / syncProfile / openCreatorCenter / login / platforms/import-supported / importAccount / importAccount/stream
+- 同步迁出 `sse_stream` / `_is_terminal_login_sse_message` / `_get_account_record`
+- PLATFORM_MAP / PLATFORM_ID_TO_KEY → `conf.py`（ext_api / draft_merge / tests 改从 conf 导入）
+- 验证：pytest 401 passed / 3 skipped；ruff 无新增（3 处 I001 顺带消除）；app.py 1520→1171 行
+
+### B2. 反馈 + image-proxy（PR-2，待做）
+- `blueprints/feedback_bp.py`：反馈 3 路由 + helper（`_feedback_configured` / `_feedback_headers` / `_get_feedback_email`）随迁；FEEDBACK_* 常量已在 conf
+- 画像：反馈 API 透传，无 DB
+
+### B3. 发布域（PR-3，待做）
+- `blueprints/publish_bp.py`：postVideo / postVideo/status / postVideoBatch + `_validate_publish_video` / `_enqueue_publish` / `_finish_publish_failed`
+- 注意：`_resolve_material_path` / `_resolve_video_format_from_db` 仍在 app.py 被引用 → 共享放 util/；`_before_publish/_after_publish` 的 g.publish_detail_id 机制（conftest 钩子保留）
+
+### B4. 静态页 / api/health / 启动段（PR-4，待做）
+- 建议保留在 app.py（装配层）：`_check_all_accounts` / threads=16 启动逻辑属于 app 装配
