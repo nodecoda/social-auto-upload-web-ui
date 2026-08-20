@@ -57,24 +57,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, type PropType } from 'vue'
+import { ref, watch } from 'vue'
 import { Search, Loading, TrendCharts } from '@element-plus/icons-vue'
 import { douyinImageApi } from '@/api/douyinImage'
 import { type ApiResponse } from '@/utils/request'
 
-const props = defineProps({
-  accountId: {
-    type: [String, Number] as PropType<string | number | null>,
-    default: ''
-  },
-  modelValue: {
-    type: String,
-    default: ''
-  },
-  data: {
-    type: Object as PropType<HotspotItem | null>,
-    default: null
-  }
+const props = withDefaults(defineProps<{
+  accountId?: string | number | null
+  modelValue?: string
+  data?: HotspotItem | null
+}>(), {
+  accountId: '',
+  modelValue: '',
+  data: null,
 })
 
 const emit = defineEmits<{

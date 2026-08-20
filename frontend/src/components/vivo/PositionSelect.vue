@@ -51,22 +51,17 @@ import { Search, Loading } from '@element-plus/icons-vue'
 import { vivoApi } from '@/api/vivo'
 import { type ApiResponse } from '@/utils/request'
 
-const props = defineProps({
+const props = withDefaults(defineProps<{
   // 位置是平台级,但搜索需账号 cookie,故透传 selectedAccountId
-  accountId: {
-    type: [String, Number] as PropType<string | number | null>,
-    default: ''
-  },
+  accountId?: string | number | null
   // v-model 存位置名称
-  modelValue: {
-    type: String,
-    default: ''
-  },
+  modelValue?: string
   // 回显用的完整对象(含 address)
-  data: {
-    type: Object as PropType<Record<string, unknown> | null>,
-    default: null
-  }
+  data?: Record<string, unknown> | null
+}>(), {
+  accountId: '',
+  modelValue: '',
+  data: null,
 })
 
 const emit = defineEmits<{

@@ -49,21 +49,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, type PropType } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { Loading, Promotion } from '@element-plus/icons-vue'
 import { douyinImageApi } from '@/api/douyinImage'
 import { type ApiResponse } from '@/utils/request'
 
-const props = defineProps({
-  accountId: {
-    type: [String, Number] as PropType<string | number | null>,
-    default: ''
-  },
+const props = withDefaults(defineProps<{
+  accountId?: string | number | null
   // v-model 存已选活动名数组(发布时按名称匹配 activity_id)
-  modelValue: {
-    type: Array as PropType<string[]>,
-    default: (): string[] => []
-  }
+  modelValue?: string[]
+}>(), {
+  accountId: '',
+  modelValue: () => [],
 })
 
 const emit = defineEmits<{

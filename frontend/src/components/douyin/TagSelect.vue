@@ -93,21 +93,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, type Component, type PropType } from 'vue'
+import { ref, watch, type Component } from 'vue'
 import { type ApiResponse } from '@/utils/request'
 import { Search, Loading, Location, Connection, Menu, Goods } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { douyinImageApi } from '@/api/douyinImage'
 
-const props = defineProps({
-  accountId: {
-    type: [String, Number] as PropType<string | number | null>,
-    default: ''
-  },
-  modelValue: {
-    type: Object as PropType<TagItem | null>,
-    default: (): TagItem | null => null
-  }
+const props = withDefaults(defineProps<{
+  accountId?: string | number | null
+  modelValue?: TagItem | null
+}>(), {
+  accountId: '',
+  modelValue: null,
 })
 
 const emit = defineEmits<{

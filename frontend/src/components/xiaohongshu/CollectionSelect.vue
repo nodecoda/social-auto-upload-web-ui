@@ -48,26 +48,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, type PropType } from 'vue'
+import { ref, watch } from 'vue'
 import { Search, Loading } from '@element-plus/icons-vue'
 import { xhsApi } from '@/api/xiaohongshu'
 import { type ApiResponse } from '@/utils/request'
 
-const props = defineProps({
-  accountId: {
-    type: [String, Number] as PropType<string | number | null>,
-    required: true
-  },
+const props = withDefaults(defineProps<{
+  accountId: string | number | null
   // v-model 存合集名称(发布时按名称匹配定位)
-  modelValue: {
-    type: String,
-    default: ''
-  },
+  modelValue?: string
   // 回显用的完整对象(含 id)
-  data: {
-    type: Object as PropType<CollectionItem | null>,
-    default: null
-  }
+  data?: CollectionItem | null
+}>(), {
+  modelValue: '',
+  data: null,
 })
 
 const emit = defineEmits<{
