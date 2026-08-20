@@ -27,18 +27,16 @@
 - **风险**：中 —— 仍有少量子组件（AccountCard / FeedbackSubmitDialog / ImportAccountDialog / publishHistoryShared）无组件级用例；视觉回归仍无截图基线，若后续引入 playwright 可一并补
 
 ### F3. 唯一 `any` 边界消除（SettingFieldControl `modelValue`）
-- **状态**：pending（有意保留）
-- **范围**：`src/components/SettingFieldControl.vue` 的 `modelValue: any`（5 种字段类型多态）
-- **目标**：改为判别联合（discriminated union）按 `field.type` 收窄
-- **风险**：低-中；**ROI 低** —— 收益仅是消灭最后 1 处 any，改动面包含动态表单渲染
-- **备注**：规范 Rule 9 已记录为有意保留边界；若未来重构 SettingFieldControl 可一并处理
+- **状态**：done（2026-08-21）
+- **处置**：PR #88 —— 新增 `src/types/settings-field.ts` 判别联合（10 种 type）+ `SettingsFieldValue` 多形态值；3 处重复接口收敛；platforms.ts 19 处 settingsFields 注解受检
+- **验证**：vue-tsc 0 错 / vitest 326 / vite build 绿；业务代码 `: any` **128 → 0**
 
 ---
 
 ## 历史（已完成的收尾里程碑，勿重复排期）
 
 - ✅ 前端 js→ts 迁移（src 下 `.js` = 0，strict）
-- ✅ 业务代码 `any` 128 → 1（ts 收尾批 1-13）
+- ✅ 业务代码 `any` 128 → 0（ts 收尾批 1-13 → F3 判别联合 PR #88）
 - ✅ 规范落盘（.cursorrules + docs/frontend-coding-standards.md）
 - ✅ 治理轮 G1：错误处理收敛 / composable 显式返回类型
 - ✅ 治理轮 G2：规范更新 + 治理报告

@@ -249,7 +249,7 @@ const { fetchList } = store // action
   // 好
   catch (e) { ElMessage.error(getErrorMessage(e)) }
   ```
-- `any` 仅允许在 **API 边界**（`src/api/*`、`src/utils/request.ts` 的 axios 层）；业务代码必须类型化。现状：业务代码 `any` 已清零（基线 128 → 1，2026-08 ts 收尾批 1-13），仅剩 `SettingFieldControl.modelValue: any` 一处**多态边界**（5 种字段类型的判别联合改造 ROI 低，有意保留）；API 边界按契约保留少量 `any`。新增代码不扩散。
+- `any` 仅允许在 **API 边界**（`src/api/*`、`src/utils/request.ts` 的 axios 层）；业务代码必须类型化。现状：业务代码 `any` 已清零（基线 128 → 0，2026-08-21 F3 判别联合 PR #88 收尾）；动态表单字段使用 `src/types/settings-field.ts` 的 `SettingsField` 判别联合 + `SettingsFieldValue` 多形态值；API 边界按契约保留少量 `any`。新增代码不扩散。
 - composable 公共函数必须写**显式返回类型**（`useAutoSave` / `useBatchSetApply` / `useImageBatchSetApply` / `useChannelForm` 已于 2026-08 治理 G1 补齐，公开 API 契约见 `UseChannelFormReturn`）。
 
 ---
@@ -314,7 +314,7 @@ it('emits confirm with payload', async () => {
 | 项 | 状态 | 处置 |
 |---|---|---|
 | src 下 `.js` 源文件 | **0 个 ✓** | 全量迁移为 strict TS |
-| 业务代码 `any` | **1 处 ✓**（基线 128） | ts 收尾批 1-13 全部收敛；剩 `SettingFieldControl.modelValue` 多态边界（有意保留） |
+| 业务代码 `any` | **0 处 ✓**（基线 128） | ts 收尾批 1-13 + F3 判别联合（PR #88，2026-08-21）全部收敛 |
 | 错误处理 `.message` 直访 | **0 处 ✓** | MaterialUploader 2 处改 `getErrorMessage`（治理 G1） |
 | composable 显式返回类型 | **4/4 ✓** | useAutoSave / useBatchSetApply / useImageBatchSetApply / useChannelForm（治理 G1） |
 | aiContent 类型一致性 | ✓ | ChannelFormData / PanelDefaultConfig / MergedConfig 对齐 `string \| boolean`（快手 defaultSettings 为 boolean） |

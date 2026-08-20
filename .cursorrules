@@ -43,7 +43,7 @@ imports → `defineProps` / `defineEmits` (do not import them) → state (ref/re
 - Public functions need explicit return types.
 - Error handling: use `getErrorMessage(e)` from `src/utils/error.ts` — never access `.message` on an `unknown` error.
 - Composables need explicit return types.
-- `any` is only allowed at API boundaries (`src/api/*`, `src/utils/request.ts`); business code must be typed. Status: 1 intentional polymorphic boundary (`SettingFieldControl` `modelValue`).
+- `any` is only allowed at API boundaries (`src/api/*`, `src/utils/request.ts`); business code must be typed. Status: 0 in business code (F3 eliminated the last polymorphic boundary on 2026-08-21; field config now uses the `SettingsField` discriminated union from `src/types/settings-field.ts`).
 
 ## 10. Naming & structure
 - Components: PascalCase files, multi-word names.
