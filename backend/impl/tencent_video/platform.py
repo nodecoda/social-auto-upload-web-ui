@@ -7,7 +7,6 @@ Publish URL: https://mp.v.qq.com/publishVideo/video
 """
 
 import asyncio
-import json
 import os
 import threading
 import time
@@ -15,8 +14,8 @@ from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
-
 from util._logger import bind_account_name, get_channel_logger
+
 from .._browser import create_browser_sync, create_context_sync
 from .._utils import clear_and_type, get_account_name_by_cookie_file, parse_schedule_time, save_login_result
 from ..base_platform import BasePlatform
@@ -581,7 +580,7 @@ class TencentVideoPlatform(BasePlatform):
                     logger.info(
                         "视频上传完成（检测到 UploadNotify 请求）"
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.warning(
                         "[上传视频] 4 小时内未检测到 UploadNotify, "
                         "可能上传失败或网络异常, 继续后续步骤"

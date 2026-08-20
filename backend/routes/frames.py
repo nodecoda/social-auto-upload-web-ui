@@ -1,16 +1,14 @@
 import os
 import shutil
-import tempfile
 
-from flask import Blueprint, request, jsonify, send_file
-from pathlib import Path
+from flask import Blueprint, jsonify, request, send_file
 
 from conf import BASE_DIR
 from services.ffmpeg_service import (
-    start_frame_extraction,
     get_extraction_status,
-    get_frame_list,
     get_frame_image_path,
+    get_frame_list,
+    start_frame_extraction,
 )
 
 frames_bp = Blueprint('frames', __name__)
@@ -258,7 +256,7 @@ def system_info():
         os.path.join(str(BASE_DIR), 'versions'),
     ]:
         if os.path.isfile(candidate):
-            with open(candidate, 'r') as f:
+            with open(candidate) as f:
                 version = f.read().strip()
             break
 

@@ -1,8 +1,8 @@
 """测试 /postVideo 写入 publish_batches + publish_details"""
-import os
-import sys
 import json
+import os
 import sqlite3
+import sys
 import tempfile
 import time
 import unittest

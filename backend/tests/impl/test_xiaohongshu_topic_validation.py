@@ -9,12 +9,11 @@ from pathlib import Path
 # 把 backend 目录加进 sys.path（与项目其他测试一致）
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from impl.xiaohongshu.platform import (  # noqa: E402
+from impl.xiaohongshu.platform import (
+    _XHS_MAX_TOPICS,
     _count_hashtags,
     _normalize_desc_hashtags,
-    _XHS_MAX_TOPICS,
 )
-
 
 # ----- _count_hashtags: 描述文本里独立 #xxx 计数 -----
 

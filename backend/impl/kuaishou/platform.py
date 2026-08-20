@@ -12,8 +12,8 @@ from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
-
 from util._logger import bind_account_name, get_channel_logger
+
 logger = get_channel_logger("kuaishou")
 
 from .._browser import create_browser_sync, create_context_sync
@@ -108,7 +108,7 @@ class KuaishouPlatform(BasePlatform):
             qrcode_img = page.locator('img[name="qrcode"], div.qr-login img[alt="qrcode"]').first
             await qrcode_img.wait_for(state="visible", timeout=30000)
             qrcode_src = await qrcode_img.get_attribute("src")
-            logger.info(f"[kuaishou] QR code ready, waiting for scan...")
+            logger.info("[kuaishou] QR code ready, waiting for scan...")
 
             # Monitor URL change — login redirects to profile or upload page
             _KS_LOGGED_IN_URLS = (

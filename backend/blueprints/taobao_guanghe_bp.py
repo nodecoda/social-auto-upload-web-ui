@@ -12,22 +12,19 @@
 """
 
 import asyncio
-import sqlite3
+import sys
 import threading
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request
 
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from conf import BASE_DIR
-from util._logger import get_channel_logger
 from impl.taobao_guanghe.picker import (
-    GuanghePickerSession,
     _get_cookie_path_by_account_id,
     _resolve_cookie_path,
     pool,
 )
+from util._logger import get_channel_logger
 
 logger = get_channel_logger("taobao_guanghe")
 

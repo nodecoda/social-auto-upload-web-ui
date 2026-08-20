@@ -32,7 +32,7 @@ def test_feedback_sign_different_vector():
     assert sig2 != sig3
 
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 
 def test_feedback_list_no_filter_returns_active():
@@ -95,12 +95,11 @@ def test_feedback_list_no_email_in_settings():
         captured["params"] = params
         return fake_resp
 
-    with patch("app.read_settings", return_value={}):
-        with patch("app._requests.get", side_effect=fake_get):
-            client = app.test_client()
-            r = client.get("/api/feedback/list")
-            assert r.status_code == 200
-            assert "email" not in captured["params"]
+    with patch("app.read_settings", return_value={}), patch("app._requests.get", side_effect=fake_get):
+        client = app.test_client()
+        r = client.get("/api/feedback/list")
+        assert r.status_code == 200
+        assert "email" not in captured["params"]
 
 
 def test_feedback_list_status_filter():
@@ -168,8 +167,9 @@ def test_feedback_list_invalid_status():
 
 def test_feedback_list_upstream_5xx_returns_502():
     """上游 5xx 时后端返回 502。"""
-    from app import app
     import requests as _requests
+
+    from app import app
 
     fake_resp = MagicMock()
     fake_resp.raise_for_status.side_effect = _requests.HTTPError("500 Server Error")
@@ -246,8 +246,9 @@ def test_feedback_submit_form_email_overrides_settings():
 
 def test_feedback_submit_forwards_files():
     """multipart 文件被转发到上游。"""
-    from app import app
     import io
+
+    from app import app
 
     fake_resp = MagicMock()
     fake_resp.json.return_value = {"code": 200, "data": {"id": 99}}

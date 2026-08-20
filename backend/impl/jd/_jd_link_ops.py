@@ -21,7 +21,6 @@ DOM 锚点参考(2026-08 京东发布页):
 
 from dataclasses import dataclass, field
 
-
 # ---------- trace 签名 ----------
 
 def trace_signature(trace: dict) -> tuple[str, int]:

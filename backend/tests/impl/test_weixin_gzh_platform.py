@@ -3,18 +3,17 @@
 只测静态纯函数(_extract_token/_build_home_url/_build_publish_datetime/
 _resolve_date_label),不触发浏览器/CloakBrowser 流程(模块惰性导入已验证)。
 """
-import sys
 import inspect
+import sys
 from datetime import date, datetime, timedelta
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 
 # 把 backend 目录加进 sys.path（与项目其他测试一致）
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from impl.registry import is_supported, get_platform  # noqa: E402
-from app import PLATFORM_MAP, PLATFORM_ID_TO_KEY  # noqa: E402
-
+from app import PLATFORM_ID_TO_KEY, PLATFORM_MAP
+from impl.registry import get_platform, is_supported
 
 # ----- 注册表 / 类属性 / app 映射(weibo 范本) -----
 

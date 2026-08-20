@@ -3,8 +3,8 @@
 旧的 test_publish_templates.py 仍要更新（Task 5），但本次先新建针对新表语义的测试。
 """
 import os
-import sys
 import sqlite3
+import sys
 import tempfile
 import unittest
 from pathlib import Path

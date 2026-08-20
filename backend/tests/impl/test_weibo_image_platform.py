@@ -5,7 +5,7 @@ from pathlib import Path
 # 把 backend 目录加进 sys.path(与项目其他测试一致)
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from impl.weibo.platform import WeiboPlatform  # noqa: E402
+from impl.weibo.platform import WeiboPlatform
 
 
 def test_publish_image_method_exists():

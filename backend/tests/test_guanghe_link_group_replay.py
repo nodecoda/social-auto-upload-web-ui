@@ -13,6 +13,7 @@ sys.path.insert(0, str(BACKEND_DIR / "impl"))
 
 # platform 模块在导入时会初始化 logger,但不会启动浏览器
 from impl.taobao_guanghe import platform as platform_mod
+
 # 关键:用 platform_mod._link_ops 而非独立 import,否则会得到另一个模块实例,
 # patch 不生效(platform_mod 内引用的是 impl.taobao_guanghe._link_ops)。
 _link_ops = platform_mod._link_ops

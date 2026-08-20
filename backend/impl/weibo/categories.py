@@ -9,7 +9,6 @@
 
 import json
 from pathlib import Path
-from typing import Optional
 
 _DATA_PATH = Path(__file__).parent / "_categories.json"
 with _DATA_PATH.open(encoding="utf-8") as _f:
@@ -19,7 +18,7 @@ with _DATA_PATH.open(encoding="utf-8") as _f:
 CHANNELS = _DATA["channels"]
 
 
-def find_channel(name: str) -> Optional[dict]:
+def find_channel(name: str) -> dict | None:
     """按频道名(如 ``"VLOG"`` / ``"生活"``)查找,返回频道 dict 或 None。"""
     for ch in CHANNELS:
         if ch["name"] == name:
@@ -27,7 +26,7 @@ def find_channel(name: str) -> Optional[dict]:
     return None
 
 
-def lookup_sub_channel(channel_name: str, sub_name: str) -> Optional[dict]:
+def lookup_sub_channel(channel_name: str, sub_name: str) -> dict | None:
     """根据频道名 + 子分类名查找完整记录。
 
     返回 dict::

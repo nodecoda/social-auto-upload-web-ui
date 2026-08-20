@@ -7,8 +7,8 @@
 import os
 import re
 import sqlite3
-from pathlib import Path
 import sys
+from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:

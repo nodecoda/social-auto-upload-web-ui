@@ -5,8 +5,8 @@ from pathlib import Path
 # 把 backend 目录加进 sys.path（与项目其他测试一致）
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from impl.registry import is_supported, get_platform  # noqa: E402
-from app import PLATFORM_MAP, PLATFORM_ID_TO_KEY  # noqa: E402
+from app import PLATFORM_ID_TO_KEY, PLATFORM_MAP
+from impl.registry import get_platform, is_supported
 
 
 def test_weibo_platform_class_attributes():
@@ -37,8 +37,9 @@ def test_weibo_publish_video_signature():
 
     实际跑发布需要 Playwright + 登录 cookie,这里只验证签名/返回类型。
     """
-    from impl.weibo.platform import WeiboPlatform
     import inspect
+
+    from impl.weibo.platform import WeiboPlatform
     p = WeiboPlatform()
     sig = inspect.signature(p.publish_video)
     # 接受 **kwargs(发布参数由 app.py 传入,平台层不强制签名)

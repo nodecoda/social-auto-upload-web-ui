@@ -1,16 +1,18 @@
 import os
 import sqlite3
 import subprocess
-import tempfile
 import threading
 import uuid
 from datetime import datetime
-from pathlib import Path
 
-from flask import Blueprint, request, jsonify
-from services.ffmpeg_service import get_video_duration_safe, get_video_dimensions_safe, calculate_orientation
+from flask import Blueprint, jsonify, request
+
+from services.ffmpeg_service import calculate_orientation, get_video_dimensions_safe, get_video_duration_safe
+from util._logger import get_channel_logger
 
 materials_bp = Blueprint("materials", __name__, url_prefix="/api/materials")
+
+logger = get_channel_logger("materials")
 
 
 def _get_db():
@@ -98,7 +100,7 @@ def _async_extract_thumb(material_id: str, source_path: str):
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"[materials] thumbnail extraction failed for {material_id}: {e}")
+        logger.warning(f"thumbnail extraction failed for {material_id}: {e}")
 
 
 def _async_probe_duration(material_id: str, source_path: str):
@@ -119,7 +121,7 @@ def _async_probe_duration(material_id: str, source_path: str):
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"[materials] duration probe failed for {material_id}: {e}")
+        logger.warning(f"duration probe failed for {material_id}: {e}")
 
 
 def _async_probe_dimensions(material_id: str, source_path: str, file_type: str):
@@ -149,7 +151,7 @@ def _async_probe_dimensions(material_id: str, source_path: str, file_type: str):
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"[materials] dimensions probe failed for {material_id}: {e}")
+        logger.warning(f"dimensions probe failed for {material_id}: {e}")
 
 
 @materials_bp.route("/upload", methods=["POST"])
@@ -162,7 +164,7 @@ def upload():
         if not file or not file.filename:
             return jsonify({"code": 400, "msg": "未找到文件"})
 
-        print(f"[materials] 开始上传: {file.filename}")
+        logger.info(f"开始上传: {file.filename}")
 
         file_id = str(uuid.uuid4())
         ext = os.path.splitext(file.filename)[1].lower()
@@ -186,10 +188,10 @@ def upload():
                 total_size += len(chunk)
                 yield chunk
 
-        print(f"[materials] 流式写入 {file.filename}...")
+        logger.info(f"流式写入 {file.filename}...")
         storage.save_stream(chunk_iter(), relative_path)
         file_size = total_size
-        print(f"[materials] 写入完成: {file_size} bytes")
+        logger.info(f"写入完成: {file_size} bytes")
 
         # 写 DB
         conn = _get_db()
@@ -201,7 +203,7 @@ def upload():
         )
         conn.commit()
         conn.close()
-        print(f"[materials] 数据库写入成功")
+        logger.info("数据库写入成功")
 
         # 视频素材异步抽帧作为缩略图
         if file_type == "video":
@@ -227,7 +229,7 @@ def upload():
         ).start()
 
         url = storage.get_url(relative_path)
-        print(f"[materials] 上传完成: {file_id}")
+        logger.info(f"上传完成: {file_id}")
 
         return jsonify({
             "code": 200,
@@ -244,9 +246,7 @@ def upload():
             },
         })
     except Exception as e:
-        import traceback
-        print(f"[materials] upload error: {e}")
-        traceback.print_exc()
+        logger.exception("upload error")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -267,7 +267,7 @@ def covers_upload():
         if not file or not file.filename:
             return jsonify({"code": 400, "msg": "未找到文件"})
 
-        print(f"[covers] 开始上传: {file.filename}")
+        logger.info(f"开始上传: {file.filename}")
 
         file_id = str(uuid.uuid4())
         ext = os.path.splitext(file.filename)[1].lower() or ".jpg"
@@ -292,7 +292,7 @@ def covers_upload():
         storage.save_stream(chunk_iter(), relative_path)
         file_size = total_size
         url = storage.get_url(relative_path)
-        print(f"[covers] 上传完成: {file_id} ({file_size} bytes)")
+        logger.info(f"上传完成: {file_id} ({file_size} bytes)")
 
         return jsonify({
             "code": 200,
@@ -309,9 +309,7 @@ def covers_upload():
             },
         })
     except Exception as e:
-        import traceback
-        print(f"[covers] upload error: {e}")
-        traceback.print_exc()
+        logger.exception("upload error")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -348,12 +346,12 @@ def batch_delete():
                     try:
                         storage.delete(row["stored_path"])
                     except Exception as de:
-                        print(f"[materials] batch-delete 删文件失败 {row['stored_path']}: {de}")
+                        logger.warning(f"batch-delete 删文件失败 {row['stored_path']}: {de}")
                 if row["thumbnail_path"]:
                     try:
                         storage.delete(row["thumbnail_path"])
                     except Exception as de:
-                        print(f"[materials] batch-delete 删缩略图失败 {row['thumbnail_path']}: {de}")
+                        logger.warning(f"batch-delete 删缩略图失败 {row['thumbnail_path']}: {de}")
                 conn.execute("DELETE FROM materials WHERE id = ?", (material_id,))
                 deleted += 1
             except Exception as e:
@@ -379,7 +377,6 @@ def list_files():
       - page: 页码（从 1 开始）
       - page_size: 每页数量（默认 24，上限 96）
     """
-    from storage import get_storage
 
     file_type = request.args.get("type", "all")
     keyword = (request.args.get("keyword") or "").strip()
@@ -513,7 +510,7 @@ def test_s3_connection():
         client.head_bucket(Bucket=data.get("bucket", ""))
         return jsonify({"code": 200, "msg": "连接成功"})
     except Exception as e:
-        return jsonify({"code": 400, "msg": f"连接失败: {str(e)}"})
+        return jsonify({"code": 400, "msg": f"连接失败: {e!s}"})
 
 
 @materials_bp.route("/<material_id>/probe", methods=["POST"])
@@ -522,7 +519,7 @@ def probe(material_id: str):
 
     用于：素材库选中时同步补全元数据。
     """
-    from storage import resolve_material_path, get_storage_by_type
+    from storage import get_storage_by_type, resolve_material_path
 
     conn = _get_db()
     row = conn.execute("SELECT * FROM materials WHERE id = ?", (material_id,)).fetchone()

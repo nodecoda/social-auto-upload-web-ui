@@ -1,7 +1,7 @@
 """Test data directory creation and path resolution."""
 import os
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
 
 

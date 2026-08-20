@@ -1,7 +1,7 @@
 """get_video_duration_safe fallback 测试"""
 from unittest.mock import MagicMock, patch
 
-from services.ffmpeg_service import get_video_duration_safe, _parse_duration_from_stderr
+from services.ffmpeg_service import _parse_duration_from_stderr, get_video_duration_safe
 
 
 def test_parses_hours_minutes_seconds():

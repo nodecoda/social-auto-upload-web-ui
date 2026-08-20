@@ -1,8 +1,7 @@
 """测试 /api/image-publish/publish 写入新表的行为"""
 import os
-import sys
-import json
 import sqlite3
+import sys
 import tempfile
 import unittest
 from pathlib import Path

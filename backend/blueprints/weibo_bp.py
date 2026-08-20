@@ -9,17 +9,17 @@
 
 import asyncio
 import sqlite3
+import sys
 from pathlib import Path
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
 
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-from util._logger import get_channel_logger
 from impl._browser import create_browser, create_context
 from impl.weibo.platform import WeiboPlatform
 from services.test_video import get_test_video
+from util._logger import get_channel_logger
 
 logger = get_channel_logger("weibo")
 

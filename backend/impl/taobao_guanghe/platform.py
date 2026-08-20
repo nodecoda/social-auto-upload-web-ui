@@ -15,7 +15,6 @@ from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
-
 from util._logger import bind_account_name, get_channel_logger
 
 from .._browser import create_browser_sync, create_context_sync
@@ -33,6 +32,7 @@ logger = get_channel_logger("taobao_guanghe")
 # 测试 dry-run 开关:GUANGHE_DRY_RUN=1 时,跳过点击发布按钮 + 不关闭浏览器,
 # 方便反复测试关联商品/店铺流程。设了之后发布流程会停在第 8.5 步之后、第 9 步之前。
 import os as _os
+
 _DRY_RUN_PUBLISH = bool(_os.environ.get("GUANGHE_DRY_RUN"))
 
 # 创作中心/登录页 URL

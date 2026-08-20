@@ -17,10 +17,16 @@ from conf import BASE_DIR
 from util._logger import get_channel_logger
 
 from ._browser import (
-    create_browser as _create_browser,
-    create_context as _create_context,
-    create_persistent_context as _create_persistent_context,
     close_browser as _close_browser,
+)
+from ._browser import (
+    create_browser as _create_browser,
+)
+from ._browser import (
+    create_context as _create_context,
+)
+from ._browser import (
+    create_persistent_context as _create_persistent_context,
 )
 
 _base_logger = get_channel_logger("base_platform")

@@ -1,13 +1,11 @@
 """分片上传 Blueprint 端到端测试（init / chunk / merge / status / cancel）。"""
 import io
 import os
-import sys
 import sqlite3
-import tempfile
+import sys
 import unittest
-import zipfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

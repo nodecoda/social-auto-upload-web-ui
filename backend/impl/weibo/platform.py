@@ -8,6 +8,7 @@ from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
+from util._logger import bind_account_name, get_channel_logger
 
 from .._utils import (
     clear_and_type,
@@ -16,8 +17,6 @@ from .._utils import (
     scrape_weibo_profile,
 )
 from ..base_platform import BasePlatform
-from util._logger import bind_account_name, get_channel_logger
-
 from . import categories as _weibo_categories
 
 logger = get_channel_logger("weibo")
@@ -432,10 +431,10 @@ class WeiboPlatform(BasePlatform):
         content_statement2_optional = kwargs.get("content_statement2_optional", "") or ""
         # 忽略字段(微博图集不支持)
         # is_original / enableTimer / schedule_time_str / cover_path
-        _ = kwargs.get("is_original")  # noqa
-        _ = kwargs.get("enableTimer")  # noqa
-        _ = kwargs.get("schedule_time_str")  # noqa
-        _ = kwargs.get("cover_path")  # noqa
+        _ = kwargs.get("is_original")
+        _ = kwargs.get("enableTimer")
+        _ = kwargs.get("schedule_time_str")
+        _ = kwargs.get("cover_path")
 
         # 打印发布参数摘要
         logger.info("[发布参数] 标题: %s", title)
@@ -706,7 +705,7 @@ class WeiboPlatform(BasePlatform):
                     logger.info("[发布] 已通过 patched input 提交")
                 else:
                     raise RuntimeError(
-                        f"[发布] 30s 内未找到可用的 file input"
+                        "[发布] 30s 内未找到可用的 file input"
                     )
 
         # 4. 等待上传完成 — 轮询「发送」按钮 enabled(最稳判定)

@@ -9,8 +9,8 @@
 - 提交兜底：已有正常时长时直接返回，不触发识别
 """
 import os
-import sys
 import sqlite3
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # duration_repair 内部用函数内 `from conf import BASE_DIR` 读 DB 路径，
 # 因此测试通过 patch `conf.BASE_DIR` 指向独立临时目录，实现彻底 DB 隔离，
 # 不依赖全局环境变量 / import 顺序，绝不污染真实库。
-import conf  # noqa: E402
+import conf
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS materials (

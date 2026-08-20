@@ -3,8 +3,8 @@ import sqlite3
 
 import pytest
 
-from conf import BASE_DIR
 import impl.settings as settings_mod
+from conf import BASE_DIR
 
 
 @pytest.fixture(autouse=True)

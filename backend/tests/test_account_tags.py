@@ -1,5 +1,5 @@
-import sqlite3
 import pytest
+
 from app import app
 
 
@@ -104,6 +104,7 @@ def test_batch_empty_account_ids(client):
 def test_delete_tag_cascades_account_tags(client):
     """删除标签应同时清理 account_tags 中所有关联行,不留孤儿"""
     import sqlite3 as _sqlite3
+
     from conf import BASE_DIR as _BASE
 
     accounts = client.get('/getAccounts').get_json().get('data', [])

@@ -1,7 +1,6 @@
 """DELETE /api/v2/drafts/batch 端点集成测试。"""
-import json
-import sys
 import sqlite3
+import sys
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent

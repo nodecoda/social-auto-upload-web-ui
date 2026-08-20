@@ -2,7 +2,6 @@
 
 import math
 
-
 # 单位：秒 / bytes
 # 数字必须与 docs/superpowers/specs/2026-06-19-video-validation-and-required-fields-design.md 第 2 节一致
 VIDEO_LIMITS: dict[str, dict] = {

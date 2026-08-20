@@ -9,17 +9,16 @@ from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
+from util._logger import bind_account_name, get_channel_logger
 
 from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
-    scrape_user_profile,
-    save_login_result,
     parse_schedule_time,
+    save_login_result,
+    scrape_user_profile,
 )
-
-from util._logger import bind_account_name, get_channel_logger
 from ..base_platform import BasePlatform
 
 logger = get_channel_logger("xiaohongshu")

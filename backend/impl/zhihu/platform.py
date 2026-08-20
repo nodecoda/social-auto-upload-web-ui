@@ -14,7 +14,6 @@ from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
-
 from util._logger import bind_account_name, get_channel_logger
 
 from .._browser import create_browser_sync, create_context_sync
@@ -1022,7 +1021,6 @@ class ZhihuPlatform(BasePlatform):
         （Ctrl+V），不再逐字 keyboard.type —— 后者在标签场景下 React 监听
         可能丢字符。每个标签末尾带空格触发话题联想。
         """
-        import json as _json
         import re as _re
 
         full_text = desc or ""
@@ -1222,7 +1220,6 @@ class ZhihuPlatform(BasePlatform):
 
         前端 UI 已约束 ≥1 小时后且 ≤1 个月内；这里只负责按日期选中。
         """
-        from datetime import datetime
 
         if isinstance(publish_date, int):
             if publish_date == 0:

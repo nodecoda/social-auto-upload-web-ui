@@ -7,9 +7,8 @@
 - duration 计算：started_at+finished_at 有 → 整数秒；缺 → null
 """
 import os
-import sys
-import json
 import sqlite3
+import sys
 import tempfile
 import unittest
 from pathlib import Path

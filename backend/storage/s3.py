@@ -1,5 +1,6 @@
-from flask import redirect
 from pathlib import Path
+
+from flask import redirect
 
 from storage.base import StorageBackend
 
@@ -34,7 +35,6 @@ class S3Storage(StorageBackend):
         )
 
     def save(self, file_data: bytes, relative_path: str) -> str:
-        import boto3.s3.transfer as transfer
         from io import BytesIO
         # 使用分片上传，更可靠
         self.client.upload_fileobj(

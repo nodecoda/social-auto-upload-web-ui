@@ -1,10 +1,10 @@
 """
 测试 GET /api/v2/history 读 publish_batches + publish_details 的行为。
 """
-import os
-import sys
 import json
+import os
 import sqlite3
+import sys
 import tempfile
 import unittest
 from pathlib import Path

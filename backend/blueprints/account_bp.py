@@ -5,11 +5,11 @@
 import asyncio
 import random
 import sqlite3
+import sys
 from pathlib import Path
 
-from flask import Blueprint, request, jsonify, send_from_directory
+from flask import Blueprint, jsonify, request, send_from_directory
 
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
 from impl.registry import get_platform
@@ -41,7 +41,7 @@ def getAccounts():
 
         return jsonify({"code": 200, "msg": None, "data": rows_list}), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": f"获取账号列表失败: {str(e)}", "data": None}), 500
+        return jsonify({"code": 500, "msg": f"获取账号列表失败: {e!s}", "data": None}), 500
 
 
 @account_bp.route("/getValidAccounts", methods=['GET'])
@@ -78,7 +78,7 @@ def getValidAccounts():
 
         return jsonify({"code": 200, "msg": None, "data": rows_list}), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": f"获取账号列表失败: {str(e)}", "data": None}), 500
+        return jsonify({"code": 500, "msg": f"获取账号列表失败: {e!s}", "data": None}), 500
 
 
 @account_bp.route('/deleteAccount', methods=['DELETE'])
@@ -112,7 +112,7 @@ def delete_account():
 
         return jsonify({"code": 200, "msg": "account deleted successfully", "data": None}), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": f"delete failed: {str(e)}", "data": None}), 500
+        return jsonify({"code": 500, "msg": f"delete failed: {e!s}", "data": None}), 500
 
 
 @account_bp.route('/updateUserinfo', methods=['POST'])
@@ -129,7 +129,7 @@ def updateUserinfo():
             )
             conn.commit()
         return jsonify({"code": 200, "msg": "account update successfully", "data": None}), 200
-    except Exception as e:
+    except Exception:
         return jsonify({"code": 500, "msg": "update failed!", "data": None}), 500
 
 
@@ -265,7 +265,7 @@ def upload_cookie():
 
         return jsonify({"code": 200, "msg": "Cookie文件上传成功", "data": None}), 200
     except Exception as e:
-        return jsonify({"code": 500, "msg": f"上传Cookie文件失败: {str(e)}", "data": None}), 500
+        return jsonify({"code": 500, "msg": f"上传Cookie文件失败: {e!s}", "data": None}), 500
 
 
 @account_bp.route('/downloadCookie', methods=['GET'])
@@ -289,4 +289,4 @@ def download_cookie():
             as_attachment=True
         )
     except Exception as e:
-        return jsonify({"code": 500, "msg": f"下载Cookie文件失败: {str(e)}", "data": None}), 500
+        return jsonify({"code": 500, "msg": f"下载Cookie文件失败: {e!s}", "data": None}), 500

@@ -4,12 +4,10 @@ Backend logging utility.
 All logs go to {BASE_DIR}/logs/{yyyy-MM-dd}/{channel}.log
 """
 import contextvars
-import json
 import logging
-from contextlib import contextmanager
 import sys
+from contextlib import contextmanager
 from datetime import date
-from pathlib import Path
 from logging import LoggerAdapter
 
 # Use conf.BASE_DIR which respects SAU_DATA_DIR in packaged mode

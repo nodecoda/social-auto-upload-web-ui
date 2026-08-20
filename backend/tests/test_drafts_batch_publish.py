@@ -1,11 +1,9 @@
 """POST /api/v2/drafts/batch-publish 端点集成测试。"""
 import json
-import sys
 import sqlite3
-import tempfile
-import uuid
+import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
@@ -143,7 +141,6 @@ def test_batch_publish_happy_path(tmp_path, monkeypatch):
     monkeypatch.setattr(tq, 'get_task_queue', lambda: MagicMock(add_task=fake_add_task))
 
     # mock DB_PATH
-    from app import _get_db_path
     monkeypatch.setattr('app._get_db_path', lambda: db_path)
 
     # mock init

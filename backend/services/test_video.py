@@ -9,11 +9,10 @@
 
 import subprocess
 import threading
-from pathlib import Path
 
 from conf import BASE_DIR
-from util._logger import get_channel_logger
 from services.ffmpeg_service import _find_ffmpeg
+from util._logger import get_channel_logger
 
 logger = get_channel_logger("backend")
 

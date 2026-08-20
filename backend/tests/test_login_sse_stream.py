@@ -5,7 +5,6 @@ from pathlib import Path
 from queue import Queue
 from unittest.mock import patch
 
-
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 

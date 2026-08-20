@@ -1,10 +1,9 @@
 """LocalStorage 文件系统后端全量测试（覆盖 save/get/delete/exists/serve 等）。"""
+import pytest
 from werkzeug.exceptions import NotFound
 
-import pytest
-
-from storage.local import LocalStorage
 from app import app as flask_app
+from storage.local import LocalStorage
 
 
 @pytest.fixture()
@@ -65,6 +64,5 @@ def test_serve_returns_file(storage, tmp_path):
 
 def test_serve_missing_file_404(storage):
     # send_from_directory 对缺失文件抛 werkzeug NotFound（生产环境由 Flask 转 404）
-    with flask_app.test_request_context():
-        with pytest.raises(NotFound):
-            storage.serve('absent.txt')
+    with flask_app.test_request_context(), pytest.raises(NotFound):
+        storage.serve('absent.txt')

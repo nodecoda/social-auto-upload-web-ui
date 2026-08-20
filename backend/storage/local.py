@@ -1,5 +1,6 @@
-from flask import send_from_directory
 from pathlib import Path
+
+from flask import send_from_directory
 
 from storage.base import StorageBackend
 

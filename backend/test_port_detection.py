@@ -1,7 +1,5 @@
 """Test port detection and auto-increment logic."""
 import socket
-import threading
-import time
 
 
 def is_port_available(port):
