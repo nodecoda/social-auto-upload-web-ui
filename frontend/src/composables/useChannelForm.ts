@@ -15,7 +15,7 @@ interface ChannelFormOptions {
   validateFn?: (accountId: string | number, merged: Record<string, any>) => { valid: boolean; errors: string[] }
 }
 
-export function useChannelForm(defaults: Record<string, any>, { props, emit }: { props: Record<string, any>; emit: (event: string, ...args: any[]) => void }, options: ChannelFormOptions = {}) {
+export function useChannelForm(defaults: Record<string, any>, { props, emit }: { props: Record<string, any>; emit: (...args: any[]) => void }, options: ChannelFormOptions = {}) {
   const { publishFn, validateFn } = options
   // ===== 内部状态 =====
   const platformConfig = reactive({ ...defaults })

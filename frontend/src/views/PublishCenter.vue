@@ -676,6 +676,7 @@ import { frameApi } from '@/api/frame'
 import { draftApi } from '@/api/draft'
 import { useRoute } from 'vue-router'
 import { HASHTAG_RE as DESC_HASHTAG_RE, countDescriptionHashtags, useAutoExtractHashtags } from '@/utils/hashtag'
+import { getErrorMessage } from '@/utils/error'
 
 // ========== 类型定义 ==========
 
@@ -742,9 +743,9 @@ interface SettingsField {
   options?: Array<{ label: string; value: string | boolean }>
   visibleWhen?: { key: string; value: string | number | boolean }
   disabledWhen?: { key: string; value: string | number | boolean }
-  disabledDate?: (...args: unknown[]) => boolean
-  disabledHours?: (...args: unknown[]) => number[]
-  disabledMinutes?: (...args: unknown[]) => number[]
+  disabledDate?: (...args: any[]) => boolean
+  disabledHours?: (...args: any[]) => number[]
+  disabledMinutes?: (...args: any[]) => number[]
   props?: Record<string, unknown>
   [key: string]: unknown
 }
@@ -1216,7 +1217,7 @@ const selectedPlatform = ref<string>('')
 const selectedAccountId = ref<number | string | null>(null)
 
 const accountGroups = computed<AccountGroupItem[]>(() => {
-  return platformList.map((p: PlatformItem) => ({
+  return platformList.map((p) => ({
     key: p.key,
     id: p.id,
     name: p.name,
@@ -3177,7 +3178,7 @@ async function publishAll() {
       publishResults.value.push({
         label: account.name,
         status: 'error',
-        message: error.message || '发布失败',
+        message: getErrorMessage(error) || '发布失败',
       })
     }
   }

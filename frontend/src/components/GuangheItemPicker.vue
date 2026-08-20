@@ -125,6 +125,7 @@ import { ref, watch, type PropType } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Check } from '@element-plus/icons-vue'
 import { guangheApi } from '@/api/taobaoGuanghe'
+import { getErrorMessage } from '@/utils/error'
 
 interface GuangheTrace {
   tab: string
@@ -231,7 +232,7 @@ watch(() => props.mode, async (newMode, oldMode) => {
     activeTab.value = newMode === 'shop' ? 'shop' : 'preferred'
     searchKeyword.value = ''
   } catch (e) {
-    ElMessage.error('切换类型失败: ' + (e?.message || e))
+    ElMessage.error('切换类型失败: ' + getErrorMessage(e))
   } finally {
     loading.value = false
   }
@@ -262,7 +263,7 @@ async function openPanel() {
       applyFilters(res.data?.filters)
     }
   } catch (e) {
-    ElMessage.error('打开选择面板失败: ' + (e?.message || e))
+    ElMessage.error('打开选择面板失败: ' + getErrorMessage(e))
     handleClose()
   } finally {
     loading.value = false
@@ -295,7 +296,7 @@ async function onLoadMore() {
     items.value = res.data?.items || []
     hasMore.value = !!res.data?.has_more
   } catch (e) {
-    ElMessage.error('加载更多失败: ' + (e?.message || e))
+    ElMessage.error('加载更多失败: ' + getErrorMessage(e))
   } finally {
     loadingMore.value = false
   }
@@ -317,7 +318,7 @@ async function refreshList(fn: (sid: string) => Promise<GuangheResponse>) {
     }
   } catch (e) {
     if (opId === pendingOpId.value) {
-      ElMessage.error('操作失败: ' + (e?.message || e))
+      ElMessage.error('操作失败: ' + getErrorMessage(e))
     }
   } finally {
     if (opId === pendingOpId.value) {

@@ -233,6 +233,7 @@ import { platformList, getPlatformByKey } from '@/config/platforms'
 import { type ApiResponse } from '@/utils/request'
 import ChannelSummary from '@/components/ChannelSummary.vue'
 import PublishStats from '@/components/PublishStats.vue'
+import { getErrorMessage } from '@/utils/error'
 
 // ── 类型定义(与后端 /api/v2/history、/api/v2/stats 响应结构对齐)──
 
@@ -515,7 +516,7 @@ async function onBatchDelete() {
       fetchStats()
     }
   } catch (e) {
-    ElMessage.error(`批量删除失败：${e?.message || e}`)
+    ElMessage.error(`批量删除失败：${getErrorMessage(e)}`)
   } finally {
     isDeleting.value = false
   }

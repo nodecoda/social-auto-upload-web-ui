@@ -162,9 +162,9 @@ interface SettingsField {
   options?: any[]
   visibleWhen?: { key: string; value: string | number | boolean }
   disabledWhen?: { key: string; value: string | number | boolean }
-  disabledDate?: (date: Date) => boolean
-  disabledHours?: (row: Date) => number[]
-  disabledMinutes?: (row: Date, hour: number) => number[]
+  disabledDate?: (...args: any[]) => boolean
+  disabledHours?: (...args: any[]) => number[]
+  disabledMinutes?: (...args: any[]) => number[]
   props?: Record<string, any>
   [key: string]: any
 }

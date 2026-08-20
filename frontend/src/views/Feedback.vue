@@ -149,6 +149,7 @@ import { ElMessage, ElMessageBox, type UploadFile } from 'element-plus'
 import { Plus, CaretTop, Paperclip, Upload, Refresh } from '@element-plus/icons-vue'
 import { listFeedback, submitFeedback as apiSubmit, voteFeedback as apiVote } from '@/api/feedback'
 import { http, type ApiResponse } from '@/utils/request'
+import { getErrorMessage } from '@/utils/error'
 
 interface FeedbackAttachment {
   id: number
@@ -278,7 +279,7 @@ async function handleVote(fb: FeedbackItem) {
     ElMessage.success('+1 成功')
   } catch (e) {
     // 400 您已经为该反馈 +1 过了
-    if (e.message && e.message.includes('+1 过了')) {
+    if (getErrorMessage(e).includes('+1 过了')) {
       votedIds.value.add(fb.id)
       persistVotedIds()
       ElMessage.warning('您已为此反馈投过票')

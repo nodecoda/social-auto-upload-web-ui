@@ -492,6 +492,7 @@ import LoginDialog from '@/components/LoginDialog.vue'
 import TagPopover from '@/components/TagPopover.vue'
 import PrePublishCheckDialog from '@/components/PrePublishCheckDialog.vue'
 import BatchTagDialog from '@/components/BatchTagDialog.vue'
+import { getErrorMessage } from '@/utils/error'
 
 /** 账号标签 */
 interface TagItem {
@@ -921,7 +922,7 @@ const submitImport = async () => {
   } catch (e) {
     importStarting.value = false
     importSteps.value[0].status = 'error'
-    importSteps.value[0].description = e.message || String(e)
+    importSteps.value[0].description = getErrorMessage(e)
     importDone.value = true
     importFailed.value = true
     return

@@ -118,7 +118,7 @@ const props = defineProps({
    * 组件内部零硬编码 api。
    */
   fetcher: {
-    type: Function as PropType<(keyword?: string) => Promise<{ list: any[]; total?: number }>>,
+    type: Function as PropType<(keyword: string) => Promise<{ list: any[]; total?: number }>>,
     required: true
   },
   /**
@@ -206,8 +206,8 @@ function getLabel(item: any) {
 function getDesc(item: any) {
   return resolveField(item, props.fieldMap.desc)
 }
-function getCover(item: any) {
-  return resolveField(item, props.fieldMap.cover)
+function getCover(item: any): string {
+  return String(resolveField(item, props.fieldMap.cover) ?? '')
 }
 const hasCover = computed(() => props.fieldMap.cover != null)
 function isSelected(item: any) {
@@ -266,7 +266,7 @@ async function handleSearch() {
 
   loading.value = true
   try {
-    const result = await props.fetcher(kw)
+    const result = await props.fetcher(kw ?? '')
     list.value = result?.list || []
     searched.value = true
   } catch (e) {

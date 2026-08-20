@@ -1,4 +1,4 @@
-import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
+import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosProgressEvent } from 'axios'
 import { ElMessage } from 'element-plus'
 
 // 后端统一响应结构 (code===200 || success 时拦截器已解包出 data)
@@ -105,7 +105,7 @@ export interface HttpLike {
   post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
   put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
   delete<T = unknown>(url: string, params?: Record<string, unknown>): Promise<T>
-  upload<T = unknown>(url: string, formData: FormData, onUploadProgress?: (e: unknown) => void): Promise<T>
+  upload<T = unknown>(url: string, formData: FormData, onUploadProgress?: (e: AxiosProgressEvent) => void): Promise<T>
 }
 
 export const http: HttpLike = {
@@ -125,7 +125,7 @@ export const http: HttpLike = {
     return request.delete(url, { params }) as Promise<T>
   },
 
-  upload<T = unknown>(url: string, formData: FormData, onUploadProgress?: (e: unknown) => void) {
+  upload<T = unknown>(url: string, formData: FormData, onUploadProgress?: (e: AxiosProgressEvent) => void) {
     return request.post(url, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'

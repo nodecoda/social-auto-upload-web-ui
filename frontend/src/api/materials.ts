@@ -1,8 +1,9 @@
 import { http } from '@/utils/request'
+import type { AxiosProgressEvent } from 'axios'
 
 export const materialsApi = {
   /** 上传文件 */
-  upload(formData: FormData, onProgress?: (e: unknown) => void) {
+  upload(formData: FormData, onProgress?: (e: AxiosProgressEvent) => void) {
     return http.upload('/api/materials/upload', formData, onProgress)
   },
 
@@ -10,7 +11,7 @@ export const materialsApi = {
    * 封面专用上传：写 covers/ 目录，不入素材库。
    * 用于视频封面裁剪后保存 —— 不污染素材库列表。
    */
-  coversUpload(formData: FormData, onProgress?: (e: unknown) => void) {
+  coversUpload(formData: FormData, onProgress?: (e: AxiosProgressEvent) => void) {
     return http.upload('/api/materials/covers/upload', formData, onProgress)
   },
 
