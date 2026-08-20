@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SettingsFieldsRenderer from './SettingsFieldsRenderer.vue'
+import { type SettingsField } from '@/types/settings-field'
 
 const stubs = {
   ElInput: { template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />' },
@@ -20,7 +21,7 @@ function makeForm() {
 
 const platform = { color: '#ff0000', key: 'test', name: '测试' }
 
-const fields = [
+const fields: SettingsField[] = [
   { key: 'caption', label: '标题', type: 'input', placeholder: '输入标题' },
   { key: 'flag', label: '开关', type: 'switch' },
   { key: 'source', label: '来源', type: 'radio', options: [{ value: 'a', label: '原创' }, { value: 'b', label: '转载' }] },

@@ -13,7 +13,7 @@
                   <div v-if="field.description" class="setting-desc">{{ field.description }}</div>
 
                   <SettingFieldControl
-                    v-model="form[field.key]"
+                    v-model="(form[field.key] as SettingsFieldValue)"
                     :field="field"
                     :form="form"
                     :platform-color="platform.color"
@@ -29,29 +29,12 @@
 </template>
 <script setup lang="ts">
 import SettingFieldControl from '@/components/SettingFieldControl.vue'
+import { type SettingsField } from '@/types/settings-field'
+import { type SettingsFieldValue } from '@/types/settings-field'
 
-// 平台 settingsFields 字段项(部分字段仅特定 type 使用;其余字段透传)
 /** 当前平台配置条目的最小形状(其余字段透传) */
 interface SettingsPlatform {
   color: string
-  [key: string]: unknown
-}
-
-interface SettingsField {
-  key: string
-  label?: string
-  type?: string
-  required?: boolean
-  description?: string
-  placeholder?: string
-  fullRow?: boolean
-  options?: Array<{ label: string; value: string | boolean }>
-  visibleWhen?: { key: string; value: string | number | boolean }
-  disabledWhen?: { key: string; value: string | number | boolean }
-  disabledDate?: (date: Date) => boolean
-  disabledHours?: (role: string, comparingDate?: Date | { toDate: () => Date } | null) => number[]
-  disabledMinutes?: (hour: number, role: string, comparingDate?: Date | { toDate: () => Date } | null) => number[]
-  props?: Record<string, unknown>
   [key: string]: unknown
 }
 

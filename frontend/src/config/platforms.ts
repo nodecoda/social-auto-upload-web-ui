@@ -27,6 +27,7 @@ import logoJingmai from '@/assets/logos/jingmai.png'
 
 import { WEIBO_CATEGORIES } from './weibo-categories'
 import { CHANNELS_MARK_TAGS, CHANNELS_SHOOT_REGIONS } from './channels-mark-tags'
+import { type SettingsField } from '@/types/settings-field'
 
 /**
  * 特殊作者声明值：表示「无需添加声明」。
@@ -67,7 +68,7 @@ export const PLATFORMS = {
       { key: 'isOriginal', label: '原创声明', type: 'radio', options: [{ label: '原创', value: true }, { label: '非原创', value: false }], disabledWhen: { key: 'xhsSourceType', value: 'repost' } },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', aiContent: '', isOriginal: false, scheduleTime: '', videoFormat: '', enableTimer: false, xhsSourceType: '', xhsShootLocation: '', xhsShootDate: '', xhsRepostSource: '' },
   },
   CHANNELS: {
@@ -101,7 +102,7 @@ export const PLATFORMS = {
       { key: 'isOriginal', label: '原创声明', type: 'radio', options: [{ label: '原创', value: true }, { label: '非原创', value: false }] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', channelsMarkTag: '无需标注', channelsShootDate: '', channelsShootRegion: [] as string[], channelsRepostSource: '', channelsActivityName: '', channelsActivityData: null as Record<string, unknown> | null, isOriginal: false, scheduleTime: '', videoFormat: '' },
   },
   DOUYIN: {
@@ -126,7 +127,7 @@ export const PLATFORMS = {
       ] },
       { key: 'isOriginal', label: '原创声明', type: 'radio', options: [{ label: '原创', value: true }, { label: '非原创', value: false }] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', tags: [] as string[], aiContent: '', isOriginal: false, scheduleTime: '', videoFormat: '' },
   },
   KUAISHOU: {
@@ -145,7 +146,7 @@ export const PLATFORMS = {
       { key: 'isOriginal', label: '原创声明', type: 'radio', options: [{ label: '原创', value: true }, { label: '非原创', value: false }] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', aiContent: false, isOriginal: false, scheduleTime: '', videoFormat: '' },
   },
   BILIBILI: {
@@ -205,7 +206,7 @@ export const PLATFORMS = {
       { key: 'isOriginal', label: '原创声明', type: 'radio', options: [{ label: '原创', value: true }, { label: '非原创', value: false }] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', zone: '', creationDeclaration: '', biliRepostSource: '', isOriginal: false, scheduleTime: '', videoFormat: '' },
   },
   BAIJIAHAO: {
@@ -268,7 +269,7 @@ export const PLATFORMS = {
         },
       },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', isOriginal: false, creationDeclaration: '', supplementaryDeclaration: '', scheduleTime: '', videoFormat: '' },
   },
   TIKTOK: {
@@ -287,7 +288,7 @@ export const PLATFORMS = {
       { key: 'isOriginal', label: '原创声明', type: 'radio', options: [{ label: '原创', value: true }, { label: '非原创', value: false }] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', aiContent: false, isOriginal: false, scheduleTime: '', videoFormat: '' },
   },
   YOUTUBE: {
@@ -311,7 +312,7 @@ export const PLATFORMS = {
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间',
         description: '选择要将你的视频设为公开的日期和时间。视频在发布之前将处于私享状态。时区默认为 GMT+8（香港）。' },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', audience: 'not_kids', alteredContent: false, scheduleTime: '', videoFormat: '' },
   },
   TENCENT_VIDEO: {
@@ -335,7 +336,7 @@ export const PLATFORMS = {
       ] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', creationDeclaration: '', scheduleTime: '', videoFormat: '' },
   },
   IQIYI: {
@@ -367,7 +368,7 @@ export const PLATFORMS = {
       { key: 'enableCashActivity', label: '参与打卡挑战赛', type: 'switch', description: '参与当月打卡挑战赛获取奖励' },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', creationDeclaration: '', riskWarning: '', enableCashActivity: false, scheduleTime: '', videoFormat: '' },
   },
   WEIBO: {
@@ -418,7 +419,7 @@ export const PLATFORMS = {
           { label: '请理性适度消费', value: '请理性适度消费' },
           { label: '未成年人请在监护人指导下浏览', value: '未成年人请在监护人指导下浏览' },
         ] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', videoType: '', weiboCategory: [] as string[], contentStatement: '', contentStatement2: '', contentStatement2Optional: '' },
   },
   ALIPAY: {
@@ -446,7 +447,7 @@ export const PLATFORMS = {
       { key: 'compilation', label: '加入合集', type: 'compilationSelect', placeholder: '输入合集名称搜索' },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', authorStatement: '', reprintUrl: '', compilation: '', scheduleTime: '', videoFormat: '' },
   },
   TOUTIAO: {
@@ -506,7 +507,7 @@ export const PLATFORMS = {
         },
       },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', creationDeclaration: [] as string[], enableGenerateImage: true, collection: '', extendLink: false, extendLinkUrl: '', scheduleTime: '', videoFormat: '' },
   },
   ZHIHU: {
@@ -596,7 +597,7 @@ export const PLATFORMS = {
         },
       },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', creationDeclaration: '内容无需标注', category: '', scheduleTime: '', videoFormat: '' },
   },
   CSDN: {
@@ -612,7 +613,7 @@ export const PLATFORMS = {
     creatorUrl: 'https://mp.csdn.net/',
     settingsFields: [
       { key: 'recommend', label: '是否推荐', type: 'switch', description: '勾选后发布的视频将被推荐' },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', recommend: false, scheduleTime: '' },
   },
   VIVO: {
@@ -647,7 +648,7 @@ export const PLATFORMS = {
       { key: 'vivoDownloadPermission', label: '下载权限', type: 'radio',
         options: [{ label: '允许', value: '允许' }, { label: '不允许', value: '不允许' }] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', vivoLocationName: '', vivoLocationData: null as Record<string, unknown> | null,
       vivoDistribution: false, vivoDeclaration: '', vivoPrivacy: '公开',
       vivoDownloadPermission: '允许', scheduleTime: '', tags: [] as string[] },
@@ -676,7 +677,7 @@ export const PLATFORMS = {
           { label: '无需声明', value: '无需声明' },
         ] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间（最近7天，需大于当前1小时）' },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', isOriginal: false, gzhClaimSource: '', gzhCollectionName: '', gzhCollectionData: null as Record<string, unknown> | null, scheduleTime: '', videoFormat: '' },
   },
   TAOBAO_GUANGHE: {
@@ -703,7 +704,7 @@ export const PLATFORMS = {
           { label: '内容含营销信息', value: '内容含营销信息' },
         ] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
-    ],
+    ] as SettingsField[],
     defaultSettings: { title: '', description: '', guangheClaim: '', guangheLinkType: '', guangheProducts: [] as unknown[], guangheShops: [] as unknown[], scheduleTime: '' },
   },
   JINGMAI: {
@@ -731,7 +732,7 @@ export const PLATFORMS = {
           { label: '内容无需标注', value: '内容无需标注' },
         ] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
-    ],
+    ] as SettingsField[],
     defaultSettings: {
       title: '',
       description: '',

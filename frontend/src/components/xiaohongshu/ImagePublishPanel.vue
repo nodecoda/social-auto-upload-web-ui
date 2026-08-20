@@ -89,7 +89,7 @@ const emit = defineEmits<{
 const accountStore = useAccountStore()
 
 const aiContentField = PLATFORMS.XIAOHONGSHU.settingsFields.find(f => f.key === 'aiContent')
-const aiContentOptions = computed(() => aiContentField?.options || [])
+const aiContentOptions = computed(() => (aiContentField?.type === 'select' ? aiContentField.options || [] : []))
 
 const XHS_DEFAULTS = { ...PLATFORMS.XIAOHONGSHU.defaultSettings, tags: [] as string[], isOriginal: false }
 
