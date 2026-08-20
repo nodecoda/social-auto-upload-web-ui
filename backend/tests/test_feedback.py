@@ -9,7 +9,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 def test_feedback_sign_known_vector():
     """硬编码已知 hex（用 Python 一次性算好写死的，不是运行公式）。"""
-    from app import _feedback_sign
+    from blueprints.feedback_bp import _feedback_sign
 
     # 已知向量：HMAC-SHA256("sk_test", "ak_test1717555800000sk_test")
     # 上述公式算出的 hex 是 64 字符小写：
@@ -23,7 +23,7 @@ def test_feedback_sign_known_vector():
 
 def test_feedback_sign_different_vector():
     """不同输入应产生不同签名（防止常量被硬编码）。"""
-    from app import _feedback_sign
+    from blueprints.feedback_bp import _feedback_sign
     sig1 = _feedback_sign("1000", app_key="k1", app_secret="s1")
     sig2 = _feedback_sign("2000", app_key="k1", app_secret="s1")
     sig3 = _feedback_sign("1000", app_key="k2", app_secret="s1")
@@ -59,8 +59,8 @@ def test_feedback_list_no_filter_returns_active():
         captured["headers"] = headers
         return fake_resp
 
-    with patch("app.read_settings", return_value={"feedbackEmail": "viewer@example.com"}):
-        with patch("app._requests.get", side_effect=fake_get):
+    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "viewer@example.com"}):
+        with patch("blueprints.feedback_bp._requests.get", side_effect=fake_get):
             client = app.test_client()
             r = client.get("/api/feedback/list?page=1&page_size=20")
             assert r.status_code == 200
@@ -95,7 +95,7 @@ def test_feedback_list_no_email_in_settings():
         captured["params"] = params
         return fake_resp
 
-    with patch("app.read_settings", return_value={}), patch("app._requests.get", side_effect=fake_get):
+    with patch("blueprints.feedback_bp.read_settings", return_value={}), patch("blueprints.feedback_bp._requests.get", side_effect=fake_get):
         client = app.test_client()
         r = client.get("/api/feedback/list")
         assert r.status_code == 200
@@ -123,7 +123,7 @@ def test_feedback_list_status_filter():
         captured["params"] = params
         return fake_resp
 
-    with patch("app._requests.get", side_effect=fake_get):
+    with patch("blueprints.feedback_bp._requests.get", side_effect=fake_get):
         client = app.test_client()
         r = client.get("/api/feedback/list?status=2")
         assert r.status_code == 200
@@ -147,7 +147,7 @@ def test_feedback_list_include_all():
         captured["params"] = params
         return fake_resp
 
-    with patch("app._requests.get", side_effect=fake_get):
+    with patch("blueprints.feedback_bp._requests.get", side_effect=fake_get):
         client = app.test_client()
         r = client.get("/api/feedback/list?include_all=true")
         assert r.status_code == 200
@@ -174,7 +174,7 @@ def test_feedback_list_upstream_5xx_returns_502():
     fake_resp = MagicMock()
     fake_resp.raise_for_status.side_effect = _requests.HTTPError("500 Server Error")
 
-    with patch("app._requests.get", return_value=fake_resp):
+    with patch("blueprints.feedback_bp._requests.get", return_value=fake_resp):
         client = app.test_client()
         r = client.get("/api/feedback/list")
         assert r.status_code == 502
@@ -186,7 +186,7 @@ def test_feedback_submit_missing_fields():
     from app import app
 
     # 模拟 settings 表里也没 email
-    with patch("app.read_settings", return_value={}):
+    with patch("blueprints.feedback_bp.read_settings", return_value={}):
         client = app.test_client()
         r = client.post("/api/feedback/submit", data={"email": "a@b.com"})
         assert r.status_code == 400
@@ -210,8 +210,8 @@ def test_feedback_submit_uses_settings_email_when_form_empty():
         captured["data"] = data
         return fake_resp
 
-    with patch("app.read_settings", return_value={"feedbackEmail": "settings@example.com"}):
-        with patch("app._requests.post", side_effect=fake_post):
+    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "settings@example.com"}):
+        with patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
             client = app.test_client()
             r = client.post("/api/feedback/submit", data={"content": "hello"})
             assert r.status_code == 200
@@ -233,8 +233,8 @@ def test_feedback_submit_form_email_overrides_settings():
         captured["data"] = data
         return fake_resp
 
-    with patch("app.read_settings", return_value={"feedbackEmail": "settings@example.com"}):
-        with patch("app._requests.post", side_effect=fake_post):
+    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "settings@example.com"}):
+        with patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
             client = app.test_client()
             r = client.post(
                 "/api/feedback/submit",
@@ -263,8 +263,8 @@ def test_feedback_submit_forwards_files():
         captured["headers"] = headers
         return fake_resp
 
-    with patch("app.read_settings", return_value={"feedbackEmail": "user@example.com"}):
-        with patch("app._requests.post", side_effect=fake_post):
+    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "user@example.com"}):
+        with patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
             client = app.test_client()
             r = client.post(
                 "/api/feedback/submit",
@@ -298,8 +298,8 @@ def test_feedback_vote_uses_settings_email():
         captured["json"] = json
         return fake_resp
 
-    with patch("app.read_settings", return_value={"feedbackEmail": "settings@example.com"}):
-        with patch("app._requests.post", side_effect=fake_post):
+    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "settings@example.com"}):
+        with patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
             client = app.test_client()
             r = client.post("/api/feedback/vote", json={"id": 42})
             assert r.status_code == 200
@@ -311,7 +311,7 @@ def test_feedback_vote_no_email_anywhere_returns_400():
     """settings 没 email + body 也没 email → 400。"""
     from app import app
 
-    with patch("app.read_settings", return_value={}):
+    with patch("blueprints.feedback_bp.read_settings", return_value={}):
         client = app.test_client()
         r = client.post("/api/feedback/vote", json={"id": 1})
         assert r.status_code == 400
@@ -335,8 +335,8 @@ def test_feedback_vote_forwards():
         captured["headers"] = headers
         return fake_resp
 
-    with patch("app.read_settings", return_value={"feedbackEmail": "settings@example.com"}):
-        with patch("app._requests.post", side_effect=fake_post):
+    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "settings@example.com"}):
+        with patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
             client = app.test_client()
             r = client.post("/api/feedback/vote", json={"id": 42, "email": "voter@example.com"})
             assert r.status_code == 200
@@ -354,7 +354,7 @@ def test_feedback_vote_passes_through_400():
     fake_resp.status_code = 400
     fake_resp.raise_for_status = MagicMock()
 
-    with patch("app._requests.post", return_value=fake_resp):
+    with patch("blueprints.feedback_bp._requests.post", return_value=fake_resp):
         client = app.test_client()
         r = client.post("/api/feedback/vote", json={"id": 1, "email": "a@b.com"})
         assert r.status_code == 400
