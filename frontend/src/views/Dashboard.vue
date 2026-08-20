@@ -94,34 +94,53 @@
 
     <!-- Quick actions row -->
     <div class="quick-actions">
-      <div class="action-card" @click="navigateTo('/publish-center')">
-        <div class="action-icon action-icon-purple">
+      <QuickActionCard
+        variant="purple"
+        title="快速发布"
+        desc="发布内容到各平台"
+        route="/publish-center"
+        @navigate="navigateTo"
+      >
+        <template #icon>
           <el-icon><Upload /></el-icon>
-        </div>
-        <div class="action-title">快速发布</div>
-        <div class="action-desc">发布内容到各平台</div>
-      </div>
-      <div class="action-card" @click="navigateTo('/material-management')">
-        <div class="action-icon action-icon-blue">
+        </template>
+      </QuickActionCard>
+
+      <QuickActionCard
+        variant="blue"
+        title="上传素材"
+        desc="上传和管理视频素材"
+        route="/material-management"
+        @navigate="navigateTo"
+      >
+        <template #icon>
           <el-icon><Document /></el-icon>
-        </div>
-        <div class="action-title">上传素材</div>
-        <div class="action-desc">上传和管理视频素材</div>
-      </div>
-      <div class="action-card" @click="navigateTo('/settings')">
-        <div class="action-icon action-icon-cyan">
+        </template>
+      </QuickActionCard>
+
+      <QuickActionCard
+        variant="cyan"
+        title="系统设置"
+        desc="配置系统参数和选项"
+        route="/settings"
+        @navigate="navigateTo"
+      >
+        <template #icon>
           <el-icon><Setting /></el-icon>
-        </div>
-        <div class="action-title">系统设置</div>
-        <div class="action-desc">配置系统参数和选项</div>
-      </div>
-      <div class="action-card" @click="navigateTo('/account-management')">
-        <div class="action-icon action-icon-green">
+        </template>
+      </QuickActionCard>
+
+      <QuickActionCard
+        variant="green"
+        title="账号管理"
+        desc="管理所有平台账号"
+        route="/account-management"
+        @navigate="navigateTo"
+      >
+        <template #icon>
           <el-icon><UserFilled /></el-icon>
-        </div>
-        <div class="action-title">账号管理</div>
-        <div class="action-desc">管理所有平台账号</div>
-      </div>
+        </template>
+      </QuickActionCard>
     </div>
 
     <!-- Recent materials table -->
@@ -184,6 +203,7 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'v
 import { useRouter } from 'vue-router'
 import { User, Platform, UserFilled, Document, Upload, Loading, Refresh, Setting } from '@element-plus/icons-vue'
 import StatCard from '@/components/StatCard.vue'
+import QuickActionCard from '@/components/QuickActionCard.vue'
 import { ElMessage } from 'element-plus'
 import { accountApi } from '@/api/account'
 import { materialsApi } from '@/api/materials'
@@ -539,66 +559,7 @@ const fetchDashboardData = async () => {
     margin-top: 24px;
   }
 
-  .action-card {
-    background: $bg-elevated;
-    border: 1px solid $border;
-    border-radius: $radius-card;
-    padding: 24px;
-    cursor: pointer;
-    transition: $transition-base;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-
-    &:hover {
-      transform: translateY(-4px);
-      border-color: $border-active;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba($brand-start, 0.15);
-    }
-
-    .action-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 14px;
-
-      .el-icon {
-        font-size: 22px;
-        color: #fff;
-      }
-
-      &.action-icon-purple {
-        background: linear-gradient(135deg, $brand-start, $brand-end);
-      }
-
-      &.action-icon-blue {
-        background: linear-gradient(135deg, $brand-end, $accent-cyan);
-      }
-
-      &.action-icon-cyan {
-        background: linear-gradient(135deg, $accent-cyan, $accent-green);
-      }
-
-      &.action-icon-green {
-        background: linear-gradient(135deg, $accent-green, $accent-amber);
-      }
-    }
-
-    .action-title {
-      font-size: 15px;
-      font-weight: 600;
-      color: $text-primary;
-      margin-bottom: 4px;
-    }
-
-    .action-desc {
-      font-size: 12px;
-      color: $text-muted;
-    }
-  }
+  // action-card 样式已迁移至 components/QuickActionCard.vue
 
   // ========== Materials Table ==========
   .materials-card {
