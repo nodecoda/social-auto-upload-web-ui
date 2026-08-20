@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, watch, type PropType } from 'vue'
+import { ref, nextTick, watch } from 'vue'
 
 interface ChannelSummaryItem {
   platform: string
@@ -23,9 +23,11 @@ interface ChannelSummaryItem {
   logo?: string
 }
 
-const props = defineProps({
-  channels: { type: Array as PropType<ChannelSummaryItem[]>, required: true },
-  overflowKey: { type: [String, Number] as PropType<string | number>, default: '' },
+const props = withDefaults(defineProps<{
+  channels: ChannelSummaryItem[]
+  overflowKey?: string | number
+}>(), {
+  overflowKey: '',
 })
 
 const trackEl = ref<HTMLElement | null>(null)

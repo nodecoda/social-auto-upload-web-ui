@@ -30,16 +30,25 @@
 <script setup lang="ts">
 import { Document, MagicStick, Setting, Promotion } from '@element-plus/icons-vue'
 
-defineProps({
-  title: { type: String, default: '发布视频' },
-  platformName: { type: String, default: '' },
-  platformBgColor: { type: String, default: '' },
-  platformColor: { type: String, default: '' },
-  draftId: { type: [String, Number], default: null },
-  hasAccounts: { type: Boolean, default: false },
-  publishing: { type: Boolean, default: false },
+withDefaults(defineProps<{
+  title?: string
+  platformName?: string
+  platformBgColor?: string
+  platformColor?: string
+  draftId?: string | number | null
+  hasAccounts?: boolean
+  publishing?: boolean
   // 无账号时禁用一键填写（图集发布需要账号才能填充渠道配置）
-  disableOneClick: { type: Boolean, default: false },
+  disableOneClick?: boolean
+}>(), {
+  title: '发布视频',
+  platformName: '',
+  platformBgColor: '',
+  platformColor: '',
+  draftId: null,
+  hasAccounts: false,
+  publishing: false,
+  disableOneClick: false,
 })
 
 defineEmits<{

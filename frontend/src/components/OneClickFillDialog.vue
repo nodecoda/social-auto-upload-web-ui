@@ -72,10 +72,10 @@ interface MaterialRecord {
   url?: string
 }
 
-const props = defineProps({
-  modelValue: { type: Boolean, required: true },
-  type: { type: String, required: true },
-})
+const props = defineProps<{
+  modelValue: boolean
+  type: string
+}>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'pick', payload: PublishTemplate): void

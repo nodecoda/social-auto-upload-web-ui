@@ -100,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, type PropType } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   ZoomIn, ZoomOut, RefreshLeft, RefreshRight,
   FullScreen, Close, ArrowLeft, ArrowRight, Picture
@@ -112,9 +112,12 @@ interface PreviewImage {
   id?: number | string
 }
 
-const props = defineProps({
-  images: { type: Array as PropType<PreviewImage[]>, default: (): PreviewImage[] => [] },
-  initialIndex: { type: Number, default: 0 },
+const props = withDefaults(defineProps<{
+  images?: PreviewImage[]
+  initialIndex?: number
+}>(), {
+  images: () => [],
+  initialIndex: 0,
 })
 
 const emit = defineEmits<{
