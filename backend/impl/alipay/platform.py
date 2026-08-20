@@ -1853,8 +1853,8 @@ class AlipayPlatform(BasePlatform):
         ).first
         try:
             await publish_btn.wait_for(state="visible", timeout=15000)
-        except Exception as e:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
-            raise RuntimeError(f"[上传视频] 未找到「确认发布」按钮: {e}")
+        except Exception as e:  # 捕获后重新抛出,统一异常出口
+            raise RuntimeError(f"[上传视频] 未找到「确认发布」按钮: {e}") from e
 
         # 轮询 disabled(最长 60s),等表单就绪
         for _ in range(60):

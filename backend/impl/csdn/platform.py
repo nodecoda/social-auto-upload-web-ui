@@ -749,8 +749,8 @@ class CsdnPlatform(BasePlatform):
                     await candidate.wait_for(state="attached", timeout=5000)
                     cover_input = candidate
                     logger.info("[设置封面] ✓ 全页兜底命中图片 input")
-                except Exception as e:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
-                    raise RuntimeError(f"未找到封面 input: {e}")
+                except Exception as e:  # 捕获后重新抛出,统一异常出口
+                    raise RuntimeError(f"未找到封面 input: {e}") from e
 
             # 2. 设置封面文件 → 触发裁剪弹窗
             await cover_input.set_input_files(thumbnail_path)

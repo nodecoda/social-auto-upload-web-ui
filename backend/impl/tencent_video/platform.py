@@ -549,7 +549,7 @@ class TencentVideoPlatform(BasePlatform):
                         state='attached',
                         timeout=30000,
                     )
-                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
+                except Exception as e:  # 统一兜底并记录日志,防御性编码
                     logger.warning(
                         "[上传视频] 上传入口等待 30s 超时: %s", e,
                     )
@@ -564,7 +564,7 @@ class TencentVideoPlatform(BasePlatform):
                         )
                     except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
-                    raise Exception("未找到视频上传入口")
+                    raise Exception("未找到视频上传入口") from e
 
                 file_input = page.locator('input[type="file"]').first
                 input_count = await page.locator('input[type="file"]').count()

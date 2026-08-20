@@ -528,10 +528,10 @@ class WeiboPlatform(BasePlatform):
                     await page.get_by_role(
                         "button", name="发送", exact=True
                     ).first.wait_for(state="attached", timeout=15000)
-                except Exception as e:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
+                except Exception as e:  # 捕获后重新抛出,统一异常出口
                     raise RuntimeError(
                         f"[发布图集] 创作卡片未渲染(cookie 失效/未登录?): {e}"
-                    )
+                    ) from e
                 await asyncio.sleep(2)  # 等图片工具/声明 trigger 完全渲染
 
                 # 1. 上传图片
@@ -685,7 +685,7 @@ class WeiboPlatform(BasePlatform):
                 fc = await fc_info.value
                 await fc.set_files(files)
                 logger.info("[发布] 已通过 expect_file_chooser 提交")
-            except Exception as e2:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
+            except Exception as e2:  # 统一兜底并记录调试日志,防御性编码
                 logger.info("[发布] expect_file_chooser 失败: %s", e2)
                 # 兜底 2: 等带标记的 input 出现(patch 命中)
                 marked_sel = (
@@ -706,7 +706,7 @@ class WeiboPlatform(BasePlatform):
                 else:
                     raise RuntimeError(
                         "[发布] 30s 内未找到可用的 file input"
-                    )
+                    ) from e2
 
         # 4. 等待上传完成 — 轮询「发送」按钮 enabled(最稳判定)
         send_btn = page.get_by_role("button", name="发送", exact=True).first
@@ -737,8 +737,8 @@ class WeiboPlatform(BasePlatform):
         send_btn = page.get_by_role("button", name="发送", exact=True).first
         try:
             await send_btn.wait_for(state="visible", timeout=10000)
-        except Exception as e:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
-            raise RuntimeError(f"[发布] 未找到「发送」按钮: {e}")
+        except Exception as e:  # 捕获后重新抛出,统一异常出口
+            raise RuntimeError(f"[发布] 未找到「发送」按钮: {e}") from e
 
         # 轮询 disabled(最长 60s)
         for _ in range(60):
@@ -2035,8 +2035,8 @@ class WeiboPlatform(BasePlatform):
         publish_btn = page.get_by_role("button", name="发布", exact=True).first
         try:
             await publish_btn.wait_for(state="visible", timeout=10000)
-        except Exception as e:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
-            raise RuntimeError(f"[发布] 未找到发布按钮: {e}")
+        except Exception as e:  # 捕获后重新抛出,统一异常出口
+            raise RuntimeError(f"[发布] 未找到发布按钮: {e}") from e
 
         # 轮询 disabled 属性(最长 60s)
         for _ in range(60):
@@ -2076,4 +2076,4 @@ class WeiboPlatform(BasePlatform):
             else:
                 raise RuntimeError(
                     f"[发布] 发布后未检测到成功信号,当前 URL: {current}"
-                )
+                ) from None
