@@ -32,6 +32,12 @@ import { type PropType } from 'vue'
 import SettingFieldControl from '@/components/SettingFieldControl.vue'
 
 // 平台 settingsFields 字段项(部分字段仅特定 type 使用;其余字段透传)
+/** 当前平台配置条目的最小形状(其余字段透传) */
+interface SettingsPlatform {
+  color: string
+  [key: string]: unknown
+}
+
 interface SettingsField {
   key: string
   label?: string
@@ -40,29 +46,29 @@ interface SettingsField {
   description?: string
   placeholder?: string
   fullRow?: boolean
-  options?: any[]
+  options?: Array<{ label: string; value: string | boolean }>
   visibleWhen?: { key: string; value: string | number | boolean }
   disabledWhen?: { key: string; value: string | number | boolean }
-  disabledDate?: (...args: any[]) => boolean
-  disabledHours?: (...args: any[]) => number[]
-  disabledMinutes?: (...args: any[]) => number[]
-  props?: Record<string, any>
-  [key: string]: any
+  disabledDate?: (date: Date) => boolean
+  disabledHours?: () => number[]
+  disabledMinutes?: (h: number) => number[]
+  props?: Record<string, unknown>
+  [key: string]: unknown
 }
 
 const props = defineProps({
   // 平台配置 settingsFields 字段数组
-  fields: { type: Array as PropType<SettingsField[]>, default: (): any[] => [] },
+  fields: { type: Array as PropType<SettingsField[]>, default: (): SettingsField[] => [] },
   // 发布表单（本组件直接读写其中的字段）
-  form: { type: Object as PropType<Record<string, any>>, required: true },
+  form: { type: Object as PropType<Record<string, unknown>>, required: true },
   // 当前平台配置（color/key/hideFields 等）
-  platform: { type: Object as PropType<Record<string, any>>, default: () => ({}) },
+  platform: { type: Object as PropType<SettingsPlatform>, default: () => ({}) },
   selectedPlatform: { type: String, default: null },
   selectedAccountId: { type: [String, Number] as PropType<string | number | null>, default: null },
 })
 
 // ----- 小红书拍摄地点(POI)选择回调:存完整对象到 <key>Data,publishData 取 poi 名称 -----
-function handleXhsPoiChange(fieldKey: string, poi: Record<string, any> | null) {
+function handleXhsPoiChange(fieldKey: string, poi: Record<string, unknown> | null) {
   if (poi) {
     props.form[fieldKey + 'Data'] = poi
   } else {
@@ -71,7 +77,7 @@ function handleXhsPoiChange(fieldKey: string, poi: Record<string, any> | null) {
 }
 
 // ----- 支付宝/头条合集(compilation)回调:存完整对象便于回显 -----
-function handleAlipayCompilationChange(fieldKey: string, comp: Record<string, any> | null) {
+function handleAlipayCompilationChange(fieldKey: string, comp: Record<string, unknown> | null) {
   if (comp) {
     props.form.compilationData = comp
   } else {
