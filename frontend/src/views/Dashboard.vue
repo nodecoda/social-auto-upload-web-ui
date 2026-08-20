@@ -6,16 +6,19 @@
 
     <!-- 4 Stat cards row -->
     <div class="stat-cards">
-      <!-- 账号总数 (purple) -->
-      <div class="stat-card stat-purple">
-        <div class="stat-top">
-          <div class="stat-icon">
-            <el-icon><User /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ accountStats.total }}</div>
-            <div class="stat-label">账号总数</div>
-          </div>
+      <StatCard
+        variant="purple"
+        :value="accountStats.total"
+        label="账号总数"
+        :details="[
+          { label: '正常', value: accountStats.normal },
+          { label: '异常', value: accountStats.abnormal },
+        ]"
+      >
+        <template #icon>
+          <el-icon><User /></el-icon>
+        </template>
+        <template #extra>
           <button class="batch-check-btn" @click="handleBatchCheck" :disabled="isChecking">
             <el-icon v-if="isChecking" class="is-loading"><Loading /></el-icon>
             <template v-else>
@@ -23,28 +26,18 @@
               批量检查
             </template>
           </button>
-        </div>
-        <div class="stat-bottom">
-          <div class="stat-detail">
-            <span>正常: {{ accountStats.normal }}</span>
-            <span class="divider"></span>
-            <span>异常: {{ accountStats.abnormal }}</span>
-          </div>
-        </div>
-      </div>
+        </template>
+      </StatCard>
 
-      <!-- 已接入平台 (blue) -->
-      <div class="stat-card stat-blue">
-        <div class="stat-top">
-          <div class="stat-icon">
-            <el-icon><Platform /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ platformStats.total }}</div>
-            <div class="stat-label">已接入平台</div>
-          </div>
-        </div>
-        <div class="stat-bottom">
+      <StatCard
+        variant="blue"
+        :value="platformStats.total"
+        label="已接入平台"
+      >
+        <template #icon>
+          <el-icon><Platform /></el-icon>
+        </template>
+        <template #bottom>
           <!-- 参考 DraftBox.channels 跑马灯: 溢出时横向滚动 -->
           <div class="platform-channels">
             <div
@@ -69,48 +62,34 @@
               </span>
             </div>
           </div>
-        </div>
-      </div>
+        </template>
+      </StatCard>
 
-      <!-- 素材总数 (cyan) -->
-      <div class="stat-card stat-cyan">
-        <div class="stat-top">
-          <div class="stat-icon">
-            <el-icon><Document /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ contentStats.total }}</div>
-            <div class="stat-label">素材总数</div>
-          </div>
-        </div>
-        <div class="stat-bottom">
-          <div class="stat-detail">
-            <span>视频: {{ contentStats.videos }}</span>
-            <span class="divider"></span>
-            <span>图片: {{ contentStats.images }}</span>
-            <span class="divider"></span>
-            <span>其他: {{ contentStats.others }}</span>
-          </div>
-        </div>
-      </div>
+      <StatCard
+        variant="cyan"
+        :value="contentStats.total"
+        label="素材总数"
+        :details="[
+          { label: '视频', value: contentStats.videos },
+          { label: '图片', value: contentStats.images },
+          { label: '其他', value: contentStats.others },
+        ]"
+      >
+        <template #icon>
+          <el-icon><Document /></el-icon>
+        </template>
+      </StatCard>
 
-      <!-- 今日发布 (green) -->
-      <div class="stat-card stat-green">
-        <div class="stat-top">
-          <div class="stat-icon">
-            <el-icon><Upload /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">&mdash;</div>
-            <div class="stat-label">今日发布</div>
-          </div>
-        </div>
-        <div class="stat-bottom">
-          <div class="stat-detail">
-            <span>成功率: &mdash;</span>
-          </div>
-        </div>
-      </div>
+      <StatCard
+        variant="green"
+        value="—"
+        label="今日发布"
+        :details="[{ label: '成功率', value: '—' }]"
+      >
+        <template #icon>
+          <el-icon><Upload /></el-icon>
+        </template>
+      </StatCard>
     </div>
 
     <!-- Quick actions row -->
@@ -203,10 +182,8 @@ const borderColor = 'var(--border)'
 
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  User, UserFilled, Platform, Document,
-  Upload, Timer, DataAnalysis, Loading, Refresh, Setting
-} from '@element-plus/icons-vue'
+import { User, Platform, UserFilled, Document, Upload, Loading, Refresh, Setting } from '@element-plus/icons-vue'
+import StatCard from '@/components/StatCard.vue'
 import { ElMessage } from 'element-plus'
 import { accountApi } from '@/api/account'
 import { materialsApi } from '@/api/materials'
@@ -382,13 +359,6 @@ const recentMaterials = computed<MaterialItem[]>(() => {
 const FILE_TYPE_MAP: Record<string, string> = { video: '视频', image: '图片' }
 const getFileType = (fileType: string): string => FILE_TYPE_MAP[fileType] || '其他'
 
-// 获取文件类型标签颜色
-const getFileTypeTag = (filename: string): string => {
-  const type = getFileType(filename)
-  const tagMap: Record<string, string> = { '视频': 'success', '图片': 'warning', '其他': 'info' }
-  return tagMap[type] || 'info'
-}
-
 // 导航到指定路由
 const navigateTo = (path: string) => {
   router.push(path)
@@ -448,248 +418,117 @@ const fetchDashboardData = async () => {
     min-width: 0;
   }
 
-  .stat-card {
-    border-radius: $radius-card;
-    padding: 20px 24px;
-    transition: $transition-base;
-    min-width: 0;        // 关键: grid cell 默认会被内容撑开
-    overflow: hidden;     // 关键: 即使子元素再宽也裁剪掉
+  // stat-card 外壳样式已迁移至 components/StatCard.vue
+  // 以下为 stat-card 内由父组件传入的 slot 内容样式
 
-    &.stat-purple {
-      background: $stat-purple-bg;
-      border: 1px solid $stat-purple-border;
+  // 批量检查按钮（紫色卡 #extra slot 内容）
+  .batch-check-btn {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 14px;
+    border: 1px solid rgba($success-color, 0.3);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all $transition-base;
+    background: rgba($success-color, 0.1);
+    color: $success-color;
+    white-space: nowrap;
+    flex-shrink: 0;
 
-      &:hover {
-        border-color: rgba($brand-start, 0.35);
-        box-shadow: 0 0 24px rgba($brand-start, 0.08);
-      }
-
-      .stat-icon {
-        background: rgba($brand-start, 0.2);
-        .el-icon { color: $brand-start; }
-      }
+    .el-icon {
+      font-size: 14px;
     }
 
-    &.stat-blue {
-      background: $stat-blue-bg;
-      border: 1px solid $stat-blue-border;
-
-      &:hover {
-        border-color: rgba($brand-end, 0.35);
-        box-shadow: 0 0 24px rgba($brand-end, 0.08);
-      }
-
-      .stat-icon {
-        background: rgba($brand-end, 0.2);
-        .el-icon { color: $brand-end; }
-      }
+    &:hover:not(:disabled) {
+      background: rgba($success-color, 0.2);
+      border-color: rgba($success-color, 0.5);
+      transform: translateY(-1px);
     }
 
-    &.stat-cyan {
-      background: $stat-cyan-bg;
-      border: 1px solid $stat-cyan-border;
-
-      &:hover {
-        border-color: rgba($accent-cyan, 0.35);
-        box-shadow: 0 0 24px rgba($accent-cyan, 0.08);
-      }
-
-      .stat-icon {
-        background: rgba($accent-cyan, 0.2);
-        .el-icon { color: $accent-cyan; }
-      }
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
-    &.stat-green {
-      background: $stat-green-bg;
-      border: 1px solid $stat-green-border;
-
-      &:hover {
-        border-color: rgba($accent-green, 0.35);
-        box-shadow: 0 0 24px rgba($accent-green, 0.08);
-      }
-
-      .stat-icon {
-        background: rgba($accent-green, 0.2);
-        .el-icon { color: $accent-green; }
-      }
+    &.is-loading .el-icon {
+      animation: rotate 1s linear infinite;
     }
+  }
 
-    .stat-top {
-      display: flex;
-      align-items: center;
-      margin-bottom: 16px;
+  // 已接入平台 — 参考 DraftBox.channels 跑马灯布局（蓝色卡 #bottom slot 内容）
+  // 关键: 容器必须 max-width: 100% 约束 + track 用 flex (不是 inline-flex)
+  // 否则 inline-flex track 会按内容宽度撑开, 把 .stat-card 撑爆
+  .platform-channels {
+    overflow: hidden;
+    max-width: 100%;
+    padding: 2px 0;
+    // 进一步防御: 容器本身是 block, 继承 .stat-bottom 的 100% 宽度
+  }
+  .channels-track {
+    display: flex;
+    flex-wrap: nowrap;       // 强制单行, 不要换行
+    gap: 6px;
+    max-width: 100%;
+    min-width: 0;            // 关键: 阻止 flex 子项 min-width:auto 撑开
+    // white-space 不需要: flex-wrap: nowrap 已经保证
+  }
+  .channels-marquee {
+    animation: dashboard-marquee-scroll 12s linear infinite;
+  }
+  .channel-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    background: rgba($overlay-rgb, 0.06);
+    color: $text-muted;
+    border: 1px solid transparent;
+    transition: all $transition-base;
 
-      .batch-check-btn {
-        margin-left: auto;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 6px 14px;
-        border: 1px solid rgba($success-color, 0.3);
-        border-radius: 8px;
-        font-size: 12px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all $transition-base;
-        background: rgba($success-color, 0.1);
-        color: $success-color;
-        white-space: nowrap;
-        flex-shrink: 0;
-
-        .el-icon {
-          font-size: 14px;
-        }
-
-        &:hover:not(:disabled) {
-          background: rgba($success-color, 0.2);
-          border-color: rgba($success-color, 0.5);
-          transform: translateY(-1px);
-        }
-
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        &.is-loading .el-icon {
-          animation: rotate 1s linear infinite;
-        }
-      }
+    .channel-icon {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      object-fit: contain;
     }
-
-    .stat-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: rgba($overlay-rgb, 0.06);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 16px;
-      flex-shrink: 0;
-
-      .el-icon {
-        font-size: 24px;
-      }
+    .channel-name {
+      color: inherit;
     }
-
-    .stat-info {
-      .stat-value {
-        font-size: 28px;
-        font-weight: 700;
-        background: $gradient-brand;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        line-height: 1.2;
-        letter-spacing: -0.5px;
-      }
-
-      .stat-label {
-        font-size: 13px;
-        color: $text-secondary;
-        margin-top: 2px;
-      }
-    }
-
-    .stat-bottom {
-      border-top: 1px solid rgba($overlay-rgb, 0.06);
-      padding-top: 12px;
-      min-width: 0;          // 关键: 防止 flex 子项把 grid cell 撑开
-      overflow: hidden;       // 关键: 强制裁剪, 不让任何子元素跑出 stat-card
-    }
-
-    .stat-detail {
-      display: flex;
-      align-items: center;
+    .channel-count {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, monospace;
+      font-weight: 600;
+      font-size: 11px;
+      padding: 0 5px;
+      border-radius: 8px;
+      background: rgba($overlay-rgb, 0.08);
       color: $text-secondary;
-      font-size: 13px;
-      gap: 8px;
-      flex-wrap: wrap;
-
-      .divider {
-        width: 1px;
-        height: 12px;
-        background: rgba($overlay-rgb, 0.1);
-      }
+      min-width: 18px;
+      text-align: center;
     }
 
-    .platform-tags {
-      gap: 6px;
-    }
+    // 有账号的平台: 高亮品牌色
+    &.is-active {
+      background: rgba($brand-start, 0.1);
+      color: $text-primary;
+      border-color: rgba($brand-start, 0.25);
 
-    // 已接入平台 — 参考 DraftBox.channels 跑马灯布局
-    // 关键: 容器必须 max-width: 100% 约束 + track 用 flex (不是 inline-flex)
-    // 否则 inline-flex track 会按内容宽度撑开, 把 .stat-card 撑爆
-    .platform-channels {
-      overflow: hidden;
-      max-width: 100%;
-      padding: 2px 0;
-      // 进一步防御: 容器本身是 block, 继承 .stat-bottom 的 100% 宽度
-    }
-    .channels-track {
-      display: flex;
-      flex-wrap: nowrap;       // 强制单行, 不要换行
-      gap: 6px;
-      max-width: 100%;
-      min-width: 0;            // 关键: 阻止 flex 子项 min-width:auto 撑开
-      // white-space 不需要: flex-wrap: nowrap 已经保证
-    }
-    .channels-marquee {
-      animation: dashboard-marquee-scroll 12s linear infinite;
-    }
-    .channel-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      padding: 3px 9px;
-      border-radius: 999px;
-      flex-shrink: 0;
-      background: rgba($overlay-rgb, 0.06);
-      color: $text-muted;
-      border: 1px solid transparent;
-      transition: all $transition-base;
-
-      .channel-icon {
-        width: 14px;
-        height: 14px;
-        border-radius: 3px;
-        object-fit: contain;
-      }
-      .channel-name {
-        color: inherit;
-      }
       .channel-count {
-        font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, monospace;
-        font-weight: 600;
-        font-size: 11px;
-        padding: 0 5px;
-        border-radius: 8px;
-        background: rgba($overlay-rgb, 0.08);
-        color: $text-secondary;
-        min-width: 18px;
-        text-align: center;
-      }
-
-      // 有账号的平台: 高亮品牌色
-      &.is-active {
-        background: rgba($brand-start, 0.1);
-        color: $text-primary;
-        border-color: rgba($brand-start, 0.25);
-
-        .channel-count {
-          background: rgba($brand-start, 0.25);
-          color: #fff;
-        }
+        background: rgba($brand-start, 0.25);
+        color: #fff;
       }
     }
+  }
 
-    @keyframes dashboard-marquee-scroll {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
-    }
+  @keyframes dashboard-marquee-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
   }
 
   // ========== Quick Actions ==========
