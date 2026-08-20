@@ -42,47 +42,14 @@
       </div>
 
       <!-- 右侧:标签区 -->
-      <div class="batch-section batch-tags">
-        <div class="batch-section-header">
-          <span class="batch-section-title">选择标签</span>
-          <span class="batch-section-count">已选 {{ selectedTagIds.size }}</span>
-        </div>
-
-        <div class="batch-tag-create">
-          <el-input
-            v-model="keyword"
-            size="default"
-            placeholder="搜索或新建标签..."
-            clearable
-            @keyup.enter="handleCreate"
-          >
-            <template #append>
-              <el-button :disabled="!keyword.trim()" @click="handleCreate">新建</el-button>
-            </template>
-          </el-input>
-        </div>
-
-        <div class="batch-tag-list">
-          <div
-            v-for="tag in filteredTags"
-            :key="tag.id"
-            :class="['batch-tag-chip', { selected: selectedTagIds.has(tag.id) }]"
-            :style="selectedTagIds.has(tag.id) ? { background: tag.color, borderColor: tag.color, color: '#fff' } : { borderColor: tag.color, color: tag.color }"
-            @click="toggleTag(tag)"
-          >
-            <el-icon v-if="selectedTagIds.has(tag.id)" class="batch-tag-check"><Check /></el-icon>
-            <span>{{ tag.name }}</span>
-            <el-icon
-              class="batch-tag-delete"
-              title="删除此标签"
-              @click.stop="handleDeleteTag(tag)"
-            ><Close /></el-icon>
-          </div>
-          <div v-if="filteredTags.length === 0" class="batch-empty">
-            暂无标签,输入名称按回车创建
-          </div>
-        </div>
-      </div>
+      <BatchTagPicker
+        v-model="keyword"
+        :tags="allTags"
+        :selected-tag-ids="selectedTagIds"
+        @create="handleCreate"
+        @toggle-tag="toggleTag"
+        @delete-tag="handleDeleteTag"
+      />
     </div>
 
     <template #footer>
@@ -109,7 +76,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, type PropType } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Close } from '@element-plus/icons-vue'
+import { Check } from '@element-plus/icons-vue'
+import BatchTagPicker from '@/components/BatchTagPicker.vue'
 import { useAccountStore } from '@/stores/account'
 import { accountApi } from '@/api/account'
 import { getDefaultAvatar, proxyAvatar } from '@/utils/avatar'
@@ -144,12 +112,6 @@ const keyword = ref('')
 const submitting = ref(false)
 
 const allTags = computed<TagItem[]>(() => (accountStore.allTags as unknown as TagItem[]) || [])
-
-const filteredTags = computed(() => {
-  if (!keyword.value.trim()) return allTags.value
-  const kw = keyword.value.trim().toLowerCase()
-  return allTags.value.filter(t => t.name.toLowerCase().includes(kw))
-})
 
 const isAllSelected = computed(() => {
   const validIds = accounts.value.filter(a => a.status === '正常').map(a => a.id)
@@ -301,10 +263,6 @@ watch(() => props.modelValue, (v) => {
     flex: 1.4;
   }
 
-  .batch-tags {
-    flex: 1;
-  }
-
   .batch-section-header {
     display: flex;
     align-items: center;
@@ -427,102 +385,6 @@ watch(() => props.modelValue, (v) => {
       justify-content: center;
       font-size: 10px;
     }
-  }
-
-  // ── 标签区 ──
-  .batch-tag-create {
-    padding: 12px 14px 8px;
-
-    :deep(.el-input__wrapper) {
-      background: $bg-surface;
-      box-shadow: none;
-      border-radius: $radius-sm;
-      padding: 2px 12px;
-    }
-
-    :deep(.el-input-group__append) {
-      background: rgba($brand-start, 0.15);
-      .el-button { color: #c4b5fd; font-weight: 500; }
-    }
-  }
-
-  .batch-tag-list {
-    flex: 1;
-    padding: 8px 14px 14px;
-    overflow-y: auto;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-content: start;
-  }
-
-  .batch-tag-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 5px 12px;
-    border: 1px solid;
-    border-radius: 14px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all $transition-fast;
-    background: transparent;
-    user-select: none;
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-
-      .batch-tag-delete {
-        opacity: 0.85;
-      }
-    }
-
-    &.selected {
-      font-weight: 600;
-
-      .batch-tag-delete {
-        color: #fff !important;
-        opacity: 0.85;
-      }
-
-      .batch-tag-delete:hover {
-        opacity: 1;
-        background: rgba($overlay-rgb, 0.2);
-      }
-    }
-
-    .batch-tag-check { font-size: 12px; }
-
-    .batch-tag-delete {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 16px;
-      height: 16px;
-      margin-left: 2px;
-      margin-right: -4px;
-      border-radius: 50%;
-      font-size: 11px;
-      opacity: 0;
-      transition: all $transition-fast;
-      cursor: pointer;
-
-      &:hover {
-        opacity: 1 !important;
-        background: rgba($danger-color, 0.85);
-        color: #fff !important;
-      }
-    }
-  }
-
-  .batch-empty {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 24px 0;
-    color: $text-muted;
-    font-size: 13px;
   }
 
   // ── Footer ──
