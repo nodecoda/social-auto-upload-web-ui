@@ -1,6 +1,7 @@
+from collections.abc import Iterable
 from pathlib import Path
 
-from flask import redirect
+from flask import Response, redirect
 
 from storage.base import StorageBackend
 
@@ -8,7 +9,7 @@ from storage.base import StorageBackend
 class S3Storage(StorageBackend):
     type = "s3"
 
-    def __init__(self, endpoint, access_key, secret_key, bucket, region="", base_dir=None):
+    def __init__(self, endpoint: str, access_key: str, secret_key: str, bucket: str, region: str = "", base_dir: str | Path | None = None) -> None:
         import boto3
         from boto3.s3.transfer import TransferConfig
         from botocore.config import Config
@@ -45,12 +46,12 @@ class S3Storage(StorageBackend):
         )
         return relative_path
 
-    def save_stream(self, stream_iter, relative_path: str) -> str:
+    def save_stream(self, stream_iter: Iterable[bytes], relative_path: str) -> str:
         class _StreamToFileObj:
             """包一个 bytes 迭代器为 boto3 upload_fileobj 接受的 file-like 对象"""
-            def __init__(self, it):
+            def __init__(self, it: Iterable[bytes]) -> None:
                 self._it = it
-            def read(self, size=-1):
+            def read(self, size: int = -1) -> bytes:
                 if size is None or size < 0:
                     # 一次性读完（boto3 罕见调用）
                     return b''.join(self._it)
@@ -58,7 +59,7 @@ class S3Storage(StorageBackend):
                     return next(self._it)
                 except StopIteration:
                     return b''
-            def close(self):
+            def close(self) -> None:
                 pass
         self.client.upload_fileobj(
             _StreamToFileObj(stream_iter),
@@ -108,6 +109,6 @@ class S3Storage(StorageBackend):
         except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
             return None
 
-    def serve(self, relative_path: str):
+    def serve(self, relative_path: str) -> Response:
         url = self.get_url(relative_path)
         return redirect(url)

@@ -1,6 +1,7 @@
+from collections.abc import Iterable
 from pathlib import Path
 
-from flask import send_from_directory
+from flask import Response, send_from_directory
 
 from storage.base import StorageBackend
 
@@ -8,7 +9,7 @@ from storage.base import StorageBackend
 class LocalStorage(StorageBackend):
     type = "local"
 
-    def __init__(self, base_dir):
+    def __init__(self, base_dir: str | Path) -> None:
         self.base_dir = Path(base_dir)
 
     def save(self, file_data: bytes, relative_path: str) -> str:
@@ -17,7 +18,7 @@ class LocalStorage(StorageBackend):
         full_path.write_bytes(file_data)
         return relative_path
 
-    def save_stream(self, stream_iter, relative_path: str) -> str:
+    def save_stream(self, stream_iter: Iterable[bytes], relative_path: str) -> str:
         full_path = self.base_dir / relative_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
         with open(full_path, 'wb') as f:
@@ -43,7 +44,7 @@ class LocalStorage(StorageBackend):
     def exists(self, relative_path: str) -> bool:
         return (self.base_dir / relative_path).exists()
 
-    def serve(self, relative_path: str):
+    def serve(self, relative_path: str) -> Response:
         full_path = self.base_dir / relative_path
         directory = str(full_path.parent)
         filename = full_path.name

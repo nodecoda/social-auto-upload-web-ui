@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from storage.base import StorageBackend
+
 
 def _read_storage_config() -> tuple[str, dict]:
     """从 SQLite settings 表读取存储配置"""
@@ -12,7 +14,7 @@ def _read_storage_config() -> tuple[str, dict]:
     return cfg.get("type", "local"), cfg.get("s3", {})
 
 
-def get_storage():
+def get_storage() -> StorageBackend:
     """根据 SQLite 配置返回对应的存储实例"""
     from conf import BASE_DIR
 
@@ -33,7 +35,7 @@ def get_storage():
         return LocalStorage(BASE_DIR)
 
 
-def get_storage_by_type(storage_type: str):
+def get_storage_by_type(storage_type: str) -> StorageBackend:
     """根据素材的 storage_type 字段返回对应的存储实例，用于读取已有文件。
 
     与 get_storage() 不同，此函数不会参考当前全局配置，而是仅根据
@@ -68,11 +70,11 @@ def get_storage_by_type(storage_type: str):
     return LocalStorage(BASE_DIR)
 
 
-def reset_storage():
+def reset_storage() -> None:
     """切换存储配置后调用（目前不需要缓存，每次 get_storage 重新读取配置）"""
 
 
-def resolve_material_path(path_or_stored_path):
+def resolve_material_path(path_or_stored_path: str | None) -> str | None:
     """统一素材路径解析：stored_path → 本地绝对路径。
 
     视频发布、图集发布、抽帧、封面……所有需要把素材表的
