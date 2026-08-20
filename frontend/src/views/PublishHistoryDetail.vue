@@ -162,7 +162,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -171,29 +171,71 @@ import { useAccountStore } from '@/stores/account'
 import { accountApi } from '@/api/account'
 import { historyApi } from '@/api/v2'
 import { platformList, getPlatformByKey } from '@/config/platforms'
+import { type ApiResponse } from '@/utils/request'
 import AccountSidebar from '@/components/AccountSidebar.vue'
 import PublishStats from '@/components/PublishStats.vue'
+
+interface BatchItem {
+  account_id: number | string
+  status: string
+  created_at?: string
+  duration?: number
+  publish_url?: string
+  error_message?: string
+  account_configs?: Record<string, unknown>
+}
+
+interface HistoryBatch {
+  id: string
+  title: string
+  status: string
+  description?: string
+  created_at?: string
+  schedule_time?: string
+  started_at?: string
+  finished_at?: string
+  cover_url?: string
+  account_count?: number
+  items: BatchItem[]
+}
+
+interface PlatformAccount {
+  id: number | string
+  name: string
+  platform: string
+  status: string
+  avatar?: string
+}
+
+interface AccountGroup {
+  key: string
+  name: string
+  color: string
+  logo?: string
+  letter: string
+  accounts: PlatformAccount[]
+}
 
 const route = useRoute()
 const router = useRouter()
 const accountStore = useAccountStore()
 
-const batch = ref(null)
+const batch = ref<HistoryBatch | null>(null)
 const loading = ref(false)
 const error = ref('')
-const selectedAccountId = ref(null)
-const metaOpen = ref([])
-const expandedGroups = reactive(new Set())
-const readonlyPublishAccountIds = new Set()  // 空 Set，AccountSidebar 内部不过滤
+const selectedAccountId = ref<number | string | null>(null)
+const metaOpen = ref<string[]>([])
+const expandedGroups = reactive(new Set<string>())
+const readonlyPublishAccountIds = new Set<number | string>()  // 空 Set，AccountSidebar 内部不过滤
 
-const batchAccounts = computed(() => {
+const batchAccounts = computed<PlatformAccount[]>(() => {
   if (!batch.value) return []
-  return accountStore.accounts.filter(a =>
-    batch.value.items.some(it => it.account_id === a.id)
+  return accountStore.accounts.filter((a: PlatformAccount) =>
+    batch.value!.items.some(it => it.account_id === a.id)
   )
 })
 
-const readonlyAccountGroups = computed(() => {
+const readonlyAccountGroups = computed<AccountGroup[]>(() => {
   return platformList
     .map(p => ({
       key: p.key,
@@ -206,37 +248,39 @@ const readonlyAccountGroups = computed(() => {
     .filter(g => g.accounts.length > 0)
 })
 
-const selectedItem = computed(() => {
+const selectedItem = computed<BatchItem | null>(() => {
   if (!batch.value || !selectedAccountId.value) return null
   return batch.value.items.find(it => it.account_id === selectedAccountId.value) || null
 })
 
-const selectedAccount = computed(() => {
+const selectedAccount = computed<PlatformAccount | null>(() => {
   if (!selectedItem.value) return null
-  return accountStore.accounts.find(a => a.id === selectedItem.value.account_id) || null
+  return accountStore.accounts.find((a: PlatformAccount) => a.id === selectedItem.value!.account_id) || null
 })
 
 const currentPlatformConfig = computed(() => {
   if (!selectedAccount.value) return null
-  const key = platformList.find(p => p.name === selectedAccount.value.platform)?.key
+  const key = platformList.find(p => p.name === selectedAccount.value!.platform)?.key
   return key ? getPlatformByKey(key) : null
 })
 
-function getCfgField(item, field) {
-  return item?.account_configs?.[field]
+function getCfgField<T = string | string[]>(item: BatchItem | null, field: string): T | undefined {
+  return item?.account_configs?.[field] as T | undefined
 }
 
-function getCoverUrl(item) {
+function getCoverUrl(item: BatchItem | null): string {
   if (!item) return ''
   const cfg = item.account_configs || {}
+  const coverLandscape = cfg.coverLandscape as { url?: string } | undefined
+  const coverPortrait = cfg.coverPortrait as { url?: string } | undefined
   // 优先用 per-account cover 自带的 .url 字段（后端已构造为绝对 URL）
-  if (cfg.coverLandscape?.url) return cfg.coverLandscape.url
-  if (cfg.coverPortrait?.url) return cfg.coverPortrait.url
+  if (coverLandscape?.url) return coverLandscape.url
+  if (coverPortrait?.url) return coverPortrait.url
   // 兜底：batch 级 cover_url
   return batch.value?.cover_url || ''
 }
 
-function statusLabel(status) {
+function statusLabel(status: string): string {
   return ({
     pending: '等待中',
     running: '发布中',
@@ -247,13 +291,13 @@ function statusLabel(status) {
   }[status] || status)
 }
 
-function formatTime(iso) {
+function formatTime(iso?: string): string {
   if (!iso) return ''
   const d = new Date(iso)
   return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-function formatDuration(s) {
+function formatDuration(s: number | null | undefined): string {
   if (s == null) return ''
   if (s < 60) return `${s}秒`
   return `${Math.floor(s / 60)}分${s % 60}秒`
@@ -261,7 +305,7 @@ function formatDuration(s) {
 
 async function copyBatchId() {
   try {
-    await navigator.clipboard.writeText(batch.value.id)
+    await navigator.clipboard.writeText(batch.value!.id)
     ElMessage.success('已复制批次 ID')
   } catch (e) {
     ElMessage.error('复制失败')
@@ -272,12 +316,12 @@ function goBack() {
   router.push('/publish-history')
 }
 
-function toggleGroup(key) {
+function toggleGroup(key: string) {
   if (expandedGroups.has(key)) expandedGroups.delete(key)
   else expandedGroups.add(key)
 }
 
-function selectAccount(account /*, group */) {
+function selectAccount(account: PlatformAccount /*, group */) {
   selectedAccountId.value = account.id
 }
 
@@ -285,28 +329,32 @@ async function fetchDetail() {
   error.value = ''
   loading.value = true
   try {
-    const res = await historyApi.getBatch(route.params.batchId)
+    const res = (await historyApi.getBatch(route.params.batchId)) as ApiResponse<HistoryBatch>
     // 拦截器只在 data.code === 200 时 resolve，否则 reject；到这里就是成功
-    batch.value = res.data
+    batch.value = res.data!
     // 默认选中：找第一个 account_id 在 store 里能找到的 item
     const firstValid = batch.value.items.find(it =>
       it.account_id != null &&
-      accountStore.accounts.some(a => a.id === it.account_id)
+      accountStore.accounts.some((a: PlatformAccount) => a.id === it.account_id)
     )
     if (firstValid) selectedAccountId.value = firstValid.account_id
     // 展开所有有账号的组
     readonlyAccountGroups.value.forEach(g => expandedGroups.add(g.key))
   } catch (e) {
     // 拦截器已经 toast（4xx 用后端 msg，5xx 用通用文案）；这里只补行为
-    if (e?.response?.status === 404) {
+    const err = e as { response?: { status?: number }; message?: string }
+    if (err?.response?.status === 404) {
       // 批次不存在 → 跳回列表
       router.replace('/publish-history')
-    } else if (e?.response?.status >= 500 || !e?.response) {
-      // 服务端错误或网络错误 → 主区域顶部红条 + 重试按钮
+    } else if (err?.response?.status != null && err.response.status >= 500) {
+      // 服务端错误 → 主区域顶部红条 + 重试按钮
+      error.value = '加载失败，请稍后重试'
+    } else if (!err?.response) {
+      // 网络错误
       error.value = '加载失败，请稍后重试'
     } else {
       // 其它 4xx（401/403 等）→ 红条
-      error.value = e.message || '加载失败'
+      error.value = err.message || '加载失败'
     }
   } finally {
     loading.value = false
@@ -317,7 +365,7 @@ onMounted(async () => {
   // 串行：先加载账号 store，再拉详情
   try {
     if (accountStore.accounts.length === 0) {
-      const res = await accountApi.getAccounts()
+      const res = (await accountApi.getAccounts()) as ApiResponse<PlatformAccount[]>
       accountStore.setAccounts(res.data || [])
     }
   } catch (e) {

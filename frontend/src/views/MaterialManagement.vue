@@ -210,8 +210,8 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted, type Component } from 'vue'
 import {
   Search,
   Refresh,
@@ -231,20 +231,54 @@ import { materialsApi } from '@/api/materials'
 import { getFileUrl } from '@/utils/storage'
 import { useAppStore } from '@/stores/app'
 import MaterialUploader from '@/components/MaterialUploader.vue'
+import { type ApiResponse } from '@/utils/request'
 
 const appStore = useAppStore()
 
+// ===== 类型定义 =====
+type MaterialType = 'all' | 'image' | 'video'
+type MaterialId = number | string
+
+interface MaterialItem {
+  id: MaterialId
+  original_filename: string
+  file_type: 'image' | 'video'
+  mime_type?: string
+  stored_path: string
+  thumbnail_url?: string
+  storage_type?: string
+  file_size?: number
+  duration?: number
+  upload_time?: string
+}
+
+interface MaterialListData {
+  items?: MaterialItem[]
+  total?: number
+}
+
+interface BatchDeleteData {
+  deleted?: number
+  failed?: MaterialId[]
+}
+
+interface TypeOption {
+  value: MaterialType
+  label: string
+  icon: Component
+}
+
 // 搜索/筛选/分页
 const searchKeyword = ref('')
-const typeFilter = ref('all')
+const typeFilter = ref<MaterialType>('all')
 const page = ref(1)
 const pageSize = ref(24)
-const items = ref([])
+const items = ref<MaterialItem[]>([])
 const total = ref(0)
 const loading = ref(false)
 const isRefreshing = ref(false)
 
-const typeOptions = [
+const typeOptions: TypeOption[] = [
   { value: 'all', label: '全部', icon: Grid },
   { value: 'image', label: '图片', icon: PictureFilled },
   { value: 'video', label: '视频', icon: VideoCamera },
@@ -257,11 +291,11 @@ const hasFilter = computed(
 // 对话框控制
 const uploadDialogVisible = ref(false)
 const previewDialogVisible = ref(false)
-const currentMaterial = ref(null)
+const currentMaterial = ref<MaterialItem | null>(null)
 
 // 批量选择
 const selectMode = ref(false)
-const selectedIds = ref(new Set())
+const selectedIds = ref(new Set<MaterialId>())
 const batchDeleting = ref(false)
 const selectedCount = computed(() => selectedIds.value.size)
 const allSelected = computed(
@@ -270,41 +304,41 @@ const allSelected = computed(
 
 function onSearchInput() {
   page.value = 1
-  selectedIds.value = new Set()
+  selectedIds.value = new Set<MaterialId>()
   loadPage()
 }
 
 function onSearchClear() {
   page.value = 1
-  selectedIds.value = new Set()
+  selectedIds.value = new Set<MaterialId>()
   loadPage()
 }
 
-function onTypeChange(value) {
+function onTypeChange(value: MaterialType) {
   typeFilter.value = value
   page.value = 1
-  selectedIds.value = new Set()
+  selectedIds.value = new Set<MaterialId>()
   loadPage()
 }
 
 function onPageSizeChange() {
   page.value = 1
-  selectedIds.value = new Set()
+  selectedIds.value = new Set<MaterialId>()
   loadPage()
 }
 
 async function loadPage() {
   loading.value = true
   try {
-    const resp = await materialsApi.list({
+    const resp = (await materialsApi.list({
       type: typeFilter.value,
       keyword: searchKeyword.value.trim(),
       page: page.value,
       page_size: pageSize.value,
-    })
+    })) as ApiResponse<MaterialListData>
     if (resp.code === 200) {
-      items.value = resp.data.items || []
-      total.value = resp.data.total || 0
+      items.value = resp.data?.items || []
+      total.value = resp.data?.total || 0
     }
   } catch (e) {
     console.error('获取素材列表出错:', e)
@@ -324,23 +358,24 @@ async function fetchMaterials() {
   }
 }
 
-function getThumbUrl(mat) {
+function getThumbUrl(mat: MaterialItem): string {
   if (mat.thumbnail_url) return mat.thumbnail_url
   return getFileUrl(mat.stored_path)
 }
 
-function getFullUrl(mat) {
+function getFullUrl(mat: MaterialItem): string {
   return getFileUrl(mat.stored_path)
 }
 
 const placeholderSvg =
   'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzFhMWQyNCIvPjx0ZXh0IHg9IjEwMCIgeT0iMTA1IiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TG9hZGluZyBmYWlsZWQ8L3RleHQ+PC9zdmc+'
 
-function onImageError(e) {
-  e.target.src = placeholderSvg
+function onImageError(e: Event) {
+  const img = e.target as HTMLImageElement | null
+  if (img) img.src = placeholderSvg
 }
 
-function formatFileSize(bytes) {
+function formatFileSize(bytes: number): string {
   if (!bytes) return '0 B'
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
@@ -348,15 +383,15 @@ function formatFileSize(bytes) {
   return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
 }
 
-function formatDate(iso) {
+function formatDate(iso: string): string {
   if (!iso) return ''
   const d = new Date(iso.replace(' ', 'T') + (iso.endsWith('Z') ? '' : 'Z'))
   if (isNaN(d.getTime())) return iso
-  const pad = (n) => String(n).padStart(2, '0')
+  const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function openPreview(mat) {
+function openPreview(mat: MaterialItem) {
   currentMaterial.value = mat
   previewDialogVisible.value = true
 }
@@ -370,11 +405,12 @@ async function onMaterialsUploaded() {
   await loadPage()
   // 同步 store（保持左侧菜单/发布界面等使用 store 的视图一致）
   materialsApi.list({ page_size: 200 }).then((r) => {
-    if (r.code === 200) appStore.setMaterials(r.data.items || [])
+    const resp = r as ApiResponse<MaterialListData>
+    if (resp.code === 200) appStore.setMaterials(resp.data?.items || [])
   })
 }
 
-function handleDelete(mat) {
+function handleDelete(mat: MaterialItem) {
   ElMessageBox.confirm(
     `确定要删除素材「${mat.original_filename}」吗？\n将同时删除对应的文件，该操作不可恢复。`,
     '删除素材',
@@ -386,7 +422,7 @@ function handleDelete(mat) {
   )
     .then(async () => {
       try {
-        const response = await materialsApi.delete(mat.id)
+        const response = (await materialsApi.delete(mat.id)) as ApiResponse<unknown>
         if (response.code === 200) {
           appStore.removeMaterial(mat.id)
           ElMessage.success('删除成功')
@@ -397,7 +433,8 @@ function handleDelete(mat) {
           await loadPage()
           // 同步 store
           materialsApi.list({ page_size: 200 }).then((r) => {
-            if (r.code === 200) appStore.setMaterials(r.data.items || [])
+            const resp = r as ApiResponse<MaterialListData>
+            if (resp.code === 200) appStore.setMaterials(resp.data?.items || [])
           })
         } else {
           ElMessage.error(response.msg || '删除失败')
@@ -413,15 +450,15 @@ function handleDelete(mat) {
 // ===== 批量删除 =====
 function enterSelectMode() {
   selectMode.value = true
-  selectedIds.value = new Set()
+  selectedIds.value = new Set<MaterialId>()
 }
 
 function exitSelectMode() {
   selectMode.value = false
-  selectedIds.value = new Set()
+  selectedIds.value = new Set<MaterialId>()
 }
 
-function toggleSelect(mat) {
+function toggleSelect(mat: MaterialItem) {
   const next = new Set(selectedIds.value)
   if (next.has(mat.id)) next.delete(mat.id)
   else next.add(mat.id)
@@ -442,7 +479,7 @@ function toggleSelectAll() {
   }
 }
 
-function isCardClickSelectable(e) {
+function isCardClickSelectable(e: Event) {
   // 选择态下点击卡片切换选中，但不拦截点击预览/删除等按钮（它们自带 .stop）
   return selectMode.value
 }
@@ -465,11 +502,10 @@ function handleBatchDelete() {
     .then(async () => {
       batchDeleting.value = true
       try {
-        const response = await materialsApi.batchDelete(ids)
+        const response = (await materialsApi.batchDelete(ids)) as ApiResponse<BatchDeleteData>
         if (response.code === 200) {
-          const data = response.data || {}
-          const deleted = data.deleted != null ? data.deleted : 0
-          const failed = data.failed != null ? data.failed : []
+          const deleted = response.data?.deleted ?? 0
+          const failed = response.data?.failed ?? []
           ids.forEach((id) => appStore.removeMaterial(id))
           if (failed.length > 0) {
             ElMessage.warning(`已删除 ${deleted} 个，${failed.length} 个失败`)
@@ -480,12 +516,13 @@ function handleBatchDelete() {
           if (items.value.length - deleted <= 0 && page.value > 1) {
             page.value -= 1
           }
-          selectedIds.value = new Set()
+          selectedIds.value = new Set<MaterialId>()
           selectMode.value = false
           await loadPage()
           // 同步 store
           materialsApi.list({ page_size: 200 }).then((r) => {
-            if (r.code === 200) appStore.setMaterials(r.data.items || [])
+            const resp = r as ApiResponse<MaterialListData>
+            if (resp.code === 200) appStore.setMaterials(resp.data?.items || [])
           })
         } else {
           ElMessage.error(response.msg || '批量删除失败')

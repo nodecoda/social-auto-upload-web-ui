@@ -197,7 +197,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -212,6 +212,47 @@ import { useAppStore } from '@/stores/app'
 import {
   platformList, platformNameToKey, getPlatformByKey,
 } from '@/config/platforms'
+import { type ApiResponse } from '@/utils/request'
+
+interface AccountItem {
+  id: number | string
+  type: string
+  filePath: string
+  name: string
+  status: string
+  platform: string
+  avatar: string
+  fans: number
+  likes: number
+  follows: number
+  stats: unknown[]
+  tags: unknown[]
+}
+
+interface MaterialItem {
+  id: number | string
+  original_filename: string
+  file_type: 'image' | 'video' | string
+  file_size?: number
+  upload_time?: string
+}
+
+interface MaterialListResponse {
+  items?: MaterialItem[]
+  total?: number
+}
+
+interface PlatformStats {
+  total: number
+  [cssClass: string]: number
+}
+
+interface SortedPlatform {
+  id: number
+  key: string
+  name: string
+  count: number
+}
 
 const router = useRouter()
 const accountStore = useAccountStore()
@@ -224,7 +265,7 @@ const handleBatchCheck = async () => {
   if (isChecking.value) return
   isChecking.value = true
   try {
-    const res = await accountApi.getValidAccounts()
+    const res = (await accountApi.getValidAccounts()) as ApiResponse<AccountItem[]>
     if (res.code === 200 && res.data) {
       accountStore.setAccounts(res.data)
       ElMessage.success('账号检查完成')
@@ -241,7 +282,7 @@ const handleBatchCheck = async () => {
 
 // 账号统计数据 - 从真实数据计算
 const accountStats = computed(() => {
-  const accounts = accountStore.accounts
+  const accounts = accountStore.accounts as AccountItem[]
   const normal = accounts.filter(a => a.status === '正常').length
   const abnormal = accounts.filter(a => a.status !== '正常' && a.status !== '验证中').length
   return {
@@ -252,9 +293,9 @@ const accountStats = computed(() => {
 })
 
 // 平台统计数据 - 从真实数据计算
-const platformStats = computed(() => {
-  const accounts = accountStore.accounts
-  const counts = {}
+const platformStats = computed<PlatformStats>(() => {
+  const accounts = accountStore.accounts as AccountItem[]
+  const counts: Record<string, number> = {}
   platformList.forEach(p => {
     counts[p.cssClass] = accounts.filter(a => a.platform === p.name).length
   })
@@ -265,7 +306,7 @@ const platformStats = computed(() => {
 
 // 已接入平台列表 — 参考 DraftBox.channels 风格:
 // 有账号的平台排前面 + count 降序,展示全部 15 个平台
-const sortedPlatforms = computed(() => {
+const sortedPlatforms = computed<SortedPlatform[]>(() => {
   return platformList
     .map(p => ({
       id: p.id,
@@ -277,9 +318,9 @@ const sortedPlatforms = computed(() => {
 })
 
 // 平台 chip 溢出检测 — 触发跑马灯滚动
-const platformTrackRef = ref(null)
+const platformTrackRef = ref<HTMLElement | null>(null)
 const platformOverflow = ref(false)
-let platformResizeObserver = null
+let platformResizeObserver: ResizeObserver | null = null
 
 function detectPlatformOverflow() {
   const el = platformTrackRef.value
@@ -310,13 +351,13 @@ onBeforeUnmount(() => {
 })
 
 // 复用 platforms.js 的 getPlatformLogo (按 key 查 logo)
-function getPlatformLogo(platformKey) {
+function getPlatformLogo(platformKey: string): string | null {
   return getPlatformByKey(platformKey)?.logo || null
 }
 
 // 素材统计数据 - 从 file_type 字段直接统计
 const contentStats = computed(() => {
-  const materials = appStore.materials
+  const materials = appStore.materials as MaterialItem[]
   const videos = materials.filter(m => m.file_type === 'video').length
   const images = materials.filter(m => m.file_type === 'image').length
   return {
@@ -328,24 +369,25 @@ const contentStats = computed(() => {
 })
 
 // 最近上传的素材（最多显示5条）
-const recentMaterials = computed(() => {
-  return [...appStore.materials]
-    .sort((a, b) => new Date(b.upload_time) - new Date(a.upload_time))
+const recentMaterials = computed<MaterialItem[]>(() => {
+  return [...(appStore.materials as MaterialItem[])]
+    .sort((a, b) => new Date(b.upload_time || '').getTime() - new Date(a.upload_time || '').getTime())
     .slice(0, 5)
 })
 
 // 获取文件类型
-const FILE_TYPE_MAP = { video: '视频', image: '图片' }
-const getFileType = (fileType) => FILE_TYPE_MAP[fileType] || '其他'
+const FILE_TYPE_MAP: Record<string, string> = { video: '视频', image: '图片' }
+const getFileType = (fileType: string): string => FILE_TYPE_MAP[fileType] || '其他'
 
 // 获取文件类型标签颜色
-const getFileTypeTag = (filename) => {
+const getFileTypeTag = (filename: string): string => {
   const type = getFileType(filename)
-  return { '视频': 'success', '图片': 'warning', '其他': 'info' }[type] || 'info'
+  const tagMap: Record<string, string> = { '视频': 'success', '图片': 'warning', '其他': 'info' }
+  return tagMap[type] || 'info'
 }
 
 // 导航到指定路由
-const navigateTo = (path) => {
+const navigateTo = (path: string) => {
   router.push(path)
 }
 
@@ -355,8 +397,8 @@ const fetchDashboardData = async () => {
   try {
     // 并行获取账号和素材数据
     const [accountRes, materialRes] = await Promise.allSettled([
-      accountApi.getAccounts(),
-      materialsApi.list({ page_size: 200 })
+      accountApi.getAccounts() as Promise<ApiResponse<AccountItem[]>>,
+      materialsApi.list({ page_size: 200 }) as Promise<ApiResponse<MaterialListResponse>>
     ])
 
     if (accountRes.status === 'fulfilled' && accountRes.value.code === 200) {
@@ -373,8 +415,7 @@ const fetchDashboardData = async () => {
 }
 
 </script>
-
-<script>
+<script lang="ts">
 // Expose border color for template usage（用 CSS 变量，随主题切换）
 export default {
   borderColor: 'var(--border)'
