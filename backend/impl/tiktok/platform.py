@@ -615,7 +615,7 @@ class TiktokPlatform(BasePlatform):
                         f"in frame url={frame.url[:60]!r}"
                     )
                     return
-                except Exception:
+                except Exception:  # noqa: S112 -- Frame 不可访问或 button 不在,try next frame
                     # Frame 不可访问或 button 不在,try next frame
                     continue
             logger.info("[关闭弹窗] _dismiss_publish_confirm_modal: button not found in any frame within 10s")

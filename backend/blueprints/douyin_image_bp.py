@@ -341,7 +341,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
                         uploaded = True
                         logger.info(f"图片上传成功，选择器: {selector}")
                         break
-                except Exception:
+                except Exception:  # noqa: S112 -- 单个选项解析失败,跳过该项继续
                     continue
 
             if not uploaded:

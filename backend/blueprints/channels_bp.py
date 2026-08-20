@@ -336,7 +336,7 @@ async def _fetch_activities_via_browser(cookie_file: str, keyword: str) -> dict:
                     continue
                 try:
                     name = (await name_el.inner_text()).strip()
-                except Exception:
+                except Exception:  # noqa: S112 -- 单个元素解析失败,跳过该项继续
                     continue
                 if not name:
                     continue
@@ -444,7 +444,7 @@ async def _fetch_locations_via_browser(cookie_file: str, keyword: str) -> dict:
                     continue
                 try:
                     name = (await name_el.inner_text()).strip()
-                except Exception:
+                except Exception:  # noqa: S112 -- 单个元素解析失败,跳过该项继续
                     continue
                 if not name:
                     continue

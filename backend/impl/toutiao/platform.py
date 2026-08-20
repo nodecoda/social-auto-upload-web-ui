@@ -114,7 +114,7 @@ class ToutiaoPlatform(BasePlatform):
                                 logger.info("[登录] 找到二维码图片，选择器: %s", selector)
                                 break
                             src = None
-                    except Exception:
+                    except Exception:  # noqa: S112 -- 单个候选源探测失败,跳过继续
                         continue
 
                 if src:
@@ -866,7 +866,7 @@ class ToutiaoPlatform(BasePlatform):
                             await loc.click(timeout=wait_timeout_ms)
                             logger.info("[封面] 已点击「%s」(选择器=%s)", text, sel)
                             return True
-                    except Exception:
+                    except Exception:  # noqa: S112 -- 单个候选源探测失败,跳过继续
                         continue
                 logger.info("[封面] 未找到「%s」按钮,跳过", text)
                 return False
