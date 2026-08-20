@@ -93,14 +93,15 @@
   </el-drawer>
 </template>
 
-<script setup>
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+<script setup lang="ts">
+import { ref, computed, watch, onBeforeUnmount, type PropType } from 'vue'
+import { type ApiResponse } from '@/utils/request'
 import { VideoPlay, VideoPause, InfoFilled, WarningFilled } from '@element-plus/icons-vue'
 import { alipayApi } from '@/api/alipay'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  accountId: { type: [String, Number], default: '' },
+  accountId: { type: [String, Number] as PropType<string | number | null>, default: '' },
 })
 const emit = defineEmits(['update:modelValue', 'select'])
 
@@ -108,7 +109,7 @@ const visible = ref(props.modelValue)
 const loading = ref(false)
 const errorMsg = ref('')
 // 全量音乐列表(queryAllMaterial.json 一次性返回全部)
-const allMusicList = ref([])
+const allMusicList = ref<any[]>([])
 const pageNum = ref(1)
 // 每页条数:贴近支付宝原生音乐弹窗(实测每页 5 条)
 const PAGE_SIZE = 5
@@ -123,7 +124,7 @@ const pagedMusicList = computed(() => {
 const hoverId = ref('')
 
 // 试听状态(单例播放)
-const audioRef = ref(null)
+const audioRef = ref<HTMLAudioElement | null>(null)
 const playingId = ref(null)
 const currentAudioUrl = ref('')
 
@@ -152,7 +153,7 @@ async function fetchMusicList() {
   loading.value = true
   errorMsg.value = ''
   try {
-    const resp = await alipayApi.musicList(props.accountId)
+    const resp = (await alipayApi.musicList(props.accountId)) as ApiResponse<{ list?: any[] }>
     if (resp.code === 200) {
       allMusicList.value = resp.data?.list || []
       if (allMusicList.value.length === 0) {

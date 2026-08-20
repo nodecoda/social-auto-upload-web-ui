@@ -65,8 +65,9 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
+<script setup lang="ts">
+import { ref, type PropType } from 'vue'
+import { type ApiResponse } from '@/utils/request'
 import { useAccountStore } from '@/stores/account'
 import { imagePublishApi } from '@/api/imagePublish'
 import { weixinGzhApi } from '@/api/weixin_gzh'
@@ -75,7 +76,7 @@ import { useAutoExtractHashtags } from '@/utils/hashtag'
 import RemoteSearchSelect from '@/components/common/RemoteSearchSelect.vue'
 
 const props = defineProps({
-  accountId: { type: [Number, Object], default: null },
+  accountId: { type: [Number, Object] as PropType<number | string | null>, default: null },
   disabled: { type: Boolean, default: false },
 })
 
@@ -104,11 +105,25 @@ const claimSourceOptions = [
   { label: '无需声明', value: '无需声明' },
 ]
 
+// 公共数据/附加参数接口(见 publishFn 标注)
+// 公共数据/附加参数接口(见 publishFn 标注)
+interface PublishCommonData {
+  images: Array<{ id: number | string }>
+  coverImage?: { stored_path?: string } | null
+}
+
+// 批量发布场景的附加参数(均可选)
+interface PublishExtra {
+  batchId?: string
+  landscapeCoverMaterialId?: string
+  portraitCoverMaterialId?: string
+}
+
 const { form, hasAccountOverride, resetOverride, publicApi } = useChannelForm(
   WEIXIN_GZH_DEFAULTS,
   { props, emit },
   {
-    publishFn: async (accountId, accountName, commonData, merged, extra) => {
+    publishFn: async (accountId, accountName, commonData: PublishCommonData, merged, extra?: PublishExtra) => {
       const account = accountStore.accounts.find(a => a.id === accountId)
       if (!account) {
         emit('publish-result', { accountName, status: 'fail', message: '账号不存在' })
@@ -163,8 +178,8 @@ function addTag() {
 function removeTag(index) { form.tags.splice(index, 1) }
 
 // 贴图合集数据源(后端 type=贴图合集)
-async function fetchGzhImageCollections(keyword) {
-  const resp = await weixinGzhApi.getCollections(props.accountId, '贴图合集')
+async function fetchGzhImageCollections(keyword: string) {
+  const resp = (await weixinGzhApi.getCollections(props.accountId, '贴图合集')) as ApiResponse<{ list?: any[] }>
   const all = resp.data?.list || []
   const kw = keyword?.trim().toLowerCase()
   return {

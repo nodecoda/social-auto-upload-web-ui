@@ -90,9 +90,16 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch, computed, onUnmounted } from 'vue'
+<script setup lang="ts">
+import { ref, watch, computed, onUnmounted, type PropType } from 'vue'
 import { Search, CircleClose, Promotion, Picture, Check, MagicStick } from '@element-plus/icons-vue'
+
+// 服务端返回的选项项(其余字段透传)
+interface RemoteItem {
+  [key: string]: any
+}
+
+type FieldResolver = string | ((item: RemoteItem) => string)
 
 const props = defineProps({
   // v-model 绑定的名称字符串(原契约)
@@ -102,7 +109,7 @@ const props = defineProps({
   },
   // 回显用的完整对象(原契约)
   data: {
-    type: Object,
+    type: Object as PropType<Record<string, any> | null>,
     default: null
   },
   /**
@@ -111,7 +118,7 @@ const props = defineProps({
    * 组件内部零硬编码 api。
    */
   fetcher: {
-    type: Function,
+    type: Function as PropType<(keyword?: string) => Promise<{ list: any[]; total?: number }>>,
     required: true
   },
   /**
@@ -119,7 +126,7 @@ const props = defineProps({
    * 覆盖 name/mix_name/title、note_num 派生、嵌套封面图等所有差异。
    */
   fieldMap: {
-    type: Object,
+    type: Object as PropType<Record<string, FieldResolver>>,
     default: () => ({ label: 'name' })
   },
   /**
@@ -160,7 +167,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const loading = ref(false)
-const list = ref([])
+const list = ref<any[]>([])
 const selectedValue = ref(props.modelValue)
 const searchKeyword = ref('')
 const searchFocused = ref(false)
@@ -176,7 +183,7 @@ const popperClass = computed(() => `rss-popper rss-popper-${instanceId}`)
 const instanceId = Math.random().toString(36).slice(2, 9)
 
 // ─────────── 字段取值工具 ───────────
-function resolveField(item, mapping) {
+function resolveField(item: RemoteItem, mapping: FieldResolver) {
   if (mapping == null) return ''
   if (typeof mapping === 'function') {
     try { return mapping(item) || '' } catch { return '' }
@@ -214,7 +221,7 @@ function onCoverError(e) {
 // ─────────── 搜索逻辑 ───────────
 // 自动搜索 debounce:用户停止输入 2s 后自动触发(同时保留 Enter 立即触发)
 const AUTO_SEARCH_DELAY_MS = 2000
-let autoSearchTimer = null
+let autoSearchTimer: number | null = null
 
 function scheduleAutoSearch() {
   // 每次输入都重置计时器,实现「停顿 2s 自动触发」的 debounce 效果

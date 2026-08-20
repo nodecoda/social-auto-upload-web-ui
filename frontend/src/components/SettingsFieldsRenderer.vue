@@ -141,22 +141,43 @@
             </template>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import { type PropType } from 'vue'
+import { type ApiResponse } from '@/utils/request'
 import XhsPoiSelect from '@/components/xiaohongshu/PoiSelect.vue'
 import VivoPositionSelect from '@/components/vivo/PositionSelect.vue'
 import RemoteSearchSelect from '@/components/common/RemoteSearchSelect.vue'
 import { alipayApi } from '@/api/alipay'
 import { toutiaoApi } from '@/api/toutiao'
 
+// 平台 settingsFields 字段项(部分字段仅特定 type 使用;其余字段透传)
+interface SettingsField {
+  key: string
+  label?: string
+  type?: string
+  required?: boolean
+  description?: string
+  placeholder?: string
+  fullRow?: boolean
+  options?: any[]
+  visibleWhen?: { key: string; value: string | number | boolean }
+  disabledWhen?: { key: string; value: string | number | boolean }
+  disabledDate?: (date: Date) => boolean
+  disabledHours?: (row: Date) => number[]
+  disabledMinutes?: (row: Date, hour: number) => number[]
+  props?: Record<string, any>
+  [key: string]: any
+}
+
 const props = defineProps({
   // 平台配置 settingsFields 字段数组
-  fields: { type: Array, default: () => [] },
+  fields: { type: Array as PropType<SettingsField[]>, default: () => [] },
   // 发布表单（本组件直接读写其中的字段）
-  form: { type: Object, required: true },
+  form: { type: Object as PropType<Record<string, any>>, required: true },
   // 当前平台配置（color/key/hideFields 等）
-  platform: { type: Object, default: null },
+  platform: { type: Object as PropType<Record<string, any> | null>, default: null },
   selectedPlatform: { type: String, default: null },
-  selectedAccountId: { type: [String, Number], default: null },
+  selectedAccountId: { type: [String, Number] as PropType<string | number | null>, default: null },
 })
 
 // ----- 定时发布禁用逻辑（仅 scheduleTime 生效）-----
@@ -164,7 +185,7 @@ const props = defineProps({
 // 仅对 scheduleTime 字段生效,其它 datetime 字段不受影响
 const SCHEDULE_MAX_DAYS = 14
 
-function scheduleDisabledDate(date) {
+function scheduleDisabledDate(date: Date) {
   if (!date) return false
   const now = new Date()
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -204,7 +225,7 @@ function scheduleDisabledMinutes(fieldKey, hour) {
 }
 
 // ----- 小红书拍摄地点(POI)选择回调:存完整对象到 <key>Data,publishData 取 poi 名称 -----
-function handleXhsPoiChange(fieldKey, poi) {
+function handleXhsPoiChange(fieldKey: string, poi: Record<string, any> | null) {
   if (poi) {
     props.form[fieldKey + 'Data'] = poi
   } else {
@@ -213,7 +234,7 @@ function handleXhsPoiChange(fieldKey, poi) {
 }
 
 // ----- 支付宝/头条合集(compilation)回调:存完整对象便于回显 -----
-function handleAlipayCompilationChange(fieldKey, comp) {
+function handleAlipayCompilationChange(fieldKey: string, comp: Record<string, any> | null) {
   if (comp) {
     props.form.compilationData = comp
   } else {
@@ -223,9 +244,9 @@ function handleAlipayCompilationChange(fieldKey, comp) {
 
 // ----- 支付宝/头条合集(compilation) RemoteSearchSelect 数据源(后端搜索模式) -----
 // 按 selectedPlatform 切换 api:头条用 toutiaoApi,其余用 alipayApi
-async function fetchCompilation(keyword) {
+async function fetchCompilation(keyword?: string) {
   const api = props.selectedPlatform === 'toutiao' ? toutiaoApi : alipayApi
-  const resp = await api.searchCompilation(props.selectedAccountId, keyword || '')
+  const resp = (await api.searchCompilation(props.selectedAccountId, keyword || '')) as ApiResponse<{ list?: any[] }>
   return { list: resp.data?.list || [] }
 }
 

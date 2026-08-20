@@ -55,21 +55,22 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type PropType } from 'vue'
 import { Search, Loading } from '@element-plus/icons-vue'
 import { kuaishouImageApi } from '@/api/kuaishouImage'
+import { type ApiResponse } from '@/utils/request'
 
 const props = defineProps({
-  accountId: { type: [String, Number], default: '' },
+  accountId: { type: [String, Number] as PropType<string | number | null>, default: '' },
   modelValue: { type: String, default: '' },
-  data: { type: Object, default: null },
+  data: { type: Object as PropType<Record<string, any> | null>, default: null },
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const loading = ref(false)
-const musicList = ref([])
+const musicList = ref<any[]>([])
 const selectedMusicId = ref(props.modelValue || '')
 const searchKeyword = ref('')
 
@@ -89,7 +90,7 @@ async function handleSearch() {
   if (!keyword) { musicList.value = []; return }
   loading.value = true
   try {
-    const resp = await kuaishouImageApi.searchMusic(props.accountId || '', keyword, 0, 50)
+    const resp = (await kuaishouImageApi.searchMusic(props.accountId || '', keyword, 0, 50)) as ApiResponse<{ musicList?: any[] }>
     if (resp.code === 200) {
       musicList.value = resp.data?.musicList || []
     }

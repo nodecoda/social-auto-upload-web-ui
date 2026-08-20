@@ -48,18 +48,20 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, watch } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, watch, type PropType } from 'vue'
 import { Loading, Promotion } from '@element-plus/icons-vue'
 import { douyinImageApi } from '@/api/douyinImage'
+import { type ApiResponse } from '@/utils/request'
 
 const props = defineProps({
   accountId: {
-    type: [String, Number],
+    type: [String, Number] as PropType<string | number | null>,
     default: ''
   },
+  // v-model 存已选活动名数组(发布时按名称匹配 activity_id)
   modelValue: {
-    type: Array,
+    type: Array as PropType<string[]>,
     default: () => []
   }
 })
@@ -67,8 +69,8 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const loading = ref(false)
-const activityList = ref([])
-const selectedActivities = ref(props.modelValue || [])
+const activityList = ref<any[]>([])
+const selectedActivities = ref<string[]>(props.modelValue || [])
 
 watch(() => props.modelValue, (val) => {
   selectedActivities.value = val || []
@@ -89,7 +91,7 @@ watch(() => props.accountId, (val) => {
 async function loadActivityList() {
   loading.value = true
   try {
-    const resp = await douyinImageApi.getActivityList(props.accountId || '')
+    const resp = (await douyinImageApi.getActivityList(props.accountId || '')) as ApiResponse<{ activity_list?: any[] }>
     if (resp.code === 200) {
       activityList.value = resp.data?.activity_list || []
     }

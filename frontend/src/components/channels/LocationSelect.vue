@@ -45,14 +45,15 @@
   </div>
 </template>
 
-<script setup>
-import { ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type PropType } from 'vue'
 import { Search, Loading } from '@element-plus/icons-vue'
 import { channelsApi } from '@/api/channels'
+import { type ApiResponse } from '@/utils/request'
 
 const props = defineProps({
   accountId: {
-    type: [String, Number],
+    type: [String, Number] as PropType<string | number | null>,
     required: true
   },
   modelValue: {
@@ -60,7 +61,7 @@ const props = defineProps({
     default: ''
   },
   data: {
-    type: Object,
+    type: Object as PropType<Record<string, any> | null>,
     default: null
   }
 })
@@ -68,7 +69,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const loading = ref(false)
-const locationList = ref([])
+const locationList = ref<any[]>([])
 const selectedName = ref(props.modelValue)
 const searchKeyword = ref('')
 
@@ -101,7 +102,7 @@ async function handleSearch() {
   loading.value = true
   try {
     // 与合集不同:位置搜索必须把关键字传到后端,后端用 CloakBrowser 真实搜索
-    const resp = await channelsApi.getLocations(props.accountId, kw)
+    const resp = (await channelsApi.getLocations(props.accountId, kw)) as ApiResponse<{ list?: any[] }>
     if (resp.code === 200) {
       locationList.value = resp.data?.list || []
       console.log('[视频号位置] 列表:', locationList.value.length, '条')
