@@ -72,14 +72,14 @@ const props = defineProps({
     default: ''
   },
   data: {
-    type: Object as PropType<Record<string, any> | null>,
+    type: Object as PropType<HotspotItem | null>,
     default: null
   }
 })
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
-  (e: 'change', payload: Record<string, any> | null): void
+  (e: 'change', payload: HotspotItem | null): void
 }>()
 
 interface HotspotItem {
@@ -99,7 +99,7 @@ watch(() => props.modelValue, (val) => {
   selectedHotspot.value = val
   // 如果有值但 hotspotList 中没有对应的选项，直接把完整对象放到列表
   if (val && props.data && !hotspotList.value.find(h => h.word === val)) {
-    hotspotList.value.unshift(props.data as HotspotItem)
+    hotspotList.value.unshift(props.data)
   }
 }, { immediate: true })
 

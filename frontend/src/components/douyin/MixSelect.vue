@@ -70,14 +70,14 @@ const props = defineProps({
     default: ''
   },
   data: {
-    type: Object as PropType<Record<string, any> | null>,
+    type: Object as PropType<MixItem | null>,
     default: null
   }
 })
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
-  (e: 'change', payload: Record<string, any> | null): void
+  (e: 'change', payload: MixItem | null): void
 }>()
 
 const loading = ref(false)
@@ -102,7 +102,7 @@ watch(() => props.modelValue, (val) => {
   selectedMixId.value = val
   // 如果有值但 mixList 中没有对应的选项，直接把完整对象放到列表
   if (val && props.data && !mixList.value.find(m => m.mix_name === val)) {
-    mixList.value.unshift(props.data as MixItem)
+    mixList.value.unshift(props.data)
   }
 }, { immediate: true })
 

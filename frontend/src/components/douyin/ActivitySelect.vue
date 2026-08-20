@@ -68,7 +68,7 @@ const props = defineProps({
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string[]): void
-  (e: 'change', payload: any[]): void
+  (e: 'change', payload: ActivityItem[]): void
 }>()
 
 interface ActivityItem {
