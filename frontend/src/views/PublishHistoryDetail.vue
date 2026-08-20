@@ -51,33 +51,11 @@
 
         <template v-else>
           <!-- 1. 账号信息头 -->
-          <section class="account-header">
-            <div class="avatar" :style="{ borderColor: currentPlatformConfig?.color || '#666' }">
-              {{ selectedAccount?.name?.charAt(0) || '?' }}
-            </div>
-            <div class="header-text">
-              <div class="line-1">
-                <span class="account-name">{{ selectedAccount?.name || '已删除账号' }}</span>
-                <span v-if="currentPlatformConfig" class="platform-badge" :style="{ background: currentPlatformConfig.color + '20', color: currentPlatformConfig.color }">
-                  {{ currentPlatformConfig.name }}
-                </span>
-                <span class="status-tag" :class="`status-${selectedItem.status}`">{{ statusLabel(selectedItem.status) }}</span>
-              </div>
-              <div class="line-2">
-                <span class="meta-time">{{ formatTime(selectedItem.created_at) }}</span>
-                <span v-if="selectedItem.duration" class="meta-time">耗时 {{ formatDuration(selectedItem.duration) }}</span>
-              </div>
-            </div>
-            <a
-              v-if="selectedItem.status === 'success' && selectedItem.publish_url"
-              :href="selectedItem.publish_url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="view-link"
-            >
-              查看发布作品 →
-            </a>
-          </section>
+          <DetailAccountHeader
+            :item="selectedItem"
+            :account="selectedAccount"
+            :platform-config="currentPlatformConfig"
+          />
 
           <!-- 2. 内容快照 -->
           <PublishSnapshot
@@ -94,40 +72,11 @@
           </section>
 
           <!-- 4. 批次元信息 -->
-          <section class="batch-meta">
-            <el-collapse v-model="metaOpen">
-              <el-collapse-item title="批次元信息" name="meta">
-                <div class="meta-grid">
-                  <div class="meta-item">
-                    <span class="meta-label">批次 ID</span>
-                    <span class="meta-value">
-                      <code>{{ batch?.id }}</code>
-                      <el-button link size="small" @click="copyBatchId">复制</el-button>
-                    </span>
-                  </div>
-                  <div class="meta-item">
-                    <span class="meta-label">定时发布时间</span>
-                    <span class="meta-value">{{ batch?.schedule_time || '未设置' }}</span>
-                  </div>
-                  <div class="meta-item">
-                    <span class="meta-label">开始时间</span>
-                    <span class="meta-value">{{ batch?.started_at || '—' }}</span>
-                  </div>
-                  <div class="meta-item">
-                    <span class="meta-label">结束时间</span>
-                    <span class="meta-value">{{ batch?.finished_at || '—' }}</span>
-                  </div>
-                  <div class="meta-item">
-                    <span class="meta-label">账号数</span>
-                    <span class="meta-value">
-                      批次记录 {{ batch?.account_count }} ·
-                      实际展示 {{ batchAccounts.length }}
-                    </span>
-                  </div>
-                </div>
-              </el-collapse-item>
-            </el-collapse>
-          </section>
+          <BatchMetaCard
+            v-model:meta-open="metaOpen"
+            :batch="batch"
+            :account-count="batchAccounts.length"
+          />
         </template>
       </main>
     </div>
@@ -137,7 +86,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { ArrowLeft, WarningFilled, DocumentRemove, CircleCloseFilled, Picture } from '@element-plus/icons-vue'
 import { useAccountStore, type AccountRow } from '@/stores/account'
 import { accountApi } from '@/api/account'
@@ -148,6 +96,9 @@ import { type ApiResponse } from '@/utils/request'
 import AccountSidebar from '@/components/AccountSidebar.vue'
 import PublishSnapshot, { type BatchItem } from '@/components/PublishSnapshot.vue'
 import PublishStats from '@/components/PublishStats.vue'
+import DetailAccountHeader from '@/components/DetailAccountHeader.vue'
+import BatchMetaCard from '@/components/BatchMetaCard.vue'
+import { statusLabel, formatTime } from '@/components/publishHistoryShared'
 
 interface HistoryBatch {
   id: string
@@ -228,38 +179,6 @@ const currentPlatformConfig = computed(() => {
   const key = platformList.find(p => p.name === selectedAccount.value!.platform)?.key
   return key ? getPlatformByKey(key) : null
 })
-
-function statusLabel(status: string): string {
-  return ({
-    pending: '等待中',
-    running: '发布中',
-    success: '全部成功',
-    partial: '部分失败',
-    failed: '全部失败',
-    cancelled: '已取消',
-  }[status] || status)
-}
-
-function formatTime(iso?: string): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-}
-
-function formatDuration(s: number | null | undefined): string {
-  if (s == null) return ''
-  if (s < 60) return `${s}秒`
-  return `${Math.floor(s / 60)}分${s % 60}秒`
-}
-
-async function copyBatchId() {
-  try {
-    await navigator.clipboard.writeText(batch.value!.id)
-    ElMessage.success('已复制批次 ID')
-  } catch (e) {
-    ElMessage.error('复制失败')
-  }
-}
 
 function goBack() {
   router.push('/publish-history')
@@ -464,75 +383,7 @@ onMounted(async () => {
 }
 
 // 1. 账号信息头：圆角 12px + 1px 边框 + 48px 头像，header 内部 16px gap
-.account-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  background: $bg-elevated;
-  border: 1px solid $border;
-  border-radius: $radius-card;
-  transition: border-color $transition-base;
-  &:hover { border-color: $border-active; }
 
-  .avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: rgba($brand-start, 0.15);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    color: #c4b5fd;
-    font-weight: 700;
-    border: 2px solid transparent;
-    flex-shrink: 0;
-  }
-
-  .header-text {
-    flex: 1;
-    min-width: 0;
-
-    .line-1 {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 4px;
-    }
-
-    .account-name {
-      font-size: 16px;
-      font-weight: 600;
-      color: $text-primary;
-      letter-spacing: -0.01em;
-    }
-
-    .platform-badge {
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-weight: 500;
-      letter-spacing: 0.02em;
-    }
-
-    .line-2 {
-      display: flex;
-      gap: 12px;
-      font-size: 12px;
-      color: $text-muted;
-    }
-  }
-
-  .view-link {
-    color: $brand-start;
-    font-size: 13px;
-    text-decoration: none;
-    flex-shrink: 0;
-    transition: opacity $transition-fast;
-    &:hover { text-decoration: underline; opacity: 0.85; }
-  }
-}
 
 // 3. 数据统计：16/20 padding，标题与内容 12px 分隔
 .data-stats {
@@ -551,48 +402,5 @@ onMounted(async () => {
 }
 
 // 4. 批次元信息折叠卡：左右 0/20 padding 配合 el-collapse-item 内部 padding 形成节奏
-.batch-meta {
-  background: $bg-elevated;
-  border: 1px solid $border;
-  border-radius: $radius-card;
-  padding: 0 4px;  // 让 el-collapse-item 的内边距更接近主体节奏
 
-  .meta-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 12px 24px;
-    padding: 4px 16px 16px;
-  }
-
-  .meta-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 8px 0;
-  }
-
-  .meta-label {
-    font-size: 12px;
-    color: $text-muted;
-    letter-spacing: 0.02em;
-  }
-
-  .meta-value {
-    font-size: 13px;
-    color: $text-secondary;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    line-height: 1.5;
-
-    code {
-      font-family: 'Fira Code', 'JetBrains Mono', Menlo, monospace;
-      font-size: 12px;
-      background: rgba($overlay-rgb, 0.05);
-      padding: 2px 8px;
-      border-radius: 4px;
-      color: $text-primary;
-    }
-  }
-}
 </style>
