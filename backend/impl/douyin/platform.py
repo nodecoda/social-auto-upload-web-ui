@@ -1342,16 +1342,13 @@ class DouyinPlatform(BasePlatform):
                             timeout=60000
                         )
                         logger.info("[发布] 图集发布成功! 已跳转到管理页面")
-                        result = True
                     except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         # 检查当前URL
                         current_url = page.url
                         if "content/manage" in current_url:
                             logger.info("[发布] 图集发布成功! 已在管理页面")
-                            result = True
                         else:
                             logger.warning("[发布] 图集发布可能失败 - 当前URL: %s", current_url)
-                            result = False
 
                     # Save cookie state
                     await context.storage_state(path=account_file)
@@ -1361,7 +1358,6 @@ class DouyinPlatform(BasePlatform):
                     logger.info("=" * 40)
                     logger.info("[发布] [演练模式] 模拟点击发布! 发布成功!")
                     logger.info("=" * 40)
-                    result = True
 
             finally:
                 await context.close()

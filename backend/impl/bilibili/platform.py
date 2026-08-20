@@ -502,11 +502,9 @@ class BilibiliPlatform(BasePlatform):
             start_days = kwargs.get("start_days", 0)
             desc = kwargs.get("desc", "")
             thumbnail_landscape = kwargs.get("thumbnail_landscape_path", "")
-            thumbnail_portrait = kwargs.get("thumbnail_portrait_path", "")
             schedule_time_str = kwargs.get("schedule_time_str", "")
             # ai_content 字段已废弃：B 站新版去掉了"更多设置/声明与权益"，
-            # 创作声明直接在主页面设置，保留参数接收以兼容 app.py 调用
-            ai_content = kwargs.get("ai_content", "")
+            # 创作声明直接在主页面设置（kwargs 兼容接收，忽略即可）
             creation_declaration = kwargs.get("creation_declaration", "")
             # B 站转载来源(创作声明=转载 时必填)
             bili_repost_source = kwargs.get("bili_repost_source", "")

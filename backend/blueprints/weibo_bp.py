@@ -187,7 +187,6 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
                         continue
                     # value 形如 "AI(共0集)" → name="AI", 提取集数
                     name = raw
-                    note_num = None
                     if "（共" in raw:
                         name = raw.split("（共")[0].strip()
                     elif "(共" in raw:

@@ -175,11 +175,9 @@ async def _fetch_collections_via_browser(cookie_file: str, collection_type: str 
             tag = page.locator(
                 "li.weui-desktop-tag", has_text=collection_type
             ).first
-            tag_found = False
             try:
                 await tag.wait_for(state="visible", timeout=8000)
                 await tag.click()
-                tag_found = True
                 logger.info(f"[合集列表] 已点击「{collection_type}」tab")
             except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[合集列表] 未找到「{collection_type}」tab → 账号无该类型合集,返回空")

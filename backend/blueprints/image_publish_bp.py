@@ -279,11 +279,6 @@ def save_draft():
     if not draft_data:
         return jsonify({"code": 400, "msg": "草稿数据不能为空"}), 400
 
-    # 从 commonConfig.images 提取 image_ids
-    common_config = draft_data.get('commonConfig', {})
-    images = common_config.get('images', [])
-    image_ids = [img['id'] for img in images] if isinstance(images, list) else []
-
     draft_id = data.get('id')
     now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
 

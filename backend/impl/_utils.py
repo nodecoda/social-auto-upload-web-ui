@@ -1271,9 +1271,6 @@ async def save_login_result(
     profile = await scrape_fn(page)
     user_name, avatar_url = profile[0], profile[1]
     # 新平台同步账号运营数据;旧平台 scrape_fn 不返回,fans/likes/follows 默认 0
-    fans = profile[2] if len(profile) > 2 else 0
-    likes = profile[3] if len(profile) > 3 else 0
-    follows = profile[4] if len(profile) > 4 else 0
     if not user_name:
         user_name = f"{platform_name}用户{int(asyncio.get_event_loop().time())}"
 

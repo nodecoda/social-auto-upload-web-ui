@@ -96,7 +96,7 @@ class TestImagePublishEndpoint(unittest.TestCase):
         """单次 /api/image-publish/publish 应插 1 batch + 1 detail（type='image'）"""
         client = self.app.test_client()
         # account_configs 是单个 dict（不是 list），按 spec §3.4
-        resp = client.post('/api/image-publish/publish', json={
+        client.post('/api/image-publish/publish', json={
             'image_ids': [],
             'account_configs': {
                 'account_id': 1,
@@ -147,7 +147,7 @@ class TestImagePublishEndpoint(unittest.TestCase):
             self._fake_platform.publish_image.reset_mock()
 
             # Case 1: platform='weibo' → platform_id=11
-            resp = client.post('/api/image-publish/publish', json={
+            client.post('/api/image-publish/publish', json={
                 'image_ids': ['img1'],
                 'account_configs': {
                     'account_id': 1,
@@ -161,7 +161,7 @@ class TestImagePublishEndpoint(unittest.TestCase):
                 'batchId': 'batch-weibo-1',
             })
             # Case 2: platform='微博' (中文) → platform_id=11
-            resp2 = client.post('/api/image-publish/publish', json={
+            client.post('/api/image-publish/publish', json={
                 'image_ids': ['img1'],
                 'account_configs': {
                     'account_id': 1,

@@ -262,7 +262,6 @@ class BasePlatform(ABC):
         # 不能直接 `name, avatar = await sync_profile(...)`: dict 会迭代出 3 个 key
         # 触发 "too many values to unpack (expected 2)"。
         name, avatar, stats = "", "", []
-        sync_failed = False
         try:
             status_queue.put(json.dumps({
                 "step": 3, "status": "running", "msg": "同步用户资料",
@@ -281,7 +280,6 @@ class BasePlatform(ABC):
             else:
                 name, avatar, stats = '', '', []
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-            sync_failed = True
             _base_logger.info(
                 "[import_cookie] %s sync_profile 失败: %s",
                 self.platform_name, e,

@@ -1368,7 +1368,6 @@ class AlipayPlatform(BasePlatform):
         # 2. 切换到"上传封面" tab(弹窗默认在"截取封面")
         #    DOM: div.antd5-tabs-tab > div.antd5-tabs-tab-btn(文本="上传封面")
         #    get_by_role("tab") 在 antd5 里常匹配不到,用文本+class 定位
-        tab_switched = False
         try:
             upload_tab = page.locator(
                 "div.antd5-tabs-tab-btn", has_text="上传封面"
@@ -1376,7 +1375,6 @@ class AlipayPlatform(BasePlatform):
             await upload_tab.wait_for(state="visible", timeout=10000)
             await upload_tab.click()
             await asyncio.sleep(1)
-            tab_switched = True
             logger.info("[上传视频] 已切换到「上传封面」tab")
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] 切换「上传封面」tab 跳过(可能已在目标 tab): %s", e)
