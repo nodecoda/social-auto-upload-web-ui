@@ -8,11 +8,10 @@
 ## 前端（当前阶段挂起）
 
 ### F1. 选项式 `defineProps` 批量泛型化
-- **状态**：pending
-- **范围**：`frontend/src` 下 40+ 处选项式 `defineProps({ ... })`（约 47 个组件）
-- **目标**：迁移为 `defineProps<{...}>()` + `withDefaults()`，对齐规范 Rule 3 默认写法
-- **风险**：中 —— 模板绑定/类型推断可能连锁；建议按组件分多批 PR，每批 vue-tsc 0 错 + vitest + build 全绿
-- **备注**：带运行时校验（validator/PropType）的组件可保留选项式（已接受变体）；"触碰时顺手迁移"亦可
+- **状态**：done（2026-08-21）
+- **处置**：三批 PR 完成（#76 F1a 17 个 / #77 F1b 12 个 Select / #78 F1c 18 个），全仓 47 处选项式 → 0
+- **额外收益**：validator 枚举（AccountSidebar mode、CompilationSelect platform 等 5 处）转字面量联合；顺带清理 40+ 处 unused `PropType` import；SettingsFieldsRenderer/AccountSidebar.test 连锁类型修复
+- **验证**：vue-tsc 0 错 / vitest 261 / vite build 全绿
 
 ### F2. 超长模板 view 拆分
 - **状态**：pending
