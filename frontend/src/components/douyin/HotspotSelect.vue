@@ -113,7 +113,7 @@ async function handleSearch() {
   console.log('触发热点搜索:', keyword)
   loading.value = true
   try {
-    const resp = (await douyinImageApi.searchHotspot(props.accountId || '', keyword)) as ApiResponse<{ sentences?: any[] }>
+    const resp = (await douyinImageApi.searchHotspot(props.accountId || '', keyword)) as ApiResponse<{ sentences?: HotspotItem[] }>
     console.log('热点搜索结果:', resp)
     if (resp.code === 200) {
       hotspotList.value = (resp.data?.sentences || []) as HotspotItem[]

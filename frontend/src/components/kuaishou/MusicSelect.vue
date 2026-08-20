@@ -102,7 +102,7 @@ async function handleSearch() {
   if (!keyword) { musicList.value = []; return }
   loading.value = true
   try {
-    const resp = (await kuaishouImageApi.searchMusic(props.accountId || '', keyword, 0, 50)) as ApiResponse<{ musicList?: any[] }>
+    const resp = (await kuaishouImageApi.searchMusic(props.accountId || '', keyword, 0, 50)) as ApiResponse<{ musicList?: MusicItem[] }>
     if (resp.code === 200) {
       musicList.value = (resp.data?.musicList || []) as MusicItem[]
     }

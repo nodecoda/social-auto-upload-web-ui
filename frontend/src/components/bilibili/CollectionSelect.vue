@@ -106,7 +106,7 @@ async function handleSearch() {
   console.log('[B站合集] 触发搜索:', searchKeyword.value || '(全部)')
   loading.value = true
   try {
-    const resp = (await biliApi.getCollections(props.accountId)) as ApiResponse<{ list?: any[] }>
+    const resp = (await biliApi.getCollections(props.accountId)) as ApiResponse<{ list?: CollectionItem[] }>
     if (resp.code === 200) {
       allCollections.value = (resp.data?.list || []) as CollectionItem[]
       const kw = searchKeyword.value?.trim().toLowerCase()

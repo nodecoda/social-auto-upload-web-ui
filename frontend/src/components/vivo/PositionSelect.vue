@@ -113,7 +113,7 @@ async function handleSearch() {
   console.log('[VIVO位置] 触发搜索:', kw)
   loading.value = true
   try {
-    const resp = (await vivoApi.searchPosition(props.accountId, kw)) as ApiResponse<{ position_list?: any[] }>
+    const resp = (await vivoApi.searchPosition(props.accountId, kw)) as ApiResponse<{ position_list?: PositionItem[] }>
     if (resp.code === 200) {
       positionList.value = (resp.data?.position_list || []) as PositionItem[]
       console.log('[VIVO位置] 列表:', positionList.value.length, '条')

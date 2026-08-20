@@ -103,7 +103,7 @@ watch(() => props.accountId, (val) => {
 async function loadActivityList() {
   loading.value = true
   try {
-    const resp = (await douyinImageApi.getActivityList(props.accountId || '')) as ApiResponse<{ activity_list?: any[] }>
+    const resp = (await douyinImageApi.getActivityList(props.accountId || '')) as ApiResponse<{ activity_list?: ActivityItem[] }>
     if (resp.code === 200) {
       activityList.value = (resp.data?.activity_list || []) as ActivityItem[]
     }

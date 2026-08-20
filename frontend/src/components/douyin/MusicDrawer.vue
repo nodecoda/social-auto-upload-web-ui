@@ -170,7 +170,7 @@ async function searchMusic() {
       props.accountId || '',
       keyword.value,
       cursor.value
-    )) as ApiResponse<{ music?: any[]; has_more?: number; cursor?: number }>
+    )) as ApiResponse<{ music?: MusicItem[]; has_more?: number; cursor?: number }>
 
     if (resp.code === 200) {
       const data = resp.data

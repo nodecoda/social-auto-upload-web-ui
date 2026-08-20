@@ -114,7 +114,7 @@ async function handleSearch() {
   loading.value = true
   try {
     // 后端一次返回全量合集,前端按关键词过滤
-    const resp = (await xhsApi.getCollections(props.accountId)) as ApiResponse<{ list?: any[] }>
+    const resp = (await xhsApi.getCollections(props.accountId)) as ApiResponse<{ list?: CollectionItem[] }>
     if (resp.code === 200) {
       allCollections.value = (resp.data?.list || []) as CollectionItem[]
       const kw = searchKeyword.value?.trim().toLowerCase()

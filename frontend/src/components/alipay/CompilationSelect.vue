@@ -157,7 +157,7 @@ async function handleSearch() {
   loading.value = true
   try {
     const api = getApi()
-    const resp = (await api.searchCompilation(props.accountId, keyword)) as ApiResponse<{ list?: any[] }>
+    const resp = (await api.searchCompilation(props.accountId, keyword)) as ApiResponse<{ list?: CompilationItem[] }>
     console.log(`[${getPlatformName()}合集] 搜索结果:`, resp)
     if (resp.code === 200) {
       compilationList.value = (resp.data?.list || []) as CompilationItem[]
