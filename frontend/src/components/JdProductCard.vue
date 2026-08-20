@@ -15,7 +15,6 @@
 </template>
 
 <script setup lang="ts">
-import { type PropType } from 'vue'
 import { Check } from '@element-plus/icons-vue'
 
 interface JdProductItem {
@@ -25,10 +24,10 @@ interface JdProductItem {
   shop_name?: string
 }
 
-defineProps({
-  item: { type: Object as PropType<JdProductItem>, required: true },
-  selected: Boolean,
-})
+defineProps<{
+  item: JdProductItem
+  selected?: boolean
+}>()
 
 defineEmits<{
   (e: 'click'): void

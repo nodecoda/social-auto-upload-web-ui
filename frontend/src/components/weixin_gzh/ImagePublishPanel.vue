@@ -66,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, type PropType } from 'vue'
+import { ref } from 'vue'
 import { type ApiResponse } from '@/utils/request'
 import { useAccountStore } from '@/stores/account'
 import { imagePublishApi } from '@/api/imagePublish'
@@ -76,9 +76,12 @@ import { useAutoExtractHashtags } from '@/utils/hashtag'
 import RemoteSearchSelect from '@/components/common/RemoteSearchSelect.vue'
 import { getErrorMessage } from '@/utils/error'
 
-const props = defineProps({
-  accountId: { type: [Number, Object] as PropType<number | string | null>, default: null },
-  disabled: { type: Boolean, default: false },
+const props = withDefaults(defineProps<{
+  accountId?: number | string | null
+  disabled?: boolean
+}>(), {
+  accountId: null,
+  disabled: false,
 })
 
 const emit = defineEmits<{

@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, type PropType } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAccountStore } from '@/stores/account'
 import { imagePublishApi } from '@/api/imagePublish'
@@ -72,9 +72,12 @@ import DouyinMixSelect, { type MixItem } from './MixSelect.vue'
 import { useAutoExtractHashtags } from '@/utils/hashtag'
 import { getErrorMessage } from '@/utils/error'
 
-const props = defineProps({
-  accountId: { type: [Number, Object] as PropType<number | string | null>, default: null },
-  disabled: { type: Boolean, default: false },
+const props = withDefaults(defineProps<{
+  accountId?: number | string | null
+  disabled?: boolean
+}>(), {
+  accountId: null,
+  disabled: false,
 })
 
 const emit = defineEmits<{

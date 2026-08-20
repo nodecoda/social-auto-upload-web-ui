@@ -32,12 +32,18 @@
 <script setup lang="ts">
 import { VideoPlay, Star, Collection, ChatLineRound } from '@element-plus/icons-vue'
 
-const props = defineProps({
-  compact: { type: Boolean, default: false },
-  views: { type: [Number, String, null], default: null },
-  likes: { type: [Number, String, null], default: null },
-  favorites: { type: [Number, String, null], default: null },
-  comments: { type: [Number, String, null], default: null },
+const props = withDefaults(defineProps<{
+  compact?: boolean
+  views?: number | string | null
+  likes?: number | string | null
+  favorites?: number | string | null
+  comments?: number | string | null
+}>(), {
+  compact: false,
+  views: null,
+  likes: null,
+  favorites: null,
+  comments: null,
 })
 
 const metrics = [

@@ -48,12 +48,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, type PropType } from 'vue'
+import { ref } from 'vue'
 import { platformList } from '@/config/platforms'
 
-const props = defineProps({
-  modelValue: { type: Boolean, required: true },
-  disabledKeys: { type: Array as PropType<string[]>, default: (): string[] => [] }
+const props = withDefaults(defineProps<{
+  modelValue: boolean
+  disabledKeys?: string[]
+}>(), {
+  disabledKeys: () => [],
 })
 
 const emit = defineEmits<{

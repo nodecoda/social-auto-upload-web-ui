@@ -87,20 +87,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, type PropType } from 'vue'
+import { ref, watch } from 'vue'
 import { type ApiResponse } from '@/utils/request'
 import { Search, VideoPlay, Loading, InfoFilled } from '@element-plus/icons-vue'
 import { douyinImageApi } from '@/api/douyinImage'
 
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  },
-  accountId: {
-    type: [String, Number] as PropType<string | number | null>,
-    default: ''
-  }
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  accountId?: string | number | null
+}>(), {
+  modelValue: false,
+  accountId: '',
 })
 
 const emit = defineEmits<{

@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, type PropType } from 'vue'
+import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Upload, Delete, FolderOpened } from '@element-plus/icons-vue'
 import { getFileUrl } from '@/utils/storage'
@@ -71,9 +71,12 @@ interface CoverImage {
   type?: string
 }
 
-const props = defineProps({
-  label: { type: String, default: '封面图片' },
-  modelValue: { type: Object as PropType<CoverImage | null>, default: null },
+const props = withDefaults(defineProps<{
+  label?: string
+  modelValue?: CoverImage | null
+}>(), {
+  label: '封面图片',
+  modelValue: null,
 })
 
 const emit = defineEmits<{

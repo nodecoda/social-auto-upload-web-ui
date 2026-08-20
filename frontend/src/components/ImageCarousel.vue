@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, type PropType } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ArrowLeft, ArrowRight, Picture } from '@element-plus/icons-vue'
 
 interface CarouselImage {
@@ -83,9 +83,12 @@ interface CarouselImage {
   id?: number | string
 }
 
-const props = defineProps({
-  images: { type: Array as PropType<CarouselImage[]>, default: (): CarouselImage[] => [] },
-  initialIndex: { type: Number, default: 0 },
+const props = withDefaults(defineProps<{
+  images?: CarouselImage[]
+  initialIndex?: number
+}>(), {
+  images: () => [],
+  initialIndex: 0,
 })
 
 const emit = defineEmits<{
