@@ -646,7 +646,7 @@ class BaijiahaoPlatform(BasePlatform):
                         await asyncio.sleep(3)
                     except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                         logger.error("[发布] 人机校验等待超时（120秒），退出")
-                        raise Exception("人机校验等待超时")
+                        raise Exception("人机校验等待超时") from None
 
                 # Wait for publish success redirect
                 try:
@@ -663,7 +663,7 @@ class BaijiahaoPlatform(BasePlatform):
                     )
                     raise Exception(
                         f"视频发布后未成功跳转, 当前URL: {current_url}"
-                    )
+                    ) from None
 
                 # Save updated cookie state
                 await context.storage_state(path=account_file)

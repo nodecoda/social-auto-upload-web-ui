@@ -278,8 +278,8 @@ async def _legacy_link_by_title(frame, type_: str, items: list) -> None:
                 raise RuntimeError(f"未找到匹配: {name} ({result})")
         except RuntimeError:
             raise
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-            raise RuntimeError(f"关联异常({name}): {e}")
+        except Exception as e:  # 统一兜底并记录调试日志,防御性编码
+            raise RuntimeError(f"关联异常({name}): {e}") from e
 
     logger.info(f"[关联{type_label}] 旧路径勾选完成 {selected}/{len(names)}")
     try:
@@ -1264,9 +1264,9 @@ class TaobaoGuanghePlatform(BasePlatform):
                 await local_upload.wait_for(state="visible", timeout=10000)
                 await local_upload.click()
                 logger.info("[设置封面] ✓ 已点击本地上传")
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
+            except Exception as e:  # 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[设置封面] 本地上传按钮未找到: {e}")
-                raise RuntimeError("封面本地上传按钮未出现")
+                raise RuntimeError("封面本地上传按钮未出现") from e
             await asyncio.sleep(2)
 
             # 3. 直接对图片选择弹窗内的隐藏 input[type=file] 用 set_input_files 上传。

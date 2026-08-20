@@ -171,7 +171,7 @@ class JdPickerSession:
 
             raise RuntimeError(
                 f"未找到发布表单 iframe。URL={self.page.url or ''}"
-            )
+            ) from None
 
     async def open(self) -> dict:
         """启动浏览器进入商品选择面板,返回首屏 {products, total}。"""
