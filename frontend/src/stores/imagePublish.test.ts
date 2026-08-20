@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useImagePublishStore } from './imagePublish'
+
+type Store = ReturnType<typeof useImagePublishStore>
 import { imagePublishApi } from '@/api/imagePublish'
 import { ElMessage } from 'element-plus'
 
@@ -20,10 +22,10 @@ vi.mock('element-plus', () => ({
   },
 }))
 
-const makeFile = (name = 'a.jpg') => ({ name })
+const makeFile = (name = 'a.jpg') => new File(['x'], name, { type: 'image/jpeg' })
 
 describe('useImagePublishStore', () => {
-  let store: any
+  let store: Store
 
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -43,12 +45,12 @@ describe('useImagePublishStore', () => {
   })
 
   it('canUpload: 达到 35 张上限后为 false', () => {
-    for (let i = 0; i < 35; i++) store.images.push({ url: '', name: `img${i}` })
+    for (let i = 0; i < 35; i++) store.images.push({ url: '', name: `img${i}`, file: makeFile(), progress: 0 })
     expect(store.canUpload).toBe(false)
   })
 
   it('canPublish: 需要同时有图片和已选账号', () => {
-    store.images.push({ url: 'u', name: 'n' })
+    store.images.push({ url: 'u', name: 'n', file: makeFile(), progress: 0 })
     expect(store.canPublish).toBe(false)
     store.selectedAccounts.push(1)
     expect(store.canPublish).toBe(true)
@@ -60,7 +62,7 @@ describe('useImagePublishStore', () => {
       return { data: { url: 'http://img/ok.jpg' } }
     })
     const res = await store.upload(makeFile('a.jpg'))
-    expect(res.data.url).toBe('http://img/ok.jpg')
+    expect(res.data!.url).toBe('http://img/ok.jpg')
     expect(store.images).toHaveLength(1)
     expect(store.images[0].name).toBe('a.jpg')
     expect(store.images[0].url).toBe('http://img/ok.jpg')
@@ -82,9 +84,9 @@ describe('useImagePublishStore', () => {
   })
 
   it('removeImage: 合法索引移除, 非法索引不操作', () => {
-    store.images.push({ name: 'a' }, { name: 'b' }, { name: 'c' })
+    store.images.push({ url: '', name: 'a', file: makeFile(), progress: 0 }, { url: '', name: 'b', file: makeFile(), progress: 0 }, { url: '', name: 'c', file: makeFile(), progress: 0 })
     store.removeImage(1)
-    expect(store.images.map((i: any) => i.name)).toEqual(['a', 'c'])
+    expect(store.images.map((i) => i.name)).toEqual(['a', 'c'])
     store.removeImage(99)
     expect(store.images).toHaveLength(2)
     store.removeImage(-1)
@@ -92,30 +94,30 @@ describe('useImagePublishStore', () => {
   })
 
   it('reorder: 向后/向前移动, 非法或相同索引不操作', () => {
-    store.images.push({ name: 'a' }, { name: 'b' }, { name: 'c' })
+    store.images.push({ url: '', name: 'a', file: makeFile(), progress: 0 }, { url: '', name: 'b', file: makeFile(), progress: 0 }, { url: '', name: 'c', file: makeFile(), progress: 0 })
     store.reorder(0, 2)
-    expect(store.images.map((i: any) => i.name)).toEqual(['b', 'c', 'a'])
+    expect(store.images.map((i) => i.name)).toEqual(['b', 'c', 'a'])
     store.reorder(2, 0)
-    expect(store.images.map((i: any) => i.name)).toEqual(['a', 'b', 'c'])
+    expect(store.images.map((i) => i.name)).toEqual(['a', 'b', 'c'])
     store.reorder(1, 1)
     store.reorder(9, 0)
     store.reorder(0, -5)
-    expect(store.images.map((i: any) => i.name)).toEqual(['a', 'b', 'c'])
+    expect(store.images.map((i) => i.name)).toEqual(['a', 'b', 'c'])
   })
 
   it('replaceImage 成功: 替换条目并写 url/progress', async () => {
     vi.mocked(imagePublishApi.uploadImage).mockResolvedValue({ data: { url: 'http://img/new.jpg' } })
-    store.images.push({ url: 'old', name: 'old.jpg', progress: 100 })
+    store.images.push({ url: 'old', name: 'old.jpg', file: makeFile('old.jpg'), progress: 100 })
     const res = await store.replaceImage(0, makeFile('new.jpg'))
-    expect(res.data.url).toBe('http://img/new.jpg')
+    expect(res.data!.url).toBe('http://img/new.jpg')
     expect(store.images[0]).toMatchObject({ url: 'http://img/new.jpg', name: 'new.jpg', progress: 100 })
   })
 
   it('replaceImage 失败: 恢复原条目 + ElMessage.error + 重新抛出', async () => {
     vi.mocked(imagePublishApi.uploadImage).mockRejectedValue(new Error('boom'))
-    store.images.push({ url: 'old', name: 'old.jpg', progress: 100 })
+    store.images.push({ url: 'old', name: 'old.jpg', file: makeFile('old.jpg'), progress: 100 })
     await expect(store.replaceImage(0, makeFile('new.jpg'))).rejects.toThrow('boom')
-    expect(store.images[0]).toEqual({ url: 'old', name: 'old.jpg', progress: 100 })
+    expect(store.images[0]).toMatchObject({ url: 'old', name: 'old.jpg', progress: 100 })
     expect(ElMessage.error).toHaveBeenCalledWith('图片 new.jpg 上传失败')
   })
 
@@ -143,13 +145,13 @@ describe('useImagePublishStore', () => {
 
   it('save 成功: 提交 payload, 记录 draftId, 提示保存成功', async () => {
     vi.mocked(imagePublishApi.saveDraft).mockResolvedValue({ data: { id: 'draft-1' } })
-    store.images.push({ url: 'u1', name: 'n1' })
+    store.images.push({ url: 'u1', name: 'n1', file: makeFile('n1.jpg'), progress: 100 })
     store.selectedAccounts = [1]
     store.accountConfigs = { 1: { title: 't' } }
     store.batchTitle = 'bt'
     store.batchDescription = 'bd'
     const res = await store.save()
-    expect(res.data.id).toBe('draft-1')
+    expect(res.data!.id).toBe('draft-1')
     expect(store.currentDraftId).toBe('draft-1')
     expect(imagePublishApi.saveDraft).toHaveBeenCalledWith(expect.objectContaining({
       images: [{ url: 'u1', name: 'n1' }],
@@ -176,7 +178,7 @@ describe('useImagePublishStore', () => {
 
   it('publish 成功(立即): payload 无 scheduledAt, 提示提交, publishing 复位', async () => {
     vi.mocked(imagePublishApi.publishImage).mockResolvedValue({})
-    store.images.push({ url: 'u1', name: 'n1' })
+    store.images.push({ url: 'u1', name: 'n1', file: makeFile('n1.jpg'), progress: 100 })
     store.selectedAccounts = [1]
     store.accountConfigs = { 1: { title: 't' } }
     await store.publish()
@@ -191,7 +193,7 @@ describe('useImagePublishStore', () => {
 
   it('publish 定时: payload 带 scheduledAt, 提示定时发布', async () => {
     vi.mocked(imagePublishApi.publishImage).mockResolvedValue({})
-    store.images.push({ url: 'u', name: 'n' })
+    store.images.push({ url: 'u', name: 'n', file: makeFile(), progress: 0 })
     store.selectedAccounts = [1]
     await store.publish('2026-09-01 10:00:00')
     expect(imagePublishApi.publishImage).toHaveBeenCalledWith(expect.objectContaining({
@@ -202,7 +204,7 @@ describe('useImagePublishStore', () => {
 
   it('publish 失败: ElMessage.error + 重新抛出 + publishing 复位', async () => {
     vi.mocked(imagePublishApi.publishImage).mockRejectedValue(new Error('publish fail'))
-    store.images.push({ url: 'u', name: 'n' })
+    store.images.push({ url: 'u', name: 'n', file: makeFile(), progress: 0 })
     store.selectedAccounts = [1]
     await expect(store.publish()).rejects.toThrow('publish fail')
     expect(ElMessage.error).toHaveBeenCalledWith('发布失败')
@@ -210,7 +212,7 @@ describe('useImagePublishStore', () => {
   })
 
   it('reset: 清空全部状态', () => {
-    store.images.push({ url: 'u', name: 'n' })
+    store.images.push({ url: 'u', name: 'n', file: makeFile(), progress: 0 })
     store.selectedAccounts = [1]
     store.accountConfigs = { 1: { title: 't' } }
     store.currentDraftId = 'draft-9'

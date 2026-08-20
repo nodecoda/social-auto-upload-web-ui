@@ -3,6 +3,13 @@ import { ref, computed } from 'vue'
 import { imagePublishApi } from '@/api/imagePublish'
 import { ElMessage } from 'element-plus'
 
+/** 每个账号的独立图片发布配置（title/description 等动态字段） */
+export interface ChannelConfig {
+  title?: string
+  description?: string
+  [key: string]: unknown
+}
+
 export const useImagePublishStore = defineStore('imagePublish', () => {
   // ========== 状态 ==========
 
@@ -13,7 +20,7 @@ export const useImagePublishStore = defineStore('imagePublish', () => {
   const selectedAccounts = ref<Array<string | number>>([])
 
   // 每个账号的独立配置 { [accountId]: { title, description } }
-  const accountConfigs = ref<Record<string, any>>({})
+  const accountConfigs = ref<Record<string, ChannelConfig>>({})
 
   // 当前草稿 ID（null 表示新建）
   const currentDraftId = ref<string | number | null>(null)
@@ -144,11 +151,11 @@ export const useImagePublishStore = defineStore('imagePublish', () => {
    * @param {string|number} accountId - 账号 ID
    * @param {object} config - 配置对象 { title, description }
    */
-  function updateAccountConfig(accountId: string | number, config: any) {
+  function updateAccountConfig(accountId: string | number, config: ChannelConfig) {
     accountConfigs.value = {
       ...accountConfigs.value,
       [accountId]: {
-        ...(accountConfigs.value as Record<string, any>)[accountId],
+        ...accountConfigs.value[accountId],
         ...config
       }
     }
@@ -158,10 +165,10 @@ export const useImagePublishStore = defineStore('imagePublish', () => {
    * 将批量标题/描述同步到所有已选账号
    */
   function syncBatchToAll() {
-    const newConfigs: Record<string, any> = {}
+    const newConfigs: Record<string, ChannelConfig> = {}
     for (const accountId of selectedAccounts.value) {
       newConfigs[accountId] = {
-        ...(accountConfigs.value as Record<string, any>)[accountId],
+        ...accountConfigs.value[accountId],
         title: batchTitle.value,
         description: batchDescription.value
       }
