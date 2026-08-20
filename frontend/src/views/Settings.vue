@@ -117,78 +117,7 @@
     </div>
 
     <!-- 文件存储 -->
-    <div class="settings-card">
-      <h3 class="card-title">
-        <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-        文件存储
-      </h3>
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">存储类型</span>
-          <span class="setting-desc">选择素材文件的存储方式，S3 兼容存储支持 MinIO、阿里云 OSS、AWS S3 等</span>
-        </div>
-        <div class="setting-control">
-          <el-radio-group v-model="settings.storage.type">
-            <el-radio value="local">本地存储</el-radio>
-            <el-radio value="s3">S3 兼容存储</el-radio>
-          </el-radio-group>
-        </div>
-      </div>
-      <template v-if="settings.storage.type === 's3'">
-        <div class="setting-row">
-          <div class="setting-info">
-            <span class="setting-label">Endpoint</span>
-          </div>
-          <div class="setting-control">
-            <el-input v-model="settings.storage.s3.endpoint" placeholder="http://127.0.0.1:9000" style="width: 300px" />
-          </div>
-        </div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <span class="setting-label">Access Key</span>
-          </div>
-          <div class="setting-control">
-            <el-input v-model="settings.storage.s3.access_key" style="width: 300px" />
-          </div>
-        </div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <span class="setting-label">Secret Key</span>
-          </div>
-          <div class="setting-control">
-            <el-input v-model="settings.storage.s3.secret_key" type="password" show-password style="width: 300px" />
-          </div>
-        </div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <span class="setting-label">Bucket</span>
-          </div>
-          <div class="setting-control">
-            <el-input v-model="settings.storage.s3.bucket" style="width: 300px" />
-          </div>
-        </div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <span class="setting-label">Region</span>
-          </div>
-          <div class="setting-control">
-            <el-input v-model="settings.storage.s3.region" placeholder="可选" style="width: 300px" />
-          </div>
-        </div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <span class="setting-label">连接测试</span>
-            <span class="setting-desc">验证 S3 配置是否正确，确认可以正常连接</span>
-          </div>
-          <div class="setting-control">
-            <button class="cache-btn" style="border-color: rgba(var(--el-color-primary-rgb), 0.3); background: rgba(var(--el-color-primary-rgb), 0.06); color: var(--el-color-primary);" :disabled="s3Testing" @click="testS3Connection">
-              {{ s3Testing ? '测试中...' : '测试连接' }}
-            </button>
-          </div>
-        </div>
-      </template>
-    </div>
-
+    <StorageSettingsCard :storage="settings.storage" />
     <!-- 缓存管理 -->
     <div class="settings-card">
       <h3 class="card-title">
@@ -329,29 +258,14 @@ import { ChatDotRound, Plus, Close, Warning } from '@element-plus/icons-vue'
 import { settingsApi } from '@/api/v2'
 import { platformList, getPlatformByKey } from '@/config/platforms'
 import { http, type ApiResponse } from '@/utils/request'
-import { getErrorMessage } from '@/utils/error'
 import { useAppStore } from '@/stores/app'
 import PlatformBlacklistDialog from '@/components/PlatformBlacklistDialog.vue'
+import StorageSettingsCard, { type StorageConfig, type S3Config } from '@/components/StorageSettingsCard.vue'
 
 // ===== 类型定义 =====
 
 // 平台配置对象(来自 @/config/platforms 的 platformList 元素)
 type PlatformObject = NonNullable<ReturnType<typeof getPlatformByKey>>
-
-// S3 存储配置
-interface S3Config {
-  endpoint: string
-  access_key: string
-  secret_key: string
-  bucket: string
-  region: string
-}
-
-// 存储配置
-interface StorageConfig {
-  type: 'local' | 's3'
-  s3: S3Config
-}
 
 // 设置表单状态
 interface SettingsState {
@@ -536,24 +450,6 @@ const settings = reactive<SettingsState>({
   },
   feedbackEmail: '',
 })
-
-const s3Testing = ref(false)
-
-async function testS3Connection() {
-  s3Testing.value = true
-  try {
-    const resp = (await http.post('/api/materials/test-s3', settings.storage.s3)) as ApiResponse
-    if (resp.code === 200) {
-      ElMessage.success('S3 连接成功')
-    } else {
-      ElMessage.error(resp.msg || '连接失败')
-    }
-  } catch (e: unknown) {
-    const msg = getErrorMessage(e)
-    ElMessage.error('连接失败: ' + msg)
-  }
-  s3Testing.value = false
-}
 
 // 海外平台列表
 const overseasPlatforms: PlatformObject[] = platformList.filter(p => ['youtube', 'tiktok'].includes(p.key))
