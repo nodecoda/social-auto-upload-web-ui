@@ -106,7 +106,7 @@ function handleClear() {
   musicList.value = []
 }
 
-function handleChange(val) {
+function handleChange(val: string) {
   if (val) {
     const music = musicList.value.find(m => m.musicId === val)
     emit('update:modelValue', val)
@@ -117,15 +117,15 @@ function handleChange(val) {
   }
 }
 
-function formatDuration(seconds) {
+function formatDuration(seconds: number) {
   if (!seconds) return '00:00'
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
 
-function onImageError(e) {
-  e.target.style.display = 'none'
+function onImageError(e: Event) {
+  ;(e.target as HTMLElement).style.display = 'none'
 }
 </script>
 

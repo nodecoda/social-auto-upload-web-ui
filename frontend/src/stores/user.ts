@@ -9,7 +9,7 @@ export const useUserStore = defineStore('user', () => {
   
   const isLoggedIn = ref(false)
   
-  const setUserInfo = (info) => {
+  const setUserInfo = (info: any) => {
     userInfo.value = info
     isLoggedIn.value = true
   }

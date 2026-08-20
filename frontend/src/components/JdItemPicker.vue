@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    @update:model-value="(v) => emit('update:modelValue', v)"
+    @update:model-value="(v: boolean) => emit('update:modelValue', v)"
     width="1100px"
     top="5vh"
     :close-on-click-modal="false"
@@ -139,7 +139,7 @@ interface JdPickerResponse {
 const props = defineProps({
   modelValue: Boolean,
   accountId: String,
-  initSelected: { type: Array as PropType<Array<JdProduct | string>>, default: () => [] },
+  initSelected: { type: Array as PropType<Array<JdProduct | string>>, default: (): any[] => [] },
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm'])

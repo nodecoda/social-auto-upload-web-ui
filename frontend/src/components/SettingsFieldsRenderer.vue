@@ -84,7 +84,7 @@
                     :placeholder="field.placeholder"
                     :disabled-date="field.disabledDate || (field.key === 'scheduleTime' ? scheduleDisabledDate : undefined)"
                     :disabled-hours="field.disabledHours || (field.key === 'scheduleTime' ? () => scheduleDisabledHours(field.key) : undefined)"
-                    :disabled-minutes="field.disabledMinutes || (field.key === 'scheduleTime' ? (h) => scheduleDisabledMinutes(field.key, h) : undefined)"
+                    :disabled-minutes="field.disabledMinutes || (field.key === 'scheduleTime' ? (h: number) => scheduleDisabledMinutes(field.key, h) : undefined)"
                     value-format="YYYY-MM-DD HH:mm:ss"
                     size="small"
                     class="cursor-pointer"
@@ -94,7 +94,7 @@
                     v-model="form[field.key]"
                     type="date"
                     :placeholder="field.placeholder"
-                    :disabled-date="(date) => date > new Date()"
+                    :disabled-date="(date: Date) => date > new Date()"
                     value-format="YYYY-MM-DD"
                     size="small"
                     class="cursor-pointer"
@@ -171,7 +171,7 @@ interface SettingsField {
 
 const props = defineProps({
   // 平台配置 settingsFields 字段数组
-  fields: { type: Array as PropType<SettingsField[]>, default: () => [] },
+  fields: { type: Array as PropType<SettingsField[]>, default: (): any[] => [] },
   // 发布表单（本组件直接读写其中的字段）
   form: { type: Object as PropType<Record<string, any>>, required: true },
   // 当前平台配置（color/key/hideFields 等）
@@ -194,14 +194,14 @@ function scheduleDisabledDate(date: Date) {
   return date < startOfToday || date > maxDate
 }
 
-function _sameDay(a, b) {
+function _sameDay(a: any, b: any) {
   return a.getFullYear() === b.getFullYear()
     && a.getMonth() === b.getMonth()
     && a.getDate() === b.getDate()
 }
 
 // disabled-hours: 选中日期为今天时禁用已过去的小时
-function scheduleDisabledHours(fieldKey) {
+function scheduleDisabledHours(fieldKey: string) {
   if (fieldKey !== 'scheduleTime') return []
   const raw = props.form[fieldKey]
   if (!raw) return []
@@ -213,7 +213,7 @@ function scheduleDisabledHours(fieldKey) {
 }
 
 // disabled-minutes: 选中日期为今天且小时为当前小时时禁用已过去的分钟
-function scheduleDisabledMinutes(fieldKey, hour) {
+function scheduleDisabledMinutes(fieldKey: string, hour: number) {
   if (fieldKey !== 'scheduleTime') return []
   const raw = props.form[fieldKey]
   if (!raw) return []
@@ -254,7 +254,7 @@ async function fetchCompilation(keyword?: string) {
 const compilationFieldMap = {
   label: 'title',
   key: 'compilationId',
-  desc: (item) => {
+  desc: (item: any) => {
     const parts = []
     if (item.category) parts.push(item.category)
     if (item.total != null) parts.push(`${item.total} 个内容`)

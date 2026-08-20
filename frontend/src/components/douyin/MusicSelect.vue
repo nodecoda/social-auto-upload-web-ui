@@ -130,7 +130,7 @@ function handleClear() {
   musicList.value = []
 }
 
-function handleChange(val) {
+function handleChange(val: string) {
   if (val) {
     const music = musicList.value.find(m => m.title === val)
     emit('update:modelValue', val)
@@ -144,14 +144,14 @@ function handleChange(val) {
   }
 }
 
-function formatDuration(seconds) {
+function formatDuration(seconds: number) {
   if (!seconds) return '00:00'
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
 
-function formatUserCount(count) {
+function formatUserCount(count: number) {
   if (!count) return '0'
   if (count >= 10000) {
     return (count / 10000).toFixed(1) + '万'
@@ -159,8 +159,8 @@ function formatUserCount(count) {
   return count.toString()
 }
 
-function onImageError(e) {
-  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMjIyIi8+PHRleHQgeD0iMjAiIHk9IjI0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCflKQ8L3RleHQ+PC9zdmc+'
+function onImageError(e: Event) {
+  ;(e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMjIyIi8+PHRleHQgeD0iMjAiIHk9IjI0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCflKQ8L3RleHQ+PC9zdmc+'
 }
 </script>
 

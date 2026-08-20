@@ -93,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, type PropType } from 'vue'
+import { ref, watch, type Component, type PropType } from 'vue'
 import { type ApiResponse } from '@/utils/request'
 import { Search, Loading, Location, Connection, Menu, Goods } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -106,7 +106,7 @@ const props = defineProps({
   },
   modelValue: {
     type: Object as PropType<Record<string, any> | null>,
-    default: () => null
+    default: (): Record<string, any> | null => null
   }
 })
 
@@ -152,7 +152,7 @@ function handleTypeChange() {
 }
 
 function getPlaceholder() {
-  const placeholders = {
+  const placeholders: Record<string, string> = {
     poi: '选择位置',
     miniapp: '选择小程序',
     game: '选择游戏',
@@ -163,7 +163,7 @@ function getPlaceholder() {
 }
 
 function getSearchPlaceholder() {
-  const placeholders = {
+  const placeholders: Record<string, string> = {
     poi: '输入地点名称搜索',
     miniapp: '粘贴抖音小程序链接',
     game: '输入游戏名称搜索',
@@ -174,7 +174,7 @@ function getSearchPlaceholder() {
 }
 
 function getTagIcon() {
-  const icons = {
+  const icons: Record<string, Component> = {
     poi: Location,
     miniapp: Connection,
     game: Menu,
@@ -200,7 +200,7 @@ async function handleSearch() {
         resp = (await douyinImageApi.searchPoi(props.accountId || '', keyword)) as ApiResponse<Record<string, any>>
         console.log('位置搜索结果:', resp)
         if (resp.code === 200) {
-          tagList.value = (resp.data?.poi_list || []).map(poi => ({
+          tagList.value = (resp.data?.poi_list || []).map((poi: Record<string, any>) => ({
             id: poi.poi_id,
             name: poi.poi_name,
             desc: poi.simple_address_str,
@@ -214,7 +214,7 @@ async function handleSearch() {
         resp = (await douyinImageApi.searchMiniapp(props.accountId || '', keyword)) as ApiResponse<Record<string, any>>
         console.log('小程序搜索结果:', resp)
         if (resp.code === 200) {
-          tagList.value = (resp.data?.anchor_list || []).map(anchor => ({
+          tagList.value = (resp.data?.anchor_list || []).map((anchor: Record<string, any>) => ({
             id: anchor.id,
             name: anchor.name,
             desc: anchor.summary,
@@ -232,7 +232,7 @@ async function handleSearch() {
         if (resp.code === 200) {
           // 注意：游戏数据在 resp.data.data.mount_games 中
           const gameData = resp.data?.data || resp.data
-          tagList.value = (gameData?.mount_games || []).map(game => ({
+          tagList.value = (gameData?.mount_games || []).map((game: Record<string, any>) => ({
             id: game.game_info?.unified_game_id,
             name: game.game_info?.name,
             desc: game.game_info?.tag_names?.join('、'),
@@ -248,7 +248,7 @@ async function handleSearch() {
         if (resp.code === 200) {
           // 注意：标记万物数据在 resp.data.data.spu_list 中
           const markData = resp.data?.data || resp.data
-          tagList.value = (markData?.spu_list || []).map(spu => ({
+          tagList.value = (markData?.spu_list || []).map((spu: Record<string, any>) => ({
             id: spu.spu_id,
             name: spu.title,
             desc: spu.front_category?.front_category_name,
@@ -294,7 +294,7 @@ function handleClear() {
   tagList.value = []
 }
 
-function handleChange(val) {
+function handleChange(val: string) {
   console.log('handleChange called with:', val)
   if (val) {
     const tag = tagList.value.find(t => t.id === val)
@@ -318,11 +318,11 @@ function handleChange(val) {
   }
 }
 
-function onImageError(e) {
-  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZjVmNWY1Ii8+PHRleHQgeD0iMjAiIHk9IjI0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPiM8L3RleHQ+PC9zdmc+'
+function onImageError(e: Event) {
+  ;(e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZjVmNWY1Ii8+PHRleHQgeD0iMjAiIHk9IjI0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPiM8L3RleHQ+PC9zdmc+'
 }
 
-function formatPlayCount(n) {
+function formatPlayCount(n: number) {
   if (!n) return '0'
   if (n >= 100000000) return (n / 100000000).toFixed(1) + '亿'
   if (n >= 10000) return (n / 10000).toFixed(1) + '万'

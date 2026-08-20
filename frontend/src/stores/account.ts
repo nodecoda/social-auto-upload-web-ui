@@ -8,10 +8,10 @@ export const useAccountStore = defineStore('account', () => {
   const accounts = ref([])
   
   // 设置账号列表
-  const setAccounts = (accountsData) => {
+  const setAccounts = (accountsData: any[]) => {
     // 后端 SELECT * 列顺序:id/type/filePath/userName/status/avatar/fans/likes/follows/stats,
     // 然后 row.append(tags) → tags 为最后一列。stats 是 JSON 字符串,需要解析。
-    accounts.value = accountsData.map(item => {
+    accounts.value = accountsData.map((item: any) => {
       let stats = []
       const rawStats = item[9]
       if (typeof rawStats === 'string' && rawStats) {
@@ -37,12 +37,12 @@ export const useAccountStore = defineStore('account', () => {
   }
   
   // 添加账号
-  const addAccount = (account) => {
+  const addAccount = (account: any) => {
     accounts.value.push(account)
   }
   
   // 更新账号
-  const updateAccount = (id, updatedAccount) => {
+  const updateAccount = (id: number | string, updatedAccount: any) => {
     const index = accounts.value.findIndex(acc => acc.id === id)
     if (index !== -1) {
       accounts.value[index] = { ...accounts.value[index], ...updatedAccount }
@@ -50,12 +50,12 @@ export const useAccountStore = defineStore('account', () => {
   }
   
   // 删除账号
-  const deleteAccount = (id) => {
+  const deleteAccount = (id: number | string) => {
     accounts.value = accounts.value.filter(acc => acc.id !== id)
   }
   
   // 根据平台获取账号
-  const getAccountsByPlatform = (platform) => {
+  const getAccountsByPlatform = (platform: string) => {
     return accounts.value.filter(acc => acc.platform === platform)
   }
 

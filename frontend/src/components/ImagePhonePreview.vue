@@ -57,7 +57,7 @@ interface PhoneImageItem {
 }
 
 defineProps({
-  images: { type: Array as PropType<PhoneImageItem[]>, default: () => [] },
+  images: { type: Array as PropType<PhoneImageItem[]>, default: (): any[] => [] },
   previewIndex: { type: Number, default: 0 },
 })
 

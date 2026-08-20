@@ -11,7 +11,7 @@
  * 不能用 ?? fallback 到平台级默认 —— 否则平台级的定时时间会强制定时该账号。
  * 仅当账号 override 完全没带 scheduleTime key(未操作过)时,才 fallback 到平台级。
  */
-function _resolveScheduleTime(accountOv, platformOv, platformDefault) {
+function _resolveScheduleTime(accountOv: Record<string,any> | undefined, platformOv: Record<string,any> | undefined, platformDefault: Record<string,any> | undefined) {
   if (accountOv && Object.prototype.hasOwnProperty.call(accountOv, 'scheduleTime')) {
     // 账号级显式设置过(含 null/'') → 以账号级为准(null/'' = 不定时)
     return accountOv.scheduleTime || ''
@@ -22,7 +22,7 @@ function _resolveScheduleTime(accountOv, platformOv, platformDefault) {
   return platformDefault?.scheduleTime || ''
 }
 
-function mergeConfig(common, platformDefault, platformOv, accountOv) {
+function mergeConfig(common: Record<string,any>, platformDefault: Record<string,any> | undefined, platformOv: Record<string,any> | undefined, accountOv: Record<string,any> | undefined) {
   return {
     // 文本字段 4 级合并（账号 > 渠道 > 平台默认），与视频/封面/平台特有字段一致
     title: accountOv?.title ?? platformOv?.title ?? platformDefault?.title ?? '',

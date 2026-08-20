@@ -62,7 +62,7 @@
               :percentage="f.percent"
               :stroke-width="6"
               :show-text="true"
-              :format="(p) => formatProgressText(p, f)"
+              :format="(p: number) => formatProgressText(p, f)"
             />
             <div v-else-if="f.status === 'success'" class="mud-file-status ok">
               <el-icon><CircleCheckFilled /></el-icon> 上传完成

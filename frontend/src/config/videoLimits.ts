@@ -8,7 +8,7 @@ const KB = 1024
 const MB = 1024 * 1024
 const GB = 1024 * 1024 * 1024
 
-export const VIDEO_LIMITS = {
+export const VIDEO_LIMITS: Record<string, any> = {
   tencent_video: { minDuration: 5,    maxDuration: 5400,         maxSize: 20 * GB, maxTitleLength: 80 },
   iqiyi:         { minDuration: 5,    maxDuration: 3600,         maxSize: 16 * GB, maxTitleLength: Infinity },
   douyin:        { minDuration: 5,    maxDuration: 3600,         maxSize: 16 * GB, maxTitleLength: Infinity },
@@ -55,7 +55,7 @@ const PLATFORM_NAMES = {
   jingmai: '京东京麦',
 }
 
-export function formatSize(sizeBytes) {
+export function formatSize(sizeBytes: number | null | undefined) {
   if (sizeBytes == null) return '-'
   if (!isFinite(sizeBytes) || sizeBytes < 0) return '未知'
   if (sizeBytes < KB) return `${sizeBytes.toFixed(1)} B`
@@ -64,7 +64,7 @@ export function formatSize(sizeBytes) {
   return `${(sizeBytes / GB).toFixed(1)} GB`
 }
 
-export function formatDuration(seconds) {
+export function formatDuration(seconds: number | null | undefined) {
   if (seconds == null) return '-'
   if (!isFinite(seconds) || seconds < 0) return '未知'
   const s = Math.floor(seconds)
@@ -76,7 +76,7 @@ export function formatDuration(seconds) {
   return `${m} 分 ${sec} 秒`
 }
 
-function formatMaxDuration(max) {
+function formatMaxDuration(max: number | null | undefined) {
   return max === Infinity ? '无限制' : formatDuration(max)
 }
 
@@ -87,11 +87,11 @@ function formatMaxDuration(max) {
  * @param {number} sizeBytes
  * @returns {{ ok: boolean, error: string }}
  */
-export function validateVideoForPlatform(platformKey, durationSec, sizeBytes) {
+export function validateVideoForPlatform(platformKey: string, durationSec: number | null | undefined, sizeBytes: number | null | undefined) {
   const limits = VIDEO_LIMITS[platformKey]
   if (!limits) return { ok: true, error: '' }
 
-  const name = PLATFORM_NAMES[platformKey] || platformKey
+  const name = (PLATFORM_NAMES as Record<string, string>)[platformKey] || platformKey
 
   if (durationSec != null && durationSec < limits.minDuration) {
     return {
@@ -119,7 +119,7 @@ export function validateVideoForPlatform(platformKey, durationSec, sizeBytes) {
  * 用于标题/描述长度校验。JS 字符串的 .length 是 UTF-16 单元数（emoji 是 2），
  * 也不能直接用 codepoint 数（emoji 是 1），所以用遍历算。
  */
-export function countCharsWithEmoji(s) {
+export function countCharsWithEmoji(s: string | null | undefined) {
   if (!s) return 0
   let n = 0
   for (const ch of s) {
@@ -134,10 +134,10 @@ export function countCharsWithEmoji(s) {
  * @param {string} title
  * @returns {{ ok: boolean, error: string, maxLength: number, actualLength: number }}
  */
-export function validateTitleForPlatform(platformKey, title) {
+export function validateTitleForPlatform(platformKey: string, title: string) {
   const limits = VIDEO_LIMITS[platformKey]
   if (!limits) return { ok: true, error: '', maxLength: Infinity, actualLength: 0 }
-  const name = PLATFORM_NAMES[platformKey] || platformKey
+  const name = (PLATFORM_NAMES as Record<string, string>)[platformKey] || platformKey
   const min = limits.minTitleLength || 0
   const max = limits.maxTitleLength
   const len = countCharsWithEmoji(title)
@@ -167,10 +167,10 @@ export function validateTitleForPlatform(platformKey, title) {
  * @param {string} desc
  * @returns {{ ok: boolean, error: string, maxLength: number, actualLength: number }}
  */
-export function validateDescForPlatform(platformKey, desc) {
+export function validateDescForPlatform(platformKey: string, desc: string) {
   const limits = VIDEO_LIMITS[platformKey]
   if (!limits || !limits.maxDescLength) return { ok: true, error: '', maxLength: Infinity, actualLength: 0 }
-  const name = PLATFORM_NAMES[platformKey] || platformKey
+  const name = (PLATFORM_NAMES as Record<string, string>)[platformKey] || platformKey
   const max = limits.maxDescLength
   const len = countCharsWithEmoji(desc)
   if (max === Infinity) return { ok: true, error: '', maxLength: Infinity, actualLength: len }

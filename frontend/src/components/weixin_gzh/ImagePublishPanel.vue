@@ -88,10 +88,10 @@ const accountStore = useAccountStore()
 const WEIXIN_GZH_DEFAULTS = {
   title: '',
   description: '',
-  tags: [],
+  tags: [] as string[],
   gzhClaimSource: '',
   gzhCollectionName: '',
-  gzhCollectionData: null,
+  gzhCollectionData: null as Record<string, unknown> | null,
   scheduleTime: '',
 }
 
@@ -175,7 +175,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(index) { form.tags.splice(index, 1) }
+function removeTag(index: number) { form.tags.splice(index, 1) }
 
 // 贴图合集数据源(后端 type=贴图合集)
 async function fetchGzhImageCollections(keyword: string) {
@@ -187,7 +187,7 @@ async function fetchGzhImageCollections(keyword: string) {
   }
 }
 
-function handleCollectionChange(col) {
+function handleCollectionChange(col: Record<string, unknown> | null) {
   form.gzhCollectionData = col || null
 }
 

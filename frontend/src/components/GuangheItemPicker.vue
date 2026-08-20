@@ -163,7 +163,7 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   accountId: { type: String, required: true },
   mode: { type: String, default: 'product' }, // 'product' | 'shop'
-  initSelected: { type: Array as PropType<Array<GuangheItem | string>>, default: () => [] },
+  initSelected: { type: Array as PropType<Array<GuangheItem | string>>, default: (): any[] => [] },
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm'])
@@ -388,7 +388,7 @@ function onConfirm() {
   emit('update:modelValue', false)
 }
 
-function handleVisibilityChange(visible) {
+function handleVisibilityChange(visible: boolean) {
   if (!visible) handleClose()
   else emit('update:modelValue', true)
 }

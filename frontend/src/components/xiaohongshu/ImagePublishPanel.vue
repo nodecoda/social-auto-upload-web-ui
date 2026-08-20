@@ -84,7 +84,7 @@ const accountStore = useAccountStore()
 const aiContentField = PLATFORMS.XIAOHONGSHU.settingsFields.find(f => f.key === 'aiContent')
 const aiContentOptions = computed(() => aiContentField?.options || [])
 
-const XHS_DEFAULTS = { ...PLATFORMS.XIAOHONGSHU.defaultSettings, tags: [], isOriginal: false }
+const XHS_DEFAULTS = { ...PLATFORMS.XIAOHONGSHU.defaultSettings, tags: [] as string[], isOriginal: false }
 
 // 公共数据/附加参数接口(见 publishFn 标注)
 // 公共数据/附加参数接口(见 publishFn 标注)
@@ -151,7 +151,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(index) { form.tags.splice(index, 1) }
+function removeTag(index: number) { form.tags.splice(index, 1) }
 
 // 自动提取描述中的 #xxx 到标签数组,小红书标签上限 10
 useAutoExtractHashtags({

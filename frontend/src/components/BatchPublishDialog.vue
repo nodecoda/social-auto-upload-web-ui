@@ -55,7 +55,7 @@ interface PublishResultItem {
 defineProps({
   modelValue: { type: Boolean, required: true },
   progress: { type: Number, default: 0 },
-  results: { type: Array as PropType<PublishResultItem[]>, default: () => [] },
+  results: { type: Array as PropType<PublishResultItem[]>, default: (): any[] => [] },
   currentAccount: { type: String, default: '' },
 })
 

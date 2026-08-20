@@ -7,39 +7,39 @@ export const guangheApi = {
   // 打开弹窗 → 启动浏览器并初始化到选择面板
   // body: { account_id, type: 'product' | 'shop' }
   // 返回: { session_id, items, has_more, type }
-  pickerOpen(accountId, type) {
+  pickerOpen(accountId: string, type: string) {
     return http.post('/api/taobao_guanghe/picker/open', { account_id: accountId, type })
   },
 
   // 切换商品↔店铺
-  pickerSwitchType(sessionId, type) {
+  pickerSwitchType(sessionId: string, type: string) {
     return http.post('/api/taobao_guanghe/picker/switch_type', { session_id: sessionId, type })
   },
 
   // 切换「已购商品/平台优选」(仅商品模式)
   // tab: 'bought' | 'preferred'
-  pickerTab(sessionId, tab) {
+  pickerTab(sessionId: string, tab: string) {
     return http.post('/api/taobao_guanghe/picker/tab', { session_id: sessionId, tab })
   },
 
   // 切换筛选(仅商品模式平台优选 tab)
   // body: { rule?, category? }
-  pickerFilter(sessionId, { rule, category }: { rule?: string; category?: string } = {}) {
+  pickerFilter(sessionId: string, { rule, category }: { rule?: string; category?: string } = {}) {
     return http.post('/api/taobao_guanghe/picker/filter', { session_id: sessionId, rule, category })
   },
 
   // 搜索
-  pickerSearch(sessionId, keyword) {
+  pickerSearch(sessionId: string, keyword: string) {
     return http.post('/api/taobao_guanghe/picker/search', { session_id: sessionId, keyword })
   },
 
   // 加载更多
-  pickerLoadMore(sessionId) {
+  pickerLoadMore(sessionId: string) {
     return http.post('/api/taobao_guanghe/picker/load_more', { session_id: sessionId })
   },
 
   // 关闭(释放浏览器)
-  pickerClose(sessionId) {
+  pickerClose(sessionId: string) {
     return http.post('/api/taobao_guanghe/picker/close', { session_id: sessionId })
   },
 }

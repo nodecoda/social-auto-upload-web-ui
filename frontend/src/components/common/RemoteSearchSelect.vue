@@ -197,24 +197,24 @@ function resolveField(item: RemoteItem, mapping: FieldResolver) {
   }, item) ?? ''
 }
 
-function getKey(item) {
+function getKey(item: any) {
   return resolveField(item, props.fieldMap.key) || resolveField(item, props.fieldMap.label)
 }
-function getLabel(item) {
+function getLabel(item: any) {
   return resolveField(item, props.fieldMap.label) || ''
 }
-function getDesc(item) {
+function getDesc(item: any) {
   return resolveField(item, props.fieldMap.desc)
 }
-function getCover(item) {
+function getCover(item: any) {
   return resolveField(item, props.fieldMap.cover)
 }
 const hasCover = computed(() => props.fieldMap.cover != null)
-function isSelected(item) {
+function isSelected(item: any) {
   return getLabel(item) === selectedValue.value && selectedValue.value !== ''
 }
 
-function onCoverError(e) {
+function onCoverError(e: any) {
   e.target.style.display = 'none'
 }
 
@@ -285,7 +285,7 @@ function handleClear() {
   searched.value = false
 }
 
-function handleChange(val) {
+function handleChange(val: any) {
   emit('update:modelValue', val)
   const item = list.value.find(it => getLabel(it) === val)
   // change 事件带完整对象 + _searchKeyword(原契约)
@@ -294,7 +294,7 @@ function handleChange(val) {
 
 // 下拉可见性变化:autoLoad 模式下,打开即加载全量(只加载一次,避免重复请求)
 const autoLoaded = ref(false)
-function handleVisibleChange(visible) {
+function handleVisibleChange(visible: boolean) {
   if (visible && isAutoLoad.value && !autoLoaded.value && !loading.value) {
     autoLoaded.value = true
     handleSearch()

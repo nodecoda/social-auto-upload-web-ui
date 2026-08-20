@@ -121,7 +121,7 @@ function handleClear() {
   positionList.value = []
 }
 
-function handleChange(val) {
+function handleChange(val: string) {
   emit('update:modelValue', val)
   const pos = positionList.value.find(p => p.name === val)
   emit('change', pos ? { ...pos, _searchKeyword: searchKeyword.value } : null)

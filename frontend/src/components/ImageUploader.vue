@@ -93,6 +93,7 @@
 import { ref, onMounted, onBeforeUnmount, watch, type PropType } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Delete, RefreshRight, FolderOpened, Rank } from '@element-plus/icons-vue'
+// @ts-ignore
 import Sortable from 'sortablejs'
 import { materialsApi } from '@/api/materials'
 import { getFileUrl } from '@/utils/storage'
@@ -117,7 +118,7 @@ interface UploadRespData {
 }
 
 const props = defineProps({
-  modelValue: { type: Array as PropType<UploadImageItem[]>, default: () => [] },
+  modelValue: { type: Array as PropType<UploadImageItem[]>, default: (): any[] => [] },
   maxCount: { type: Number, default: 35 },
   visibleRows: { type: Number, default: 3 },
   columns: { type: Number, default: 5 },
@@ -165,7 +166,7 @@ function initSortable() {
     chosenClass: 'sortable-chosen',
     dragClass: 'sortable-drag',
     filter: '.upload-trigger',
-    onEnd(evt) {
+    onEnd(evt: any) {
       const { oldIndex, newIndex } = evt
       if (oldIndex === newIndex) return
 

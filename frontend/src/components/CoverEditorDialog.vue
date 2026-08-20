@@ -410,7 +410,7 @@ function onPointerDown(e: PointerEvent) {
     origX: p.offset.x, origY: p.offset.y,
     pointerId: e.pointerId,
   }
-  const onMove = (ev) => {
+  const onMove = (ev: PointerEvent) => {
     if (!dragState.value) return
     const pp = activePanel.value
     pp.offset.x = dragState.value.origX + (ev.clientX - dragState.value.startX)

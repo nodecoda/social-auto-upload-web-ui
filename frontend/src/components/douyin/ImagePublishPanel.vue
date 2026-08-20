@@ -80,7 +80,7 @@ const emit = defineEmits(['config-changed', 'publish-result'])
 
 const accountStore = useAccountStore()
 
-const DOUYIN_DEFAULTS = { ...PLATFORMS.DOUYIN.defaultSettings, tags: [] }
+const DOUYIN_DEFAULTS = { ...PLATFORMS.DOUYIN.defaultSettings, tags: [] as string[] }
 
 const declarationOptions = computed(() => {
   const field = PLATFORMS.DOUYIN.settingsFields.find(f => f.key === 'aiContent')
@@ -112,7 +112,7 @@ const { form, hasAccountOverride, resetOverride, publicApi } = useChannelForm(
         return
       }
       const selectedTag = merged.selectedTag || null
-      const tagTypeMap = { poi: 'location', miniapp: 'miniapp', game: 'gamepad', mark: 'mark' }
+      const tagTypeMap: Record<string, string> = { poi: 'location', miniapp: 'miniapp', game: 'gamepad', mark: 'mark' }
       let tagValue = '', miniLink = ''
       if (selectedTag) {
         tagValue = selectedTag.name || selectedTag.id || ''
@@ -127,7 +127,7 @@ const { form, hasAccountOverride, resetOverride, publicApi } = useChannelForm(
             tags: merged.tags || [], scheduleTime: merged.scheduleTime || '',
             aiContent: merged.aiContent || '', mix_id: merged.mixId || '',
             music_name: merged.selectedMusic || '', hotspot: merged.hotspotId || '',
-            tag_type: selectedTag ? (tagTypeMap[selectedTag.type] || '') : '',
+            tag_type: selectedTag ? (tagTypeMap[selectedTag.type as keyof typeof tagTypeMap] || '') : '',
             tag_value: tagValue, mini_link: miniLink,
             activities: merged.activityId || [],
             cover_path: commonData.coverImage?.stored_path || '',
@@ -170,7 +170,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(index) { form.tags.splice(index, 1) }
+function removeTag(index: number) { form.tags.splice(index, 1) }
 
 // 自动提取描述中的 #xxx 到标签数组,抖音活动+标签上限 5
 useAutoExtractHashtags({
@@ -182,7 +182,7 @@ useAutoExtractHashtags({
 })
 
 // ===== Douyin-specific handlers =====
-function handleActivityChange(activity) {
+function handleActivityChange(activity: any) {
   if (activity?.challenge?.length > 0) {
     for (const topic of activity.challenge) {
       if (form.tags && !form.tags.includes(topic)) {
@@ -193,7 +193,7 @@ function handleActivityChange(activity) {
   }
 }
 
-function handleMusicSelect(music) {
+function handleMusicSelect(music: any) {
   if (music) {
     form.selectedMusic = music.title || music.name || ''
     form.selectedMusicData = music
@@ -204,16 +204,16 @@ function handleMusicSelect(music) {
   }
 }
 
-function handleHotspotChange(hotspot) {
+function handleHotspotChange(hotspot: any) {
   if (hotspot) { form.hotspotId = hotspot.word; form.hotspotData = hotspot }
   else { form.hotspotId = ''; form.hotspotData = null }
 }
 
-function handleTagSelect(tag) {
+function handleTagSelect(tag: any) {
   if (tag) {
     form.selectedTag = tag
     const m = { poi: 'location', miniapp: 'miniapp', game: 'gamepad', mark: 'mark' }
-    form.tagType = m[tag.type] || ''
+    form.tagType = (m as Record<string, string>)[tag.type] || ''
     form.tagValue = tag.name || tag.id || ''
     ElMessage.success(`标签已选择: ${tag.name}`)
   } else {
@@ -221,7 +221,7 @@ function handleTagSelect(tag) {
   }
 }
 
-function handleMixChange(mix) {
+function handleMixChange(mix: any) {
   if (mix) { form.mixId = mix.mix_name; form.mixData = mix }
   else { form.mixId = ''; form.mixData = null }
 }

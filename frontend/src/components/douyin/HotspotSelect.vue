@@ -120,7 +120,7 @@ function handleClear() {
   hotspotList.value = []
 }
 
-function handleChange(val) {
+function handleChange(val: string) {
   console.log('HotspotSelect handleChange called with:', val)
   console.log('hotspotList:', hotspotList.value)
   emit('update:modelValue', val)
@@ -129,7 +129,7 @@ function handleChange(val) {
   emit('change', hotspot ? { ...hotspot, _searchKeyword: searchKeyword.value } : null)
 }
 
-function formatHotValue(value) {
+function formatHotValue(value: number) {
   if (!value) return '0'
   if (value >= 10000) {
     return (value / 10000).toFixed(1) + '万'
@@ -137,8 +137,8 @@ function formatHotValue(value) {
   return value.toString()
 }
 
-function onImageError(e) {
-  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZjVmNWY1Ii8+PHRleHQgeD0iMjAiIHk9IjI0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCflKk8L3RleHQ+PC9zdmc+'
+function onImageError(e: Event) {
+  ;(e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZjVmNWY1Ii8+PHRleHQgeD0iMjAiIHk9IjI0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCflKk8L3RleHQ+PC9zdmc+'
 }
 </script>
 

@@ -6,14 +6,14 @@ import { http } from '@/utils/request'
 // 拦截器整体放行 —— 调用方拿到的是整个 {code,data} 对象,需用 res.data?.xxx 取值。
 // 错误走拦截器 reject,调用方 try/catch 即可。
 export const jdApi = {
-  pickerOpen: (accountId) =>
+  pickerOpen: (accountId: string) =>
     http.post('/api/jd/picker/open', { accountId }),
-  pickerSearch: (accountId, keyword) =>
+  pickerSearch: (accountId: string, keyword: string) =>
     http.post('/api/jd/picker/search', { accountId, keyword }),
-  pickerGoPage: (accountId, page) =>
+  pickerGoPage: (accountId: string, page: number) =>
     http.post('/api/jd/picker/go_page', { accountId, page }),
-  pickerClose: (accountId) =>
+  pickerClose: (accountId: string) =>
     http.post('/api/jd/picker/close', { accountId }),
-  novelSearch: (accountId, keyword) =>
+  novelSearch: (accountId: string, keyword: string) =>
     http.post('/api/jd/novel/search', { accountId, keyword }),
 }

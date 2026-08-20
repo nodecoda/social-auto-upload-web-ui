@@ -329,7 +329,7 @@ async function fetchDetail() {
   error.value = ''
   loading.value = true
   try {
-    const res = (await historyApi.getBatch(route.params.batchId)) as ApiResponse<HistoryBatch>
+    const res = (await historyApi.getBatch(route.params.batchId as string)) as ApiResponse<HistoryBatch>
     // 拦截器只在 data.code === 200 时 resolve，否则 reject；到这里就是成功
     batch.value = res.data!
     // 默认选中：找第一个 account_id 在 store 里能找到的 item

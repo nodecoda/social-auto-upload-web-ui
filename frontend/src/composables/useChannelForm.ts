@@ -19,19 +19,19 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
   const { publishFn, validateFn } = options
   // ===== 内部状态 =====
   const platformConfig = reactive({ ...defaults })
-  const accountOverrides = reactive({})
+  const accountOverrides = reactive<Record<string, Record<string, any>>>({})
   const form = reactive({ ...platformConfig })
 
   let syncing = false
 
   // ===== 工具函数 =====
-  function hasValues(v) {
+  function hasValues(v: unknown) {
     if (v === undefined || v === '' || v === false) return false
     if (Array.isArray(v)) return v.length > 0
     return true
   }
 
-  function hasMeaningfulOverride(override) {
+  function hasMeaningfulOverride(override: Record<string, unknown>) {
     return override && Object.values(override).some(hasValues)
   }
 
@@ -48,7 +48,7 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
     return merged
   }
 
-  function applyToForm(source) {
+  function applyToForm(source: Record<string, any>) {
     syncing = true
     // 清除 form 中存在但 source 不存在的动态字段（如 mixData, selectedMusicData 等），
     // 这些是账号级专属字段，不存在于 platformConfig 默认值中，切换账号时必须清空
@@ -76,7 +76,7 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
         }
       }
     } else {
-      const diff = {}
+      const diff: Record<string, any> = {}
       for (const key of Object.keys(form)) {
         const cur = form[key]
         const fallback = platformConfig[key]
@@ -99,7 +99,7 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
   }, { deep: true })
 
   // ===== 模板辅助函数 =====
-  function hasAccountOverride(accountId) {
+  function hasAccountOverride(accountId: string | number) {
     return hasMeaningfulOverride(accountOverrides[accountId])
   }
 
@@ -113,7 +113,7 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
 
   // ===== 暴露给父组件的接口 =====
   const publicApi = {
-    async publish(accountId, accountName, commonData, extra) {
+    async publish(accountId: string | number, accountName: string, commonData: Record<string,any>, extra: Record<string,any>) {
       if (publishFn) {
         await publishFn(accountId, accountName, commonData, getMergedConfig(accountId), extra)
       }
@@ -126,7 +126,7 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
       }
     },
 
-    restoreConfigs(config, overrides) {
+    restoreConfigs(config: Record<string,any>, overrides: Record<string,any> | undefined) {
       Object.keys(platformConfig).forEach(k => delete platformConfig[k])
       Object.assign(platformConfig, defaults, config)
       Object.keys(accountOverrides).forEach(k => delete accountOverrides[k])
@@ -134,22 +134,22 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
       applyToForm(props.accountId ? getMergedConfig(props.accountId) : { ...platformConfig })
     },
 
-    syncTitle(title) {
+    syncTitle(title: string) {
       if (!props.accountId) { platformConfig.title = title; form.title = title }
       emit('config-changed')
     },
 
-    syncDescription(desc) {
+    syncDescription(desc: string) {
       if (!props.accountId) { platformConfig.description = desc; form.description = desc }
       emit('config-changed')
     },
 
-    syncTags(tags) {
+    syncTags(tags: string[]) {
       if (!props.accountId) { platformConfig.tags = [...tags]; form.tags = [...tags] }
       emit('config-changed')
     },
 
-    validate(accountId) {
+    validate(accountId: string | number) {
       if (validateFn) return validateFn(accountId, getMergedConfig(accountId))
       const merged = getMergedConfig(accountId)
       const errors = []
@@ -157,7 +157,7 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
       return { valid: errors.length === 0, errors }
     },
 
-    setPlatformConfig(partial) {
+    setPlatformConfig(partial: Record<string,any>) {
       for (const [k, v] of Object.entries(partial)) {
         if (v === undefined) continue
         platformConfig[k] = Array.isArray(v) ? [...v] : v
@@ -166,7 +166,7 @@ export function useChannelForm(defaults: Record<string, any>, { props, emit }: {
       emit('config-changed')
     },
 
-    setAccountOverride(accountId, partial) {
+    setAccountOverride(accountId: string | number, partial: Record<string,any>) {
       const existing = accountOverrides[accountId] || {}
       const next = { ...existing }
       for (const [k, v] of Object.entries(partial)) {

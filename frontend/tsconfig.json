@@ -11,11 +11,28 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["vite/client"],
+    "types": [
+      "vite/client"
+    ],
     "baseUrl": ".",
-    "paths": { "@/*": ["./src/*"] },
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "noImplicitAny": true
   },
-  "include": ["src/**/*", "src/vite-env.d.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*",
+    "src/vite-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

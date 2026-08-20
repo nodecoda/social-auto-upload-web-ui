@@ -49,7 +49,7 @@ interface TimeMarker {
 }
 
 const props = defineProps({
-  frames: { type: Array as PropType<TimelineFrame[]>, default: () => [] },
+  frames: { type: Array as PropType<TimelineFrame[]>, default: (): TimelineFrame[] => [] },
   duration: { type: Number, default: 0 },
   modelValue: { type: Number, default: 0 },
   extracting: { type: Boolean, default: false },

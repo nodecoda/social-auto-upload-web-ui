@@ -277,7 +277,7 @@ const formatTime = (time: string) => {
   if (!time) return '-'
   try {
     const d = new Date(time)
-    const pad = (n) => String(n).padStart(2, '0')
+    const pad = (n: number) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
   } catch {
     return time
