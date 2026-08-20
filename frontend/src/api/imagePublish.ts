@@ -1,13 +1,14 @@
 import { http } from '@/utils/request'
 import { materialsApi } from '@/api/materials'
+import type { AxiosProgressEvent } from 'axios'
 
 export const imagePublishApi = {
   uploadImage(file: File, onProgress?: (percent: number) => void): Promise<{ data?: { url?: string }; url?: string }> {
     const formData = new FormData()
     formData.append('file', file)
-    return materialsApi.upload(formData, (percent: number) => {
-      if (onProgress) {
-        onProgress(percent)
+    return materialsApi.upload(formData, (e: AxiosProgressEvent) => {
+      if (onProgress && e.progress != null) {
+        onProgress(Math.round(e.progress * 100))
       }
     }) as Promise<{ data?: { url?: string }; url?: string }>
   },

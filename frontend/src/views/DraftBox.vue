@@ -236,6 +236,7 @@ import { getPlatformByKey } from '@/config/platforms'
 import { getFileUrl } from '@/utils/storage'
 import { type ApiResponse } from '@/utils/request'
 import BatchDraftPublishDialog from '@/components/BatchDraftPublishDialog.vue'
+import { getErrorMessage } from '@/utils/error'
 
 interface ChannelSummary {
   platform: string
@@ -495,7 +496,7 @@ async function onBatchDelete() {
     }
     selection.value = new Set()
   } catch (e) {
-    ElMessage.error(`批量删除失败：${e.message || e}`)
+    ElMessage.error(`批量删除失败：${getErrorMessage(e)}`)
   }
 }
 
@@ -546,7 +547,7 @@ async function onDialogConfirm(confirmedIds: number[]) {
     }
     selection.value = new Set()
   } catch (e) {
-    ElMessage.error({ message: `批量发布失败：${e?.message || e}` })
+    ElMessage.error({ message: `批量发布失败：${getErrorMessage(e)}` })
   } finally {
     isPublishing.value = false
   }

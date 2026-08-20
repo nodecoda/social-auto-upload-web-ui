@@ -42,6 +42,7 @@ import { imagePublishApi } from '@/api/imagePublish'
 import { PLATFORMS } from '@/config/platforms'
 import { useChannelForm } from '@/composables/useChannelForm'
 import { useAutoExtractHashtags } from '@/utils/hashtag'
+import { getErrorMessage } from '@/utils/error'
 
 const props = defineProps({
   accountId: { type: [Number, Object] as PropType<number | string | null>, default: null },
@@ -118,7 +119,7 @@ const { form, hasAccountOverride, resetOverride, publicApi } = useChannelForm(
         })
         emit('publish-result', { accountName, status: 'success', message: '发布成功' })
       } catch (e) {
-        emit('publish-result', { accountName, status: 'fail', message: e.message || '发布失败' })
+        emit('publish-result', { accountName, status: 'fail', message: getErrorMessage(e) || '发布失败' })
       }
     },
     // 微博 panel 无独立必填项,所有校验已在 publishAll 完成

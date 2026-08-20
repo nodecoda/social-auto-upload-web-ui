@@ -127,14 +127,15 @@ const visibleAccountGroups = computed(() =>
 )
 
 // 展开/收起过渡:动态设置 max-height,避免硬编码上限导致内容被裁剪
-function onSlideEnter(el: HTMLElement) {
-  el.style.maxHeight = el.scrollHeight + 'px'
+function onSlideEnter(el: Element) {
+  (el as HTMLElement).style.maxHeight = (el as HTMLElement).scrollHeight + 'px'
 }
-function onSlideLeave(el: HTMLElement) {
-  el.style.maxHeight = el.scrollHeight + 'px'
+function onSlideLeave(el: Element) {
+  const e = el as HTMLElement
+  e.style.maxHeight = e.scrollHeight + 'px'
   // 强制重排后再改为 0,确保 leave 动画能播放
-  void el.offsetHeight
-  el.style.maxHeight = '0px'
+  void e.offsetHeight
+  e.style.maxHeight = '0px'
 }
 </script>
 

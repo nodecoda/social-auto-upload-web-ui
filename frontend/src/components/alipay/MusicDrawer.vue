@@ -98,6 +98,7 @@ import { ref, computed, watch, onBeforeUnmount, type PropType } from 'vue'
 import { type ApiResponse } from '@/utils/request'
 import { VideoPlay, VideoPause, InfoFilled, WarningFilled } from '@element-plus/icons-vue'
 import { alipayApi } from '@/api/alipay'
+import { getErrorMessage } from '@/utils/error'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -165,7 +166,7 @@ async function fetchMusicList() {
     }
   } catch (e) {
     console.error('[支付宝音乐] 加载失败:', e)
-    errorMsg.value = e.message || '网络请求失败,请检查后端服务'
+    errorMsg.value = getErrorMessage(e) || '网络请求失败,请检查后端服务'
     allMusicList.value = []
   } finally {
     loading.value = false

@@ -97,6 +97,7 @@ import { Plus, Delete, RefreshRight, FolderOpened, Rank } from '@element-plus/ic
 import Sortable from 'sortablejs'
 import { materialsApi } from '@/api/materials'
 import { getFileUrl } from '@/utils/storage'
+import type { AxiosProgressEvent } from 'axios'
 
 interface UploadImageItem {
   id: number | string
@@ -230,9 +231,9 @@ async function uploadFile(file: File) {
     const formData = new FormData()
     formData.append('file', file)
     // materialsApi.upload 返回类型未精确标注, 按响应结构做最小标注
-    const resp = (await materialsApi.upload(formData, (percent: number) => {
-      if (images.value[index]) {
-        images.value[index].progress = percent
+    const resp = (await materialsApi.upload(formData, (e: AxiosProgressEvent) => {
+      if (images.value[index] && e.progress != null) {
+        images.value[index].progress = Math.round(e.progress * 100)
       }
     })) as { code?: number; data?: UploadRespData }
     if (resp.code === 200) {
