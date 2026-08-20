@@ -170,6 +170,7 @@ import { ArrowLeft, WarningFilled, DocumentRemove, CircleCloseFilled, Picture } 
 import { useAccountStore } from '@/stores/account'
 import { accountApi } from '@/api/account'
 import { historyApi } from '@/api/v2'
+import { getErrorMessage } from '@/utils/error'
 import { platformList, getPlatformByKey } from '@/config/platforms'
 import { type ApiResponse } from '@/utils/request'
 import AccountSidebar from '@/components/AccountSidebar.vue'
@@ -355,7 +356,7 @@ async function fetchDetail() {
       error.value = '加载失败，请稍后重试'
     } else {
       // 其它 4xx（401/403 等）→ 红条
-      error.value = err.message || '加载失败'
+      error.value = getErrorMessage(err) || '加载失败'
     }
   } finally {
     loading.value = false

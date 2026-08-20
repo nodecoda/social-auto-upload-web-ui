@@ -174,14 +174,22 @@ interface ProgressLike {
   total?: number
 }
 
-const props = defineProps({
-  modelValue: { type: Boolean, default: false },
-  accept: { type: String, default: '*' },
-  multiple: { type: Boolean, default: false },
-  maxSize: { type: Number, default: null }, // MB
-  maxCount: { type: Number, default: null },
-  title: { type: String, default: '上传素材' },
-  tip: { type: String, default: '' },
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  accept?: string
+  multiple?: boolean
+  maxSize?: number | null // MB
+  maxCount?: number | null
+  title?: string
+  tip?: string
+}>(), {
+  modelValue: false,
+  accept: '*',
+  multiple: false,
+  maxSize: null,
+  maxCount: null,
+  title: '上传素材',
+  tip: '',
 })
 
 // 100MB 以上的文件走分片上传（避免 axios onUploadProgress 在超大 multipart 时不更新）

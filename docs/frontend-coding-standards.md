@@ -136,6 +136,8 @@ const emit = defineEmits<{
 
 **理由**：数组形式下 `emit('update:modelValue', ...)` 的实参是 `any`，模板消费端与测试都失去类型保护；泛型签名让误传 payload 在 `vue-tsc` 阶段即报错。
 
+> **Props 运行时形式的例外**：含 `PropType`（Set/Function/复杂接口）、`validator` 或运行时类型数组的 props **必须保留** `defineProps({...})` 运行时形式（泛型形式无法表达运行时校验，转换会改变行为）。仅纯基础类型（Boolean/String/Number/Object/Array，无 validator）的组件可安全泛型化。
+
 ---
 
 ## 4. Composables
@@ -286,6 +288,8 @@ it('emits confirm with payload', async () => {
 | 组件文件名 PascalCase | ✓ | — |
 | `storeToRefs` 使用 | 0 处（现为 `store.xxx`） | 合规；新代码按 Rule 5 |
 | `allowJs` | `false`（原 `true`，0 个 .js 源文件） | 已收紧（2026-08 批 11） |
+| `defineProps` 运行时形式 | 4 处已泛型化 | BatchTagDialog/MaterialSelectDialog/PrePublishCheckDialog/MaterialUploader（批 13）；其余含 PropType/validator 按例外保留 |
+| 错误处理 `.message` 直访 | 2 处已收敛 | 改用 `getErrorMessage`（批 13） |
 | 平台 Select 列表 `any[]` | **0 处 ✓**（原 18 处） | 已全部收敛为接口（批 11 douyin 系 / 批 12 其余平台） |
 
 ---
