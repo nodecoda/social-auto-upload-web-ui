@@ -11,7 +11,7 @@ import { ref, reactive, watch } from 'vue'
  * @param {function}  validateFn       (accountId) => { valid, errors }
  */
 interface ChannelFormOptions {
-  publishFn?: (accountId: string | number, accountName: string, commonData: unknown, merged: Record<string, any>, extra?: unknown) => Promise<unknown>
+  publishFn?: (accountId: string | number, accountName: string, commonData: any, merged: Record<string, any>, extra?: any) => Promise<any>
   validateFn?: (accountId: string | number, merged: Record<string, any>) => { valid: boolean; errors: string[] }
 }
 

@@ -117,8 +117,8 @@
               <div class="channels-track" :class="{ 'channels-marquee': isOverflow(draft.id) }" :ref="el => setChannelRef(draft.id, el)">
                 <span v-for="ch in draft.channels_summary" :key="ch.platform" class="channel-tag">
                   <img
-                    v-if="getPlatformLogo(ch.platform)"
-                    :src="getPlatformLogo(ch.platform)"
+                    v-if="getPlatformLogo(ch.platform ?? '')"
+                    :src="getPlatformLogo(ch.platform ?? '') || undefined"
                     class="channel-icon"
                   />
                   {{ ch.name }} × {{ ch.count }}
@@ -128,7 +128,7 @@
 
             <div class="card-meta">
               <span v-if="draft.video_file_size">{{ formatFileSize(draft.video_file_size) }}</span>
-              <span>{{ formatTime(draft.updated_at) }}</span>
+                <span>{{ formatTime(draft.updated_at ?? '') }}</span>
             </div>
           </div>
 
@@ -197,8 +197,8 @@
               <div class="channels-track">
                 <span v-for="ch in draft.channels_summary" :key="ch.platform" class="channel-tag">
                   <img
-                    v-if="getPlatformLogo(ch.platform)"
-                    :src="getPlatformLogo(ch.platform)"
+                    v-if="getPlatformLogo(ch.platform ?? '')"
+                    :src="getPlatformLogo(ch.platform ?? '') || undefined"
                     class="channel-icon"
                   />
                   {{ ch.name }} × {{ ch.count }}
@@ -207,7 +207,7 @@
             </div>
 
             <div class="card-meta">
-              <span>{{ formatTime(draft.updated_at) }}</span>
+                <span>{{ formatTime(draft.updated_at ?? '') }}</span>
             </div>
           </div>
 
@@ -312,8 +312,8 @@ function getCoverUrl(path: string) {
   return getFileUrl(path)
 }
 
-function getPlatformLogo(platformKey: string) {
-  const p = getPlatformByKey(platformKey)
+function getPlatformLogo(platformKey: string | null) {
+  const p = getPlatformByKey(platformKey ?? '')
   return p?.logo || null
 }
 
@@ -349,7 +349,7 @@ function formatFileSize(bytes: number) {
   return (bytes / 1024).toFixed(0) + ' KB'
 }
 
-function formatTime(isoString: string) {
+function formatTime(isoString: string | undefined) {
   if (!isoString) return ''
   const date = new Date(isoString)
   const now = new Date()
@@ -377,7 +377,7 @@ function setChannelRef(draftId: number, el: unknown) {
     const node = el as HTMLElement
     channelRefs[draftId] = node
     nextTick(() => {
-      overflowMap.value[draftId] = node.scrollWidth > node.parentElement.clientWidth
+      overflowMap.value[draftId] = node.scrollWidth > (node.parentElement?.clientWidth ?? 0)
     })
   }
 }

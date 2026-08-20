@@ -5,7 +5,7 @@ import { accountApi } from '@/api/account'
 
 export const useAccountStore = defineStore('account', () => {
   // 存储所有账号信息
-  const accounts = ref([])
+  const accounts = ref<any[]>([])
   
   // 设置账号列表
   const setAccounts = (accountsData: any[]) => {
@@ -59,7 +59,7 @@ export const useAccountStore = defineStore('account', () => {
     return accounts.value.filter(acc => acc.platform === platform)
   }
 
-  const allTags = ref([])
+  const allTags = ref<any[]>([])
 
   const loadTags = async () => {
     try {

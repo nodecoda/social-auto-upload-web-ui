@@ -309,7 +309,7 @@ function openSubmitDialog() {
   submitVisible.value = true
 }
 function onFileChange(file: UploadFile) {
-  if (file.size > 5 * 1024 * 1024) {
+  if ((file.size ?? 0) > 5 * 1024 * 1024) {
     ElMessage.error('文件超过 5MB')
     submitFile.value = null
     return false

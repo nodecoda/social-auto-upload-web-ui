@@ -103,7 +103,7 @@
             </div>
           </div>
           <div class="platform-logo">
-            <img v-if="getPlatformLogo(account.platform)" :src="getPlatformLogo(account.platform)" :alt="account.platform" class="platform-icon" />
+            <img v-if="getPlatformLogo(account.platform)" :src="getPlatformLogo(account.platform) || undefined" :alt="account.platform" class="platform-icon" />
             <span v-else class="platform-letter" :style="{ color: getPlatformColor(account.platform) }">
               {{ getPlatformLetter(account.platform) }}
             </span>
@@ -126,7 +126,7 @@
               :title="item.NAME"
             >
               <div class="stat-icon-wrap">
-                <component :is="getIconComponent(item.ICON)" />
+                <component :is="getIconComponent(item.ICON ?? '')" />
               </div>
               <div class="stat-value">{{ formatStat(item.COUNT) }}</div>
               <div class="stat-label">{{ item.NAME }}</div>
@@ -338,7 +338,7 @@
                 <div class="card-logo-wrap" :style="{ background: getPlatformBg(p.name) }">
                   <img
                     v-if="getPlatformLogo(p.name)"
-                    :src="getPlatformLogo(p.name)"
+                    :src="getPlatformLogo(p.name) || undefined"
                     :alt="p.name"
                     class="card-logo"
                   />
@@ -629,7 +629,8 @@ onMounted(() => {
   nextTick(() => {
     checkTagOverflow()
     tagResizeObserver = new ResizeObserver(() => checkTagOverflow())
-    document.querySelectorAll('.account-tags-viewport').forEach(el => tagResizeObserver.observe(el))
+    const observer = tagResizeObserver
+    if (observer) document.querySelectorAll('.account-tags-viewport').forEach(el => observer.observe(el))
   })
 })
 
@@ -705,7 +706,9 @@ const fetchAccounts = async () => {
   // 3) fixing   → 失效账号自动打开 SSE 登录
   // 4) done     → 全部修复完成，1.2s 后自动关闭
   try {
-    const allValid = await prePublishCheckRef.value.open(accountStore.accounts as AccountItem[])
+    const dialog = prePublishCheckRef.value
+    if (!dialog) return
+    const allValid = await dialog.open(accountStore.accounts as AccountItem[])
     // dialog 内部已逐张更新 accountStore；这里再拉一次最新状态保证 UI 同步
     await fetchAccountsQuick()
     if (allValid && appStore.isFirstTimeAccountManagement) {
@@ -723,23 +726,23 @@ const getPlatformClass = (platform: string) => {
   return platformCssMap[platform] || ''
 }
 
-const getPlatformColor = (platform: string) => {
-  const p = getPlatformByName(platform)
+const getPlatformColor = (platform: string | null) => {
+  const p = getPlatformByName(platform ?? '')
   return p?.color || '#8b5cf6'
 }
 
-const getPlatformBg = (platform: string) => {
-  const p = getPlatformByName(platform)
+const getPlatformBg = (platform: string | null) => {
+  const p = getPlatformByName(platform ?? '')
   return p?.bgColor || 'rgba(139, 92, 246, 0.15)'
 }
 
-const getPlatformLogo = (platform: string) => {
-  const p = getPlatformByName(platform)
+const getPlatformLogo = (platform: string | null) => {
+  const p = getPlatformByName(platform ?? '')
   return p?.logo || null
 }
 
-const getPlatformLetter = (platform: string) => {
-  const p = getPlatformByName(platform)
+const getPlatformLetter = (platform: string | null) => {
+  const p = getPlatformByName(platform ?? '')
   return p?.letter || platform?.charAt(0) || '?'
 }
 
@@ -1290,13 +1293,15 @@ const onBatchTagDone = async () => {
 }
 
 const submitAccountForm = () => {
-  accountFormRef.value.validate(async (valid) => {
+  const formRef = accountFormRef.value
+  if (!formRef) return
+  formRef.validate(async (valid) => {
     if (valid) {
       try {
         const type = platformNameToId[accountForm.platform] || 1
         const res = (await accountApi.updateAccount({ id: accountForm.id, type, userName: accountForm.name })) as ApiResponse
         if (res.code === 200) {
-          accountStore.updateAccount(accountForm.id, { id: accountForm.id, name: accountForm.name, platform: accountForm.platform, status: accountForm.status })
+          if (accountForm.id !== null) accountStore.updateAccount(accountForm.id, { id: accountForm.id, name: accountForm.name, platform: accountForm.platform, status: accountForm.status })
           ElMessage.success('更新成功')
           dialogVisible.value = false
           fetchAccountsQuick()

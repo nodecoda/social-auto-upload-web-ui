@@ -52,7 +52,7 @@ export const useAppStore = defineStore('app', () => {
   const isAccountRefreshing = ref(false)
 
   // 素材列表数据
-  const materials = ref([])
+  const materials = ref<any[]>([])
   
   // 设置账号管理页面已访问
   const setAccountManagementVisited = () => {
@@ -90,7 +90,7 @@ export const useAppStore = defineStore('app', () => {
 
   // ========== 渠道黑名单 ==========
   // 平台 key 数组,如 ['xiaohongshu', 'youtube']
-  const disabledPlatforms = ref([])
+  const disabledPlatforms = ref<string[]>([])
 
   // ========== 账号登录状态检查机制 ==========
   // 'startup' = 项目启动时后台自动检测; 'pre-publish' = 发布前检测(默认)

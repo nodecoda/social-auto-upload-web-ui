@@ -123,7 +123,7 @@ export function countCharsWithEmoji(s: string | null | undefined) {
   if (!s) return 0
   let n = 0
   for (const ch of s) {
-    n += ch.codePointAt(0) > 0xFFFF ? 3 : 1
+    n += (ch.codePointAt(0) ?? 0) > 0xFFFF ? 3 : 1
   }
   return n
 }

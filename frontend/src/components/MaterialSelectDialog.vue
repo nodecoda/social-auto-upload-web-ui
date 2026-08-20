@@ -304,7 +304,7 @@ function formatSize(bytes: number) {
   return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
 }
 
-function formatDate(iso: string) {
+function formatDate(iso: string | undefined) {
   if (!iso) return ''
   const d = new Date(iso.replace(' ', 'T') + (iso.endsWith('Z') ? '' : 'Z'))
   if (isNaN(d.getTime())) return iso
@@ -322,7 +322,7 @@ function onImageError(e: Event) {
 
 let searchDebounce: ReturnType<typeof setTimeout> | null = null
 function onSearchInput() {
-  clearTimeout(searchDebounce)
+  clearTimeout(searchDebounce ?? undefined)
   searchDebounce = setTimeout(() => {
     page.value = 1
     loadPage()
@@ -355,8 +355,8 @@ async function loadPage() {
       page_size: pageSize.value,
     })) as MaterialListResponse
     if (resp.code === 200) {
-      items.value = resp.data.items || []
-      total.value = resp.data.total || 0
+      items.value = resp.data?.items || []
+      total.value = resp.data?.total || 0
       // 翻页后，如果当前选中/正在播放的素材不在新页面则清空
       if (selectedId.value && !items.value.some((m) => m.id === selectedId.value)) {
         selectedId.value = null

@@ -83,7 +83,7 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 
-function formatRelativeTime(iso: string) {
+function formatRelativeTime(iso: string | undefined) {
   if (!iso) return ''
   const d = new Date(iso)
   const now = new Date()
