@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { ElIcon } from '../../tests/stubs.js'
+import { ElIcon } from '../../tests/stubs'
 import AccountSidebar from './AccountSidebar.vue'
 
 // 可控的 appStore mock:isPlatformDisabled 默认返回 false,可按用例覆写
-const { isPlatformDisabled } = vi.hoisted(() => ({ isPlatformDisabled: vi.fn(() => false) }))
+const { isPlatformDisabled } = vi.hoisted(() => ({ isPlatformDisabled: vi.fn((key: string) => false) }))
 vi.mock('@/stores/app', () => ({
   useAppStore: () => ({ isPlatformDisabled }),
 }))
@@ -39,7 +39,7 @@ const defaultProps = () => ({
 })
 
 const mountIt = (over = {}) => mount(AccountSidebar, {
-  props: { ...defaultProps(), ...over },
+  props: { ...defaultProps(), ...over } as any,
   global: { stubs: { ElIcon } },
 })
 
@@ -143,7 +143,7 @@ describe('AccountSidebar', () => {
   it('点击账号项发出 select-account(账号,分组)', async () => {
     const w = mountIt()
     await w.findAll('.account-item')[0].trigger('click')
-    const [account, group] = w.emitted('select-account')[0]
+    const [account, group] = w.emitted('select-account')![0]
     expect(account).toMatchObject({ id: 1, name: '账号A' })
     expect(group).toMatchObject({ key: 'douyin' })
   })

@@ -23,7 +23,7 @@ vi.mock('element-plus', () => ({
 const makeFile = (name = 'a.jpg') => ({ name })
 
 describe('useImagePublishStore', () => {
-  let store
+  let store: any
 
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -55,7 +55,7 @@ describe('useImagePublishStore', () => {
   })
 
   it('upload 成功: 添加占位项, 回调更新 progress, 完成后写 url 和 100', async () => {
-    imagePublishApi.uploadImage.mockImplementation(async (file, onProgress) => {
+    vi.mocked(imagePublishApi.uploadImage).mockImplementation(async (file, onProgress) => {
       onProgress?.(40)
       return { data: { url: 'http://img/ok.jpg' } }
     })
@@ -69,13 +69,13 @@ describe('useImagePublishStore', () => {
   })
 
   it('upload 成功但无 data.url 时回退 res.url', async () => {
-    imagePublishApi.uploadImage.mockResolvedValue({ url: 'http://img/fallback.jpg' })
+    vi.mocked(imagePublishApi.uploadImage).mockResolvedValue({ url: 'http://img/fallback.jpg' })
     await store.upload(makeFile())
     expect(store.images[0].url).toBe('http://img/fallback.jpg')
   })
 
   it('upload 失败: 移除占位项 + ElMessage.error + 重新抛出', async () => {
-    imagePublishApi.uploadImage.mockRejectedValue(new Error('upload fail'))
+    vi.mocked(imagePublishApi.uploadImage).mockRejectedValue(new Error('upload fail'))
     await expect(store.upload(makeFile('bad.jpg'))).rejects.toThrow('upload fail')
     expect(store.images).toEqual([])
     expect(ElMessage.error).toHaveBeenCalledWith('图片 bad.jpg 上传失败')
@@ -84,7 +84,7 @@ describe('useImagePublishStore', () => {
   it('removeImage: 合法索引移除, 非法索引不操作', () => {
     store.images.push({ name: 'a' }, { name: 'b' }, { name: 'c' })
     store.removeImage(1)
-    expect(store.images.map(i => i.name)).toEqual(['a', 'c'])
+    expect(store.images.map((i: any) => i.name)).toEqual(['a', 'c'])
     store.removeImage(99)
     expect(store.images).toHaveLength(2)
     store.removeImage(-1)
@@ -94,17 +94,17 @@ describe('useImagePublishStore', () => {
   it('reorder: 向后/向前移动, 非法或相同索引不操作', () => {
     store.images.push({ name: 'a' }, { name: 'b' }, { name: 'c' })
     store.reorder(0, 2)
-    expect(store.images.map(i => i.name)).toEqual(['b', 'c', 'a'])
+    expect(store.images.map((i: any) => i.name)).toEqual(['b', 'c', 'a'])
     store.reorder(2, 0)
-    expect(store.images.map(i => i.name)).toEqual(['a', 'b', 'c'])
+    expect(store.images.map((i: any) => i.name)).toEqual(['a', 'b', 'c'])
     store.reorder(1, 1)
     store.reorder(9, 0)
     store.reorder(0, -5)
-    expect(store.images.map(i => i.name)).toEqual(['a', 'b', 'c'])
+    expect(store.images.map((i: any) => i.name)).toEqual(['a', 'b', 'c'])
   })
 
   it('replaceImage 成功: 替换条目并写 url/progress', async () => {
-    imagePublishApi.uploadImage.mockResolvedValue({ data: { url: 'http://img/new.jpg' } })
+    vi.mocked(imagePublishApi.uploadImage).mockResolvedValue({ data: { url: 'http://img/new.jpg' } })
     store.images.push({ url: 'old', name: 'old.jpg', progress: 100 })
     const res = await store.replaceImage(0, makeFile('new.jpg'))
     expect(res.data.url).toBe('http://img/new.jpg')
@@ -112,7 +112,7 @@ describe('useImagePublishStore', () => {
   })
 
   it('replaceImage 失败: 恢复原条目 + ElMessage.error + 重新抛出', async () => {
-    imagePublishApi.uploadImage.mockRejectedValue(new Error('boom'))
+    vi.mocked(imagePublishApi.uploadImage).mockRejectedValue(new Error('boom'))
     store.images.push({ url: 'old', name: 'old.jpg', progress: 100 })
     await expect(store.replaceImage(0, makeFile('new.jpg'))).rejects.toThrow('boom')
     expect(store.images[0]).toEqual({ url: 'old', name: 'old.jpg', progress: 100 })
@@ -142,7 +142,7 @@ describe('useImagePublishStore', () => {
   })
 
   it('save 成功: 提交 payload, 记录 draftId, 提示保存成功', async () => {
-    imagePublishApi.saveDraft.mockResolvedValue({ data: { id: 'draft-1' } })
+    vi.mocked(imagePublishApi.saveDraft).mockResolvedValue({ data: { id: 'draft-1' } })
     store.images.push({ url: 'u1', name: 'n1' })
     store.selectedAccounts = [1]
     store.accountConfigs = { 1: { title: 't' } }
@@ -161,7 +161,7 @@ describe('useImagePublishStore', () => {
   })
 
   it('save 失败: ElMessage.error + 重新抛出', async () => {
-    imagePublishApi.saveDraft.mockRejectedValue(new Error('save fail'))
+    vi.mocked(imagePublishApi.saveDraft).mockRejectedValue(new Error('save fail'))
     await expect(store.save()).rejects.toThrow('save fail')
     expect(ElMessage.error).toHaveBeenCalledWith('保存草稿失败')
   })
@@ -175,7 +175,7 @@ describe('useImagePublishStore', () => {
   })
 
   it('publish 成功(立即): payload 无 scheduledAt, 提示提交, publishing 复位', async () => {
-    imagePublishApi.publishImage.mockResolvedValue({})
+    vi.mocked(imagePublishApi.publishImage).mockResolvedValue({})
     store.images.push({ url: 'u1', name: 'n1' })
     store.selectedAccounts = [1]
     store.accountConfigs = { 1: { title: 't' } }
@@ -190,7 +190,7 @@ describe('useImagePublishStore', () => {
   })
 
   it('publish 定时: payload 带 scheduledAt, 提示定时发布', async () => {
-    imagePublishApi.publishImage.mockResolvedValue({})
+    vi.mocked(imagePublishApi.publishImage).mockResolvedValue({})
     store.images.push({ url: 'u', name: 'n' })
     store.selectedAccounts = [1]
     await store.publish('2026-09-01 10:00:00')
@@ -201,7 +201,7 @@ describe('useImagePublishStore', () => {
   })
 
   it('publish 失败: ElMessage.error + 重新抛出 + publishing 复位', async () => {
-    imagePublishApi.publishImage.mockRejectedValue(new Error('publish fail'))
+    vi.mocked(imagePublishApi.publishImage).mockRejectedValue(new Error('publish fail'))
     store.images.push({ url: 'u', name: 'n' })
     store.selectedAccounts = [1]
     await expect(store.publish()).rejects.toThrow('publish fail')

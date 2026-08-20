@@ -28,14 +28,14 @@ describe('PublishHeader', () => {
     const w = mount(PublishHeader, { props: { disableOneClick: true, hasAccounts: false }, global: { stubs } })
     const btns = w.findAll('button')
     const fill = btns.find(b => b.text().includes('一键填写'))
-    expect(fill.attributes('disabled')).toBeDefined()
+    expect(fill!.attributes('disabled')).toBeDefined()
   })
 
   it('无账号时批量设置按钮禁用', () => {
     const w = mount(PublishHeader, { props: { hasAccounts: false }, global: { stubs } })
     const btns = w.findAll('button')
     const batch = btns.find(b => b.text().includes('批量设置'))
-    expect(batch.attributes('disabled')).toBeDefined()
+    expect(batch!.attributes('disabled')).toBeDefined()
   })
 
   it('发布中显示「发布中...」并禁用发布按钮', () => {
@@ -43,7 +43,7 @@ describe('PublishHeader', () => {
     expect(w.text()).toContain('发布中...')
     const btns = w.findAll('button')
     const publish = btns.find(b => b.text().includes('发布中'))
-    expect(publish.attributes('disabled')).toBeDefined()
+    expect(publish!.attributes('disabled')).toBeDefined()
   })
 
   it('有平台名时显示个性化标签', () => {
@@ -56,14 +56,14 @@ describe('PublishHeader', () => {
   it('点击按钮依次发出对应事件', async () => {
     const w = mount(PublishHeader, { props: { hasAccounts: true }, global: { stubs } })
     const btns = w.findAll('button')
-    const btnOf = t => btns.find(b => b.text().includes(t))
-    await btnOf('保存草稿').trigger('click')
+    const btnOf = (t: string) => btns.find(b => b.text().includes(t))
+    await btnOf('保存草稿')!.trigger('click')
     expect(w.emitted('save-draft')).toBeTruthy()
-    await btnOf('一键填写').trigger('click')
+    await btnOf('一键填写')!.trigger('click')
     expect(w.emitted('one-click')).toBeTruthy()
-    await btnOf('批量设置').trigger('click')
+    await btnOf('批量设置')!.trigger('click')
     expect(w.emitted('batch-set')).toBeTruthy()
-    await btnOf('一键发布').trigger('click')
+    await btnOf('一键发布')!.trigger('click')
     expect(w.emitted('publish')).toBeTruthy()
   })
 })

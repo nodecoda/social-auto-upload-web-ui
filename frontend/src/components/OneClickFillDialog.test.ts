@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { ElDialog, ElEmpty, ElIcon, ElPagination } from '../../tests/stubs.js'
+import { ElDialog, ElEmpty, ElIcon, ElPagination } from '../../tests/stubs'
 import OneClickFillDialog from './OneClickFillDialog.vue'
 
 // 命名导出 http(见组件 L49 `import { http } from '@/utils/request'`)
@@ -31,7 +31,7 @@ const mountIt = (over = {}) => mount(OneClickFillDialog, {
   },
 })
 
-const open = async (w) => { await w.setProps({ modelValue: true }); await flushPromises() }
+const open = async (w: any) => { await w.setProps({ modelValue: true }); await flushPromises() }
 
 describe('OneClickFillDialog', () => {
   beforeEach(() => {
@@ -39,7 +39,7 @@ describe('OneClickFillDialog', () => {
   })
 
   it('打开时按 type 请求历史模板,无记录时渲染空态(视频)', async () => {
-    http.get.mockResolvedValue({ data: { list: [], total: 0 } })
+    vi.mocked(http.get).mockResolvedValue({ data: { list: [], total: 0 } })
     const w = mountIt()
     expect(http.get).not.toHaveBeenCalled()
     await open(w)
@@ -50,7 +50,7 @@ describe('OneClickFillDialog', () => {
   })
 
   it('type=image 时空态文案指向图集发布', async () => {
-    http.get.mockResolvedValue({ data: { list: [], total: 0 } })
+    vi.mocked(http.get).mockResolvedValue({ data: { list: [], total: 0 } })
     const w = mountIt({ type: 'image' })
     await open(w)
     expect(http.get).toHaveBeenCalledWith('/api/v2/publish-templates', { type: 'image', page: 1, page_size: 20 })
@@ -58,7 +58,7 @@ describe('OneClickFillDialog', () => {
   })
 
   it('渲染记录卡片:标题、描述截断、渠道标签、相对时间与视频封面', async () => {
-    http.get.mockResolvedValue({ data: { list: [videoRecord], total: 1 } })
+    vi.mocked(http.get).mockResolvedValue({ data: { list: [videoRecord], total: 1 } })
     const w = mountIt()
     await open(w)
     const card = w.find('.card')
@@ -71,7 +71,7 @@ describe('OneClickFillDialog', () => {
   })
 
   it('image 记录:请求素材详情生成封面,无 platform 渠道显示「未知平台」', async () => {
-    http.get.mockResolvedValueOnce({ data: { list: [imageRecord], total: 1 } })
+    vi.mocked(http.get).mockResolvedValueOnce({ data: { list: [imageRecord], total: 1 } })
       .mockResolvedValueOnce({ data: { stored_path: 'mats/5.jpg' } })
     const w = mountIt({ type: 'image' })
     await open(w)
@@ -83,7 +83,7 @@ describe('OneClickFillDialog', () => {
   })
 
   it('封面请求失败时降级为空封面,不阻塞列表渲染', async () => {
-    http.get.mockResolvedValueOnce({ data: { list: [imageRecord], total: 1 } })
+    vi.mocked(http.get).mockResolvedValueOnce({ data: { list: [imageRecord], total: 1 } })
       .mockRejectedValueOnce(new Error('404'))
     const w = mountIt({ type: 'image' })
     await open(w)
@@ -92,7 +92,7 @@ describe('OneClickFillDialog', () => {
   })
 
   it('点击卡片发出 pick(完整记录)并关闭对话框', async () => {
-    http.get.mockResolvedValue({ data: { list: [videoRecord], total: 1 } })
+    vi.mocked(http.get).mockResolvedValue({ data: { list: [videoRecord], total: 1 } })
     const w = mountIt()
     await open(w)
     await w.find('.card').trigger('click')
@@ -101,7 +101,7 @@ describe('OneClickFillDialog', () => {
   })
 
   it('total>0 时渲染分页,翻页触发重新加载(page=2)', async () => {
-    http.get.mockResolvedValue({ data: { list: [videoRecord], total: 25 } })
+    vi.mocked(http.get).mockResolvedValue({ data: { list: [videoRecord], total: 25 } })
     const w = mountIt()
     await open(w)
     const pag = w.find('.el-pagination-stub')
@@ -116,7 +116,7 @@ describe('OneClickFillDialog', () => {
   it('相对时间格式化:覆盖天前与超一周的日期文案', async () => {
     const day3 = { id: 5, type: 'video', title: '三天前', description: '', channels: [], created_at: new Date(Date.now() - 3 * 86400 * 1000).toISOString() }
     const day30 = { id: 6, type: 'video', title: '一个月前', description: '', channels: [], created_at: new Date(Date.now() - 30 * 86400 * 1000).toISOString() }
-    http.get.mockResolvedValue({ data: { list: [day3, day30], total: 2 } })
+    vi.mocked(http.get).mockResolvedValue({ data: { list: [day3, day30], total: 2 } })
     const w = mountIt()
     await open(w)
     const times = w.findAll('.card-time').map(t => t.text())
@@ -127,7 +127,7 @@ describe('OneClickFillDialog', () => {
   it('视频无缩略图 / 素材请求返回空时降级为占位封面', async () => {
     const noThumb = { id: 3, type: 'video', title: '无缩略图', description: '', channels: [], created_at: new Date().toISOString() }
     const badImg = { id: 4, type: 'image', title: '坏素材', description: '', channels: [], created_at: new Date().toISOString(), first_image_id: 7 }
-    http.get
+    vi.mocked(http.get)
       .mockResolvedValueOnce({ data: { list: [noThumb, badImg], total: 2 } })
       .mockResolvedValueOnce({ data: null })
     const w = mountIt()
@@ -138,7 +138,7 @@ describe('OneClickFillDialog', () => {
   })
 
   it('请求失败时渲染空态且不抛错', async () => {
-    http.get.mockRejectedValue(new Error('network'))
+    vi.mocked(http.get).mockRejectedValue(new Error('network'))
     const w = mountIt()
     await open(w)
     expect(w.find('.el-empty-stub').exists()).toBe(true)

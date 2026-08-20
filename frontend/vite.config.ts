@@ -119,7 +119,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['src/**/*.test.js'],
+    include: ['src/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       include: [

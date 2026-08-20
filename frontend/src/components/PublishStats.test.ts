@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { ElTooltip, ElIcon } from '../../tests/stubs.js'
+import { ElTooltip, ElIcon } from '../../tests/stubs'
 import PublishStats from './PublishStats.vue'
 
 const mountIt = (over = {}) => mount(PublishStats, {

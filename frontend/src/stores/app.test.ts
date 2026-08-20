@@ -10,7 +10,7 @@ vi.mock('@/api/v2', () => ({
 }))
 
 describe('useAppStore', () => {
-  let store
+  let store: any
 
   beforeEach(() => {
     localStorage.clear()
@@ -35,7 +35,7 @@ describe('useAppStore', () => {
   it('setAutoFillTitle 更新状态并持久化到 localStorage', () => {
     store.setAutoFillTitle(false)
     expect(store.autoFillTitle).toBe(false)
-    const saved = JSON.parse(localStorage.getItem('app_settings'))
+    const saved = JSON.parse(localStorage.getItem('app_settings') || '{}')
     expect(saved.autoFillTitle).toBe(false)
   })
 
@@ -57,7 +57,7 @@ describe('useAppStore', () => {
     store.setAutoSaveInterval(30)
     expect(store.autoSaveDraft).toBe(false)
     expect(store.autoSaveInterval).toBe(30)
-    const saved = JSON.parse(localStorage.getItem('app_settings'))
+    const saved = JSON.parse(localStorage.getItem('app_settings') || '{}')
     expect(saved.autoSaveDraft).toBe(false)
     expect(saved.autoSaveInterval).toBe(30)
   })
@@ -110,7 +110,7 @@ describe('useAppStore', () => {
 
   it('addDisabledPlatforms: 去重后调 API 并更新状态', async () => {
     store.disabledPlatforms = ['xiaohongshu']
-    settingsApi.updateSettings.mockResolvedValue({})
+    vi.mocked(settingsApi.updateSettings).mockResolvedValue({})
     await store.addDisabledPlatforms(['xiaohongshu', 'youtube'])
     expect(store.disabledPlatforms).toEqual(['xiaohongshu', 'youtube'])
     expect(settingsApi.updateSettings).toHaveBeenCalledWith({
@@ -125,14 +125,14 @@ describe('useAppStore', () => {
   })
 
   it('addDisabledPlatforms: API 失败时回滚状态并重新抛出', async () => {
-    settingsApi.updateSettings.mockRejectedValue(new Error('api down'))
+    vi.mocked(settingsApi.updateSettings).mockRejectedValue(new Error('api down'))
     await expect(store.addDisabledPlatforms(['youtube'])).rejects.toThrow('api down')
     expect(store.disabledPlatforms).toEqual([])
   })
 
   it('removeDisabledPlatform: 成功移除并调 API', async () => {
     store.disabledPlatforms = ['xiaohongshu', 'youtube']
-    settingsApi.updateSettings.mockResolvedValue({})
+    vi.mocked(settingsApi.updateSettings).mockResolvedValue({})
     await store.removeDisabledPlatform('xiaohongshu')
     expect(store.disabledPlatforms).toEqual(['youtube'])
     expect(settingsApi.updateSettings).toHaveBeenCalledWith({
@@ -142,7 +142,7 @@ describe('useAppStore', () => {
 
   it('removeDisabledPlatform: API 失败时回滚并重新抛出', async () => {
     store.disabledPlatforms = ['xiaohongshu']
-    settingsApi.updateSettings.mockRejectedValue(new Error('api down'))
+    vi.mocked(settingsApi.updateSettings).mockRejectedValue(new Error('api down'))
     await expect(store.removeDisabledPlatform('xiaohongshu')).rejects.toThrow('api down')
     expect(store.disabledPlatforms).toEqual(['xiaohongshu'])
   })
@@ -160,7 +160,7 @@ describe('useAppStore', () => {
     expect(store.theme).toBe('light')
     expect(document.documentElement.classList.contains('light')).toBe(true)
     expect(document.documentElement.classList.contains('dark')).toBe(false)
-    expect(JSON.parse(localStorage.getItem('app_settings')).theme).toBe('light')
+    expect(JSON.parse(localStorage.getItem('app_settings') || '{}').theme).toBe('light')
   })
 
   it('toggleTheme: dark ↔ light 切换', () => {

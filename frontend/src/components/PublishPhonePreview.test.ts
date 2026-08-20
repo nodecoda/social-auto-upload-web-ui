@@ -29,14 +29,14 @@ describe('PublishPhonePreview', () => {
     await w.find('.phone-empty').trigger('click')
     expect(w.emitted('upload')).toBeTruthy()
     const btns = w.findAll('button')
-    await btns.find(b => b.text().includes('本地上传')).trigger('click')
-    expect(w.emitted('upload').length).toBe(2)
+    await btns.find(b => b.text().includes('本地上传'))!.trigger('click')
+    expect(w.emitted('upload')!.length).toBe(2)
   })
 
   it('点击素材库发出 library 事件', async () => {
     const w = mount(PublishPhonePreview)
     const btns = w.findAll('button')
-    await btns.find(b => b.text().includes('素材库')).trigger('click')
+    await btns.find(b => b.text().includes('素材库'))!.trigger('click')
     expect(w.emitted('library')).toBeTruthy()
   })
 
