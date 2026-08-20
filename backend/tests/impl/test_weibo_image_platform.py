@@ -43,7 +43,7 @@ def test_publish_image_18_image_limit():
     except ValueError as e:
         assert "18" in str(e)
         return
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
         # asyncio.run 可能因 dummy 路径失败 — 只要不是正常返回即视为约束生效
         return
     raise AssertionError("expected ValueError for >18 images, got success")

@@ -40,7 +40,7 @@ def getAccounts():
                 row.append([dict(t) for t in tags])
 
         return jsonify({"code": 200, "msg": None, "data": rows_list}), 200
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": f"获取账号列表失败: {e!s}", "data": None}), 500
 
 
@@ -60,7 +60,7 @@ def getValidAccounts():
             if platform:
                 try:
                     valid = asyncio.run(platform.check_cookie(row[2]))
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                     valid = False
                 new_status = 1 if valid else 0
                 row[4] = new_status
@@ -77,7 +77,7 @@ def getValidAccounts():
                 row.append([dict(t) for t in tags])
 
         return jsonify({"code": 200, "msg": None, "data": rows_list}), 200
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": f"获取账号列表失败: {e!s}", "data": None}), 500
 
 
@@ -104,14 +104,14 @@ def delete_account():
                 if cookie_file_path.exists():
                     try:
                         cookie_file_path.unlink()
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         logger.info(f"[WARN] 删除Cookie文件失败: {e}")
 
             cursor.execute("DELETE FROM user_info WHERE id = ?", (account_id,))
             conn.commit()
 
         return jsonify({"code": 200, "msg": "account deleted successfully", "data": None}), 200
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": f"delete failed: {e!s}", "data": None}), 500
 
 
@@ -129,7 +129,7 @@ def updateUserinfo():
             )
             conn.commit()
         return jsonify({"code": 200, "msg": "account update successfully", "data": None}), 200
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": "update failed!", "data": None}), 500
 
 
@@ -142,7 +142,7 @@ def get_tags():
             conn.row_factory = sqlite3.Row
             rows = conn.execute('SELECT * FROM tags ORDER BY name').fetchall()
         return jsonify({"code": 200, "data": [dict(r) for r in rows]})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -165,7 +165,7 @@ def create_tag():
         return jsonify({"code": 200, "data": {"id": tag_id, "name": name, "color": color}})
     except sqlite3.IntegrityError:
         return jsonify({"code": 409, "msg": "标签名已存在"}), 409
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -178,7 +178,7 @@ def delete_tag(tag_id):
             conn.execute('DELETE FROM tags WHERE id = ?', (tag_id,))
             conn.commit()
         return jsonify({"code": 200})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -193,7 +193,7 @@ def set_account_tags(account_id):
                 conn.execute('INSERT OR IGNORE INTO account_tags (account_id, tag_id) VALUES (?, ?)', (account_id, tid))
             conn.commit()
         return jsonify({"code": 200})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -212,7 +212,7 @@ def set_batch_account_tags():
                     conn.execute('INSERT OR IGNORE INTO account_tags (account_id, tag_id) VALUES (?, ?)', (account_id, tid))
             conn.commit()
         return jsonify({"code": 200, "data": {"updated": len(account_ids)}})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -228,7 +228,7 @@ def get_account_tags(account_id):
                 ORDER BY t.name
             ''', (account_id,)).fetchall()
         return jsonify({"code": 200, "data": [dict(r) for r in rows]})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -264,7 +264,7 @@ def upload_cookie():
         file.save(str(cookie_file_path))
 
         return jsonify({"code": 200, "msg": "Cookie文件上传成功", "data": None}), 200
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": f"上传Cookie文件失败: {e!s}", "data": None}), 500
 
 
@@ -288,5 +288,5 @@ def download_cookie():
             path=cookie_file_path.name,
             as_attachment=True
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": f"下载Cookie文件失败: {e!s}", "data": None}), 500

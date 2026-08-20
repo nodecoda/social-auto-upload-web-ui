@@ -100,7 +100,7 @@ def _async_extract_thumb(material_id: str, source_path: str):
         )
         conn.commit()
         conn.close()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning(f"thumbnail extraction failed for {material_id}: {e}")
 
 
@@ -121,7 +121,7 @@ def _async_probe_duration(material_id: str, source_path: str):
         )
         conn.commit()
         conn.close()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning(f"duration probe failed for {material_id}: {e}")
 
 
@@ -151,7 +151,7 @@ def _async_probe_dimensions(material_id: str, source_path: str, file_type: str):
         )
         conn.commit()
         conn.close()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning(f"dimensions probe failed for {material_id}: {e}")
 
 
@@ -346,16 +346,16 @@ def batch_delete():
                 if row["stored_path"]:
                     try:
                         storage.delete(row["stored_path"])
-                    except Exception as de:
+                    except Exception as de:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                         logger.warning(f"batch-delete 删文件失败 {row['stored_path']}: {de}")
                 if row["thumbnail_path"]:
                     try:
                         storage.delete(row["thumbnail_path"])
-                    except Exception as de:
+                    except Exception as de:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                         logger.warning(f"batch-delete 删缩略图失败 {row['thumbnail_path']}: {de}")
                 conn.execute("DELETE FROM materials WHERE id = ?", (material_id,))
                 deleted += 1
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                 failed.append({"id": material_id, "reason": str(e)})
         conn.commit()
     finally:
@@ -510,7 +510,7 @@ def test_s3_connection():
         )
         client.head_bucket(Bucket=data.get("bucket", ""))
         return jsonify({"code": 200, "msg": "连接成功"})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 400, "msg": f"连接失败: {e!s}"})
 
 
@@ -539,7 +539,7 @@ def probe(material_id: str):
     try:
         duration = get_video_duration_safe(abs_path)
         file_size = os.path.getsize(abs_path)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         conn.close()
         return jsonify({"code": 500, "msg": f"识别失败: {exc}"}), 500
 

@@ -146,7 +146,7 @@ async def _fetch_collections_via_browser(cookie_file: str, collection_type: str 
             logger.info("[合集列表] 打开公众号首页,解析 token...")
             try:
                 await page.goto(_LOGIN_URL, wait_until="domcontentloaded", timeout=30000)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[合集列表] 首页加载(非致命): {e}")
 
             token = ""
@@ -167,7 +167,7 @@ async def _fetch_collections_via_browser(cookie_file: str, collection_type: str 
             try:
                 await page.goto(album_url, wait_until="domcontentloaded", timeout=30000)
                 await asyncio.sleep(3)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[合集列表] 合集页加载(非致命): {e}")
 
             # 3. 点对应类型 tab(视频合集/贴图合集)
@@ -181,7 +181,7 @@ async def _fetch_collections_via_browser(cookie_file: str, collection_type: str 
                 await tag.click()
                 tag_found = True
                 logger.info(f"[合集列表] 已点击「{collection_type}」tab")
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[合集列表] 未找到「{collection_type}」tab → 账号无该类型合集,返回空")
                 return {"success": True, "data": {"list": [], "total": 0}}
             await asyncio.sleep(1.5)
@@ -212,7 +212,7 @@ async def _fetch_collections_via_browser(cookie_file: str, collection_type: str 
                         name = (await title_els.nth(i).inner_text()).strip()
                     if name:
                         items.append({"name": name})
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[合集列表] 第 {i} 项解析失败: {e}")
 
             logger.info(f"[合集列表] 解析完成,共 {len(items)} 个合集")

@@ -317,7 +317,7 @@ def migrate_database():
                 ], ensure_ascii=False)
                 cursor.execute('UPDATE user_info SET stats = ? WHERE id = ?', (stats_json, acc_id))
                 logger.info(f'[migrate] 账号 {acc_id} 的 fans/likes/follows 已迁移至 stats')
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(f'[migrate] fans/likes/follows → stats 数据迁移失败(可忽略): {e}')
 
     conn.commit()

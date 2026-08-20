@@ -238,7 +238,7 @@ def _extract_frames_sync(base_dir, video_path: str) -> None:
             "Frame extraction done for {}: {} frames", video_path, total_frames
         )
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.exception("Frame extraction failed for {}: {}", video_path, exc)
         with _lock:
             _extraction_tasks[video_path] = {
@@ -415,7 +415,7 @@ def get_video_duration_safe(video_path: str) -> float:
         duration = get_video_duration(video_path)
         if duration > 0:
             return duration
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("ffprobe failed for {}: {}", video_path, exc)
 
     # Fallback: ffmpeg -i
@@ -464,7 +464,7 @@ def get_video_dimensions_safe(video_path: str) -> tuple[int, int]:
         width, height = get_video_dimensions(video_path)
         if width > 0 and height > 0:
             return (width, height)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("ffprobe dimensions failed for {}: {}", video_path, exc)
 
     # Fallback: ffmpeg -i

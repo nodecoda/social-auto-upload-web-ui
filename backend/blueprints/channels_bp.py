@@ -126,7 +126,7 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
                 await page.goto(_CHANNELS_UPLOAD_URL, timeout=30000)
                 await page.wait_for_load_state("domcontentloaded", timeout=15000)
                 await asyncio.sleep(3)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[合集列表] 页面加载(非致命): {e}")
 
             # 2. 点击「选择合集」入口
@@ -286,7 +286,7 @@ async def _fetch_activities_via_browser(cookie_file: str, keyword: str) -> dict:
                 await page.goto(_CHANNELS_UPLOAD_URL, timeout=30000)
                 await page.wait_for_load_state("domcontentloaded", timeout=15000)
                 await asyncio.sleep(3)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[活动搜索] 页面加载(非致命): {e}")
 
             # 2. 等待活动卡 div.post-activity-wrap 出现并点击展开
@@ -336,7 +336,7 @@ async def _fetch_activities_via_browser(cookie_file: str, keyword: str) -> dict:
                     continue
                 try:
                     name = (await name_el.inner_text()).strip()
-                except Exception:  # noqa: S112 -- 单个元素解析失败,跳过该项继续
+                except Exception:  # noqa: S112, BLE001 -- 单个元素解析失败,跳过该项继续
                     continue
                 if not name:
                     continue
@@ -344,7 +344,7 @@ async def _fetch_activities_via_browser(cookie_file: str, keyword: str) -> dict:
                 try:
                     if await creator_el.count() > 0:
                         creator_name = (await creator_el.inner_text()).strip().rstrip("· ").strip()
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 # video号 DOM 里没看到 activity_id 属性,后端用 f"{name}|{creator_name}" 生成稳定 key
                 activity_id = f"{name}|{creator_name}"
@@ -394,7 +394,7 @@ async def _fetch_locations_via_browser(cookie_file: str, keyword: str) -> dict:
                 await page.goto(_CHANNELS_UPLOAD_URL, timeout=30000)
                 await page.wait_for_load_state("domcontentloaded", timeout=15000)
                 await asyncio.sleep(3)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[位置搜索] 页面加载(非致命): {e}")
 
             # 2. 等待位置卡 div.position-display-wrap 出现并点击展开
@@ -444,7 +444,7 @@ async def _fetch_locations_via_browser(cookie_file: str, keyword: str) -> dict:
                     continue
                 try:
                     name = (await name_el.inner_text()).strip()
-                except Exception:  # noqa: S112 -- 单个元素解析失败,跳过该项继续
+                except Exception:  # noqa: S112, BLE001 -- 单个元素解析失败,跳过该项继续
                     continue
                 if not name:
                     continue
@@ -452,7 +452,7 @@ async def _fetch_locations_via_browser(cookie_file: str, keyword: str) -> dict:
                 try:
                     if await desc_el.count() > 0:
                         desc = (await desc_el.inner_text()).strip()
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 items.append({"name": name, "desc": desc})
 

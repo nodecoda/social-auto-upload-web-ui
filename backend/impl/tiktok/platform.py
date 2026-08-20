@@ -132,7 +132,7 @@ class TiktokPlatform(BasePlatform):
                     ):
                         return False
                 return True
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                 return True
         finally:
             await browser.close()
@@ -170,7 +170,7 @@ class TiktokPlatform(BasePlatform):
                     'div[data-tt="NewHome_UserInfo_FlexRow"]',
                     timeout=15_000,
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[tiktok] sync_profile: user info block not found")
                 return ("", "")
 
@@ -181,7 +181,7 @@ class TiktokPlatform(BasePlatform):
                 ).first
                 if await nickname_el.count():
                     nickname = (await nickname_el.inner_text()).strip()
-            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+            except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
 
             avatar_url = ""
@@ -191,14 +191,14 @@ class TiktokPlatform(BasePlatform):
                 ).first
                 if await avatar_el.count():
                     avatar_url = (await avatar_el.get_attribute("src")) or ""
-            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+            except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
 
             logger.info(
                 f"[tiktok] sync_profile: nickname={nickname!r} avatar_set={bool(avatar_url)}"
             )
             return (nickname, avatar_url)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[tiktok] sync_profile error: {e}")
             return ("", "")
         finally:
@@ -225,12 +225,12 @@ class TiktokPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -427,7 +427,7 @@ class TiktokPlatform(BasePlatform):
                     state="attached",
                 )
                 logger.info("[上传视频] Hidden file input present in DOM")
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(
                     "[上传视频] Hidden file input NOT in DOM within 10s — "
                     "will rely on set_input_files auto-wait"
@@ -529,7 +529,7 @@ class TiktokPlatform(BasePlatform):
             await got_it_btn.wait_for(state="visible", timeout=3_000)
             await got_it_btn.click()
             logger.info("[关闭引导] Dismissed tutorial tooltip")
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             # Tooltip not shown — fine
             pass
 
@@ -552,7 +552,7 @@ class TiktokPlatform(BasePlatform):
             await enable_btn.wait_for(state="visible", timeout=3_000)
             await enable_btn.click()
             logger.info("[关闭弹窗] Dismissed '开启自动内容检查' modal")
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             # Modal not shown — fine
             pass
 
@@ -579,7 +579,7 @@ class TiktokPlatform(BasePlatform):
             await enable_btn.wait_for(state="visible", timeout=3_000)
             await enable_btn.click()
             logger.info("[关闭弹窗] Dismissed '标记 AI 生成的内容' modal")
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             # Modal not shown — fine
             pass
 
@@ -616,11 +616,11 @@ class TiktokPlatform(BasePlatform):
                         f"in frame url={frame.url[:60]!r}"
                     )
                     return
-                except Exception:  # noqa: S112 -- Frame 不可访问或 button 不在,try next frame
+                except Exception:  # noqa: S112, BLE001 -- Frame 不可访问或 button 不在,try next frame
                     # Frame 不可访问或 button 不在,try next frame
                     continue
             logger.info("[关闭弹窗] _dismiss_publish_confirm_modal: button not found in any frame within 10s")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[关闭弹窗] _dismiss_publish_confirm_modal: {e!r}")
 
     @staticmethod
@@ -729,7 +729,7 @@ class TiktokPlatform(BasePlatform):
                 await more_btn.click(force=True)
                 logger.info("[AI声明] Expanded '显示更多' section")
                 await asyncio.sleep(0.8)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[AI声明] Expand '显示更多' skipped/failed: {e!r}")
 
         # Step 2: Diagnose the options-form hidden state
@@ -741,7 +741,7 @@ class TiktokPlatform(BasePlatform):
                 f"[上传视频] options-form hidden={hidden_attr!r} "
                 f"aigc_container count={count}"
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[AI声明] diagnosis failed: {e!r}")
 
         # Step 3: Wait for the AI container (longer timeout)
@@ -832,7 +832,7 @@ class TiktokPlatform(BasePlatform):
         if current_month != publish_date.month:
             try:
                 await right_arrow.click(timeout=2_000)
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
         # --- Day selection ---
@@ -917,7 +917,7 @@ class TiktokPlatform(BasePlatform):
                 )
                 logger.info("[发布] Video published successfully")
                 return
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[发布] Waiting for publish... ({e.__class__.__name__})")
                 await asyncio.sleep(0.5)
         logger.info(f"[发布] _click_publish loop exhausted {max_attempts} attempts")
@@ -942,6 +942,6 @@ class TiktokPlatform(BasePlatform):
                 if href:
                     match = re.search(r"video/(\d+)", href)
                     return match.group(1) if match else None
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             pass
         return None

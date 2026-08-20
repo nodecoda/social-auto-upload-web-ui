@@ -34,6 +34,6 @@ def get_image_dimensions(image_path: str) -> tuple[int, int]:
     except ImportError:
         logger.warning("[ImageService] PIL/Pillow 未安装，无法识别图片尺寸")
         return (0, 0)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[ImageService] 识别图片尺寸失败 {}: {}", image_path, exc)
         return (0, 0)

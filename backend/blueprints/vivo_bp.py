@@ -152,7 +152,7 @@ async def _fetch_positions_via_browser(cookie_file: str, keyword: str) -> dict:
                 await page.goto(_VIVO_UPLOAD_URL, timeout=30000)
                 await page.wait_for_load_state("domcontentloaded", timeout=15000)
                 await asyncio.sleep(2)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[位置搜索] 页面加载(非致命): {e}")
 
             # 2. 上传测试视频触发表单渲染(位置入口要表单渲染后才出现)
@@ -168,7 +168,7 @@ async def _fetch_positions_via_browser(cookie_file: str, keyword: str) -> dict:
                 if not await file_input.count():
                     file_input = page.locator('input[type="file"]').first
                 await file_input.set_input_files(test_video)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                 return {"success": False, "error": f"测试视频上传失败: {e}"}
 
             # 3. 轮询等待视频上传完成 + 发布表单渲染

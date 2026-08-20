@@ -109,7 +109,7 @@ class JdPickerSession:
         try:
             self.frame = await self._wait_publish_frame(timeout=20)
             logger.info(f"[JdPicker] ✓ iframe={self.frame.url}")
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             # 失败时 dump 整页状态帮助定位
             page_state = await self.page.evaluate(
                 """() => {
@@ -164,7 +164,7 @@ class JdPickerSession:
                         f"addgoods={f_state.get('addgoods_count')} "
                         f"text='{f_state.get('text_head')}'"
                     )
-                except Exception as fe:
+                except Exception as fe:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                     logger.error(
                         f"[JdPicker] frame[{i}] url={f.url} evaluate 失败: {fe}"
                     )
@@ -273,7 +273,7 @@ class JdPickerSession:
             await self.page.keyboard.press("Escape")
             await asyncio.sleep(0.5)
             logger.info("[JdPicker] 按 Esc 尝试关闭浮层")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[JdPicker] 关闭浮层异常(忽略): {e}")
 
     async def search(self, keyword: str) -> dict:
@@ -303,7 +303,7 @@ class JdPickerSession:
         try:
             if self.browser is not None:
                 await close_browser(self.browser, is_close_by_code=True)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(f"关闭 picker 浏览器失败: {e}")
         finally:
             self.browser = None

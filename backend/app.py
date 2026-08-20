@@ -293,7 +293,7 @@ def _resolve_video_format_from_db(file_list_raw):
         elif orientation in ('vertical', 'square'):
             return 'portrait'
         return ''
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"查询素材 orientation 失败(降级忽略): {e}")
         return ''
 
@@ -392,7 +392,7 @@ def image_proxy():
             timeout=15,
         )
         return Response(resp.content, mimetype=resp.headers.get("content-type", "image/jpeg"))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning(f"[image-proxy] fetch failed: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
@@ -554,14 +554,14 @@ def import_account_start():
             status_queue.put(json.dumps({
                 "status": "error", "step": 0, "msg": "任务被取消",
             }))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             # import_cookie 内部已经把 error 推过 queue 了；这里是兜底
             logger.info(f"[importAccount] 未捕获异常: {e}")
             try:
                 status_queue.put(json.dumps({
                     "status": "error", "step": 0, "msg": str(e),
                 }))
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
     thread = threading.Thread(target=_run_import, daemon=True)
@@ -636,7 +636,7 @@ def _validate_publish_video(type_id, file_list):
             try:
                 from services.duration_repair import ensure_duration_or_probe
                 ensure_duration_or_probe(first_file, row["duration"])
-            except Exception as _e:
+            except Exception as _e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.debug("提交前时长兜底失败（不影响后续校验）: %s", str(_e))
             conn = sqlite3.connect(str(DB_PATH))
             conn.row_factory = sqlite3.Row
@@ -645,7 +645,7 @@ def _validate_publish_video(type_id, file_list):
                 (first_file,),
             ).fetchone()
         conn.close()
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return True, ""
 
     if row is None:
@@ -685,7 +685,7 @@ def _enqueue_publish(platform, publish_kwargs, detail_id):
             # 用户手动关闭了浏览器 → _browser 的 watchdog cancel 了发布 task
             logger.info("发布视频被取消：用户关闭了浏览器")
             _finish_publish_failed(task_id, detail_id, '用户关闭了浏览器，发布已取消')
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             err_msg = str(e)
             # 浏览器被用户关闭时, Playwright 操作会抛 "Target page, context or
             # browser has been closed" / "Browser has been closed" 等。watchdog
@@ -875,7 +875,7 @@ def postVideo():
                 jd_declaration=data.get('jdDeclaration', ''),
                 schedule_time=data.get('scheduleTime', ''),
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"发布视频时出错: {e!s}")
         return jsonify({"code": 500, "msg": f"发布失败: {e!s}", "data": None}), 500
 
@@ -1029,7 +1029,7 @@ def postVideoBatch():
                 )
             if not result:
                 failures.append({"index": idx, "reason": "发布失败：页面未跳转"})
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
             failures.append({"index": idx, "reason": str(e)})
 
     if failures:
@@ -1066,7 +1066,7 @@ def _record_publish(batch_id, detail_id, platform, account_name, account_id,
                 (detail_id, batch_id, account_id, account_name, platform,
                  json.dumps(account_configs, ensure_ascii=False), status, started_at)
             )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[History] 记录发布失败: {e}")
 
 
@@ -1110,7 +1110,7 @@ def _update_publish_result(detail_id, status, finished_at, error_message=""):
                    WHERE id=?""",
                 (batch_status, succ, fail, total, finished_at, finished_at, batch_id)
             )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[History] 更新发布结果失败: {e}")
 
 
@@ -1133,7 +1133,7 @@ def _ensure_db():
             init_database()
             migrate_database()
             logger.info(f"[DB] Initialized database at {db_path}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[DB] Failed to initialize database: {e}")
 
 
@@ -1254,7 +1254,7 @@ def health_check():
             count = _conn.execute("SELECT COUNT(*) FROM user_info").fetchone()[0]
             diag["db_user_count"] = count
             diag["db_ok"] = True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         diag["db_ok"] = False
         diag["db_error"] = str(e)
     return jsonify(diag)
@@ -1426,7 +1426,7 @@ if __name__ == "__main__":
         with _sqlite.connect(str(_test_path)) as _conn:
             _conn.execute("SELECT 1 FROM user_info LIMIT 1")
         logger.info("[Startup] DB verification OK")
-    except Exception as _e:
+    except Exception as _e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[Startup] DB verification FAILED: {_e}")
         logger.info(f"[Startup] SAU_DATA_DIR={os.environ.get('SAU_DATA_DIR')}")
 
@@ -1436,7 +1436,7 @@ if __name__ == "__main__":
     try:
         from services.duration_repair import start_repair_in_background
         start_repair_in_background()
-    except Exception as _e:
+    except Exception as _e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[Startup] 补全任务启动失败（不影响主服务）: %s", _e)
 
     # 账号登录状态检查机制:如果设置为「启动时检测」,后台异步检测所有账号 cookie
@@ -1447,7 +1447,7 @@ if __name__ == "__main__":
                 _row = _c.execute("SELECT value FROM settings WHERE key='accountCheckMode'").fetchone()
                 if _row:
                     _check_mode = _row[0]
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             pass
         if _check_mode == "startup":
             logger.info("[Startup] 账号检查模式=启动时检测,开始后台异步检测所有账号...")
@@ -1489,10 +1489,10 @@ if __name__ == "__main__":
                                 )
                                 conn.commit()
                             logger.info(f"[Startup] 账号 {nick}(id={acc_id}) 检测完成: {'有效' if ok else '无效'}")
-                        except Exception as e:
+                        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                             logger.info(f"[Startup] 账号 {nick}(id={acc_id}) 检测异常: {e}")
                     logger.info("[Startup] 所有账号检测完成")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[Startup] 账号检测线程异常: {e}")
 
             _t = _threading.Thread(target=_check_all_accounts, daemon=True)
@@ -1500,7 +1500,7 @@ if __name__ == "__main__":
             logger.info("[Startup] 账号检测后台线程已启动")
         else:
             logger.info("[Startup] 账号检查模式=发布前检测,跳过启动时检测")
-    except Exception as _e:
+    except Exception as _e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[Startup] 账号检查模式读取失败（不影响主服务）: %s", _e)
 
     port = int(os.environ.get("SAU_PORT", "5409"))

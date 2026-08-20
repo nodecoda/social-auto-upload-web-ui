@@ -101,7 +101,7 @@ class KuaishouPlatform(BasePlatform):
                 if await qr_login_tab.count() and await qr_login_tab.is_visible():
                     await qr_login_tab.click()
                     await asyncio.sleep(1)
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
             # Extract QR code image
@@ -148,20 +148,20 @@ class KuaishouPlatform(BasePlatform):
                 stats_fn=self._login_stats_fn,
             )
             success = True
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[kuaishou] login error: {exc}")
             status_queue.put('{"status": "0", "error": "' + str(exc) + '"}')
         finally:
             try:
                 # 释放 context 资源
                 await context.close()
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
                 try:
                     await browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
     # ------------------------------------------------------------------
@@ -188,21 +188,21 @@ class KuaishouPlatform(BasePlatform):
                 # Selector found means the login page appeared → cookie invalid
                 logger.info("[kuaishou] cookie invalid — login page shown")
                 return False
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 # Selector not found → we stayed on the upload page → valid
                 logger.info("[kuaishou] cookie valid")
                 return True
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[kuaishou] cookie check error: {exc}")
             return False
         finally:
             try:
                 await context.close()
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
             try:
                 await browser.close()
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
     # ------------------------------------------------------------------
@@ -228,7 +228,7 @@ class KuaishouPlatform(BasePlatform):
                 name, avatar = await scrape_user_profile(page)
                 stats = await self._scrape_kuaishou_stats(page)
                 return {"name": name, "avatar": avatar, "stats": stats}
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[kuaishou] sync_profile error: {exc}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
@@ -236,7 +236,7 @@ class KuaishouPlatform(BasePlatform):
         finally:
             try:
                 await browser.close()
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
 
@@ -277,12 +277,12 @@ class KuaishouPlatform(BasePlatform):
                 if await trigger.count() > 0:
                     try:
                         await trigger.click()
-                    except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                    except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                         pass
 
                 try:
                     await page.wait_for_selector(".user-cnt__item", timeout=6000)
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info("[kuaishou stats] 等待 .user-cnt__item 超时")
 
                 raw = await page.evaluate(
@@ -316,9 +316,9 @@ class KuaishouPlatform(BasePlatform):
                 # 关闭 popover(点击页面其他位置)
                 try:
                     await page.mouse.click(10, 10)
-                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[kuaishou stats] 抓取失败: {exc}")
 
             stats.sort(key=lambda x: x.get("SORT", 999))
@@ -335,10 +335,10 @@ class KuaishouPlatform(BasePlatform):
                 if not page.url.startswith(_KS_UPLOAD_URL):
                     await page.goto(_KS_UPLOAD_URL, timeout=15000)
                     await page.wait_for_load_state("domcontentloaded")
-            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+            except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
             return await self._scrape_kuaishou_stats(page)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[kuaishou login] _login_stats_fn 抓取失败: {exc}")
             return []
 
@@ -359,12 +359,12 @@ class KuaishouPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -767,7 +767,7 @@ class KuaishouPlatform(BasePlatform):
             try:
                 if await know_btn.count() and await know_btn.is_visible():
                     await know_btn.click()
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
             # ------ Dismiss guide overlay ------
@@ -804,7 +804,7 @@ class KuaishouPlatform(BasePlatform):
                         await page.locator(
                             'div.progress-div [class^="upload-btn-input"]'
                         ).set_input_files(video_path)
-                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
                 await asyncio.sleep(2)
                 retry += 1
@@ -849,7 +849,7 @@ class KuaishouPlatform(BasePlatform):
                     await page.wait_for_url(_KS_MANAGE_URL_PATTERN, timeout=5000)
                     logger.info("[发布] 视频发布成功! 页面跳转到: %s", page.url)
                     break
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info("[发布] 发布重试: %s", exc)
                     await asyncio.sleep(1)
 
@@ -859,16 +859,16 @@ class KuaishouPlatform(BasePlatform):
                 try:
                     await context.storage_state(path=cookie_path)
                     logger.info("[发布] Cookie状态已更新")
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(2)
             try:
                 await context.close()
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
             try:
                 await self.close_browser(browser, is_close_by_code=True)
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
     # ------------------------------------------------------------------
@@ -889,7 +889,7 @@ class KuaishouPlatform(BasePlatform):
                     await close_btn.click(force=True)
                     await asyncio.sleep(0.5)
                     return
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
         # Old DOM: react-joyride
@@ -903,7 +903,7 @@ class KuaishouPlatform(BasePlatform):
                 )
                 await close_btn.click(force=True)
                 await joyride.wait_for(state="hidden", timeout=5000)
-            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+            except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
 
     # ------------------------------------------------------------------
@@ -995,13 +995,13 @@ class KuaishouPlatform(BasePlatform):
                     try:
                         tag_name_el = active.locator('span[class*="_at-tag-name_"]').first
                         tag_name = (await tag_name_el.text_content() or "").strip()
-                    except Exception:
+                    except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         tag_name = ""
                     await active.click()
                     logger.info("[填写标签] 选中下拉高亮项: #%s", tag_name or "?")
                     await asyncio.sleep(0.5)
                     continue  # 成功选中,跳过空格兜底
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[填写标签] 下拉未出现 / 点击失败 (%s),改用空格确认", exc)
 
             # 4. 退路:按下空格确认(同 xhs/zhihu),确保 #xxx 至少变成话题芯片
@@ -1071,7 +1071,7 @@ class KuaishouPlatform(BasePlatform):
                     await ratio_item.click()
                     logger.info("[封面] 已选择裁剪比例: %s", target_ratio)
                     await asyncio.sleep(1)
-            except Exception as ratio_exc:
+            except Exception as ratio_exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[封面] 选择裁剪比例失败(继续上传): %s", ratio_exc)
 
             # 6. Find hidden file input and upload image
@@ -1092,11 +1092,11 @@ class KuaishouPlatform(BasePlatform):
             # 8. Wait for modal to close
             try:
                 await modal.wait_for(state="hidden", timeout=30000)
-            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+            except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
 
             logger.info("[封面] 封面设置成功")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[封面] 封面设置失败 (非致命): %s", exc)
 
     # ------------------------------------------------------------------
@@ -1134,10 +1134,10 @@ class KuaishouPlatform(BasePlatform):
 
             try:
                 await modal.wait_for(state="hidden", timeout=30000)
-            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+            except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
             logger.info("[封面] 图集封面设置成功")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[封面] 图集封面设置失败 (非致命): %s", exc)
 
     # ------------------------------------------------------------------
@@ -1194,7 +1194,7 @@ class KuaishouPlatform(BasePlatform):
             close_btn = page.locator("div.ant-drawer-close").first
             if await close_btn.count():
                 await close_btn.click(force=True)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[设置音乐] 图集音乐设置失败 (非致命): %s", exc)
 
     # ------------------------------------------------------------------
@@ -1293,13 +1293,13 @@ class KuaishouPlatform(BasePlatform):
                 # 点击空白处收起下拉框，避免遮挡后续操作
                 try:
                     await page.keyboard.press("Escape")
-                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
                 return
             await option.click()
             logger.info("[作者声明] 作者声明已设置: %s", author_declaration)
             await asyncio.sleep(1)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[作者声明] 作者声明设置失败 (非致命): %s", exc)
 
     # ------------------------------------------------------------------

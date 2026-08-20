@@ -64,7 +64,7 @@ def run_async(coro):
                 new_loop = asyncio.new_event_loop()
                 try:
                     result['value'] = new_loop.run_until_complete(coro)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                     result['error'] = e
                 finally:
                     new_loop.close()
@@ -139,7 +139,7 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
                 await page.goto(_WEIBO_UPLOAD_URL, timeout=30000)
                 await page.wait_for_load_state("domcontentloaded", timeout=15000)
                 await asyncio.sleep(2)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[合集列表] 页面加载(非致命): {e}")
 
             # 2. 上传测试视频触发表单渲染(复用微博 platform 的上传逻辑)
@@ -157,7 +157,7 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
             switch_label = page.locator('label.woo-switch-main').first
             try:
                 await switch_label.wait_for(state="visible", timeout=30000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                 return {"success": False, "error": "未找到合集开关(label.woo-switch-main),表单未渲染"}
 
             # 4. 点击合集开关(label.woo-switch-main —— input 是 hidden,点击 label 才生效)
@@ -172,7 +172,7 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
             album_inputs = page.locator('input[type="text"][value*="集"]')
             try:
                 await album_inputs.first.wait_for(state="attached", timeout=10000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 # 没有合集也是正常情况(账号可能没创建过合集)
                 logger.info("[合集列表] 未展开合集列表(账号可能无合集)")
                 return {"success": True, "data": {"list": [], "total": 0}}
@@ -193,7 +193,7 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
                     elif "(共" in raw:
                         name = raw.split("(共")[0].strip()
                     items.append({"name": name, "raw": raw})
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[合集列表] 解析第 {i} 项失败(跳过): {e}")
                     continue
 
@@ -202,10 +202,10 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
         finally:
             try:
                 await context.close()
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
     finally:
         try:
             await browser.close()
-        except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+        except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
             pass

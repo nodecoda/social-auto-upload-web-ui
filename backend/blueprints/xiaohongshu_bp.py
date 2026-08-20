@@ -185,7 +185,7 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
                 await page.goto(_XHS_PUBLISH_VIDEO_URL, timeout=30000)
                 await page.wait_for_load_state("domcontentloaded", timeout=15000)
                 await asyncio.sleep(2)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[合集列表] 页面加载(非致命): {e}")
 
             # 1.5 先上传一个测试视频 —— 合集入口要表单渲染后才出现。
@@ -198,7 +198,7 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
             logger.info(f"[合集列表] 上传测试视频触发表单: {test_video}")
             try:
                 await _upload_test_video(page, test_video)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                 return {"success": False, "error": f"测试视频上传失败: {e}"}
 
             # 等待发布表单渲染完成(标题输入框出现即代表上传完成、表单就绪)
@@ -231,7 +231,7 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
             ).first
             try:
                 await entry_card.click(timeout=5000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 await entry.first.click(timeout=5000)
             logger.info("[合集列表] 已点击,等待合集浮层弹出...")
             await asyncio.sleep(1.5)
@@ -357,7 +357,7 @@ async def _fetch_poi_via_browser(cookie_file: str, keyword: str) -> dict:
                 await page.goto(_XHS_PUBLISH_VIDEO_URL, timeout=30000)
                 await page.wait_for_load_state("domcontentloaded", timeout=15000)
                 await asyncio.sleep(2)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[POI搜索] 页面加载(非致命): {e}")
 
             # 1.5 先上传一个测试视频 —— 否则发布页停在「上传区」,
@@ -371,7 +371,7 @@ async def _fetch_poi_via_browser(cookie_file: str, keyword: str) -> dict:
             logger.info(f"[POI搜索] 上传测试视频触发表单: {test_video}")
             try:
                 await _upload_test_video(page, test_video)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                 return {"success": False, "error": f"测试视频上传失败: {e}"}
 
             # 轮询等待发布表单渲染完成 —— 视频上传需要时间(上传中→上传完成),

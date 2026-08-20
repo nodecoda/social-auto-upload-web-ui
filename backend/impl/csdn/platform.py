@@ -135,11 +135,11 @@ class CsdnPlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             if success:
@@ -163,7 +163,7 @@ class CsdnPlatform(BasePlatform):
                         "domcontentloaded", timeout=10000
                     )
                     await asyncio.sleep(2)
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 profile_entry = page.locator(CSDN_LOGIN_SUCCESS_SELECTOR).first
                 if await profile_entry.count() > 0:
@@ -209,7 +209,7 @@ class CsdnPlatform(BasePlatform):
                         ".home-exp-user-card",
                         timeout=8000,
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info("[csdn stats] 等待 .home-exp-user-card 超时")
 
                 # 抓取 name/avatar/stats(都在同一个 .home-exp-user-card 里)
@@ -288,7 +288,7 @@ class CsdnPlatform(BasePlatform):
                     logger.info(f"[csdn] sync_profile 抓取为空,url={page.url}")
 
                 return {"name": name, "avatar": avatar, "stats": stats}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[csdn] 同步资料失败: {e}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
@@ -309,7 +309,7 @@ class CsdnPlatform(BasePlatform):
                 ".home-exp-user-card",
                 timeout=8000,
             )
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             pass
 
         result = await page.evaluate(
@@ -381,12 +381,12 @@ class CsdnPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -535,7 +535,7 @@ class CsdnPlatform(BasePlatform):
                     await page.wait_for_load_state(
                         "domcontentloaded", timeout=30000
                     )
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
 
                 # cookie 失效会被重定向到登录页
@@ -572,7 +572,7 @@ class CsdnPlatform(BasePlatform):
                         path=str(log_dir / "csdn_before_submit.png"),
                         full_page=True,
                     )
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
 
                 # 8. 点击发布按钮（页面跳转即成功）
@@ -584,7 +584,7 @@ class CsdnPlatform(BasePlatform):
                             path=str(log_dir / "csdn_after_submit.png"),
                             full_page=True,
                         )
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                 else:
                     logger.info("[上传视频] ✗ 发布失败")
@@ -593,7 +593,7 @@ class CsdnPlatform(BasePlatform):
                             path=str(log_dir / "csdn_submit_failed.png"),
                             full_page=True,
                         )
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
 
                 upload_success = True
@@ -602,16 +602,16 @@ class CsdnPlatform(BasePlatform):
                     try:
                         await context.storage_state(path=account_file)
                         logger.info("[上传视频] cookie 已更新")
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                     try:
                         await context.close()
-                    except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                    except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                         pass
         finally:
             try:
                 await self.close_browser(browser, is_close_by_code=True)
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
             logger.info("[上传视频] 浏览器已关闭")
 
@@ -633,7 +633,7 @@ class CsdnPlatform(BasePlatform):
             await page.screenshot(
                 path=str(log_dir / "csdn_upload_before.png"), full_page=True
             )
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             pass
 
         file_input = None
@@ -647,7 +647,7 @@ class CsdnPlatform(BasePlatform):
             await candidate.wait_for(state="attached", timeout=10000)
             file_input = candidate
             logger.info("[上传视频] ✓ video input 命中")
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] 未找到 [accept*=video] input，转兜底")
 
         # 策略 2: 任意 file input（兜底）
@@ -657,7 +657,7 @@ class CsdnPlatform(BasePlatform):
                 await candidate.wait_for(state="attached", timeout=5000)
                 file_input = candidate
                 logger.info("[上传视频] ✓ 兜底命中第一个 file input")
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[上传视频] 页面无任何 file input")
 
         if file_input is None:
@@ -666,7 +666,7 @@ class CsdnPlatform(BasePlatform):
                     path=str(log_dir / "csdn_upload_no_input.png"),
                     full_page=True,
                 )
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             raise RuntimeError(
                 "未找到视频上传 input，请查看 logs/csdn_upload_before.png"
@@ -698,7 +698,7 @@ class CsdnPlatform(BasePlatform):
                     raise RuntimeError("视频上传失败")
             except RuntimeError:
                 raise
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[上传视频] 状态检查异常: {exc}")
             if retry % 10 == 0:
                 logger.info(f"[上传视频] 上传中... ({retry * 3}s)")
@@ -735,7 +735,7 @@ class CsdnPlatform(BasePlatform):
                 await candidate.wait_for(state="attached", timeout=10000)
                 cover_input = candidate
                 logger.info("[设置封面] ✓ 封面 input 命中")
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[设置封面] .essential-uploader 内未找到 input，兜底全页")
 
             if cover_input is None:
@@ -749,7 +749,7 @@ class CsdnPlatform(BasePlatform):
                     await candidate.wait_for(state="attached", timeout=5000)
                     cover_input = candidate
                     logger.info("[设置封面] ✓ 全页兜底命中图片 input")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
                     raise RuntimeError(f"未找到封面 input: {e}")
 
             # 2. 设置封面文件 → 触发裁剪弹窗
@@ -776,7 +776,7 @@ class CsdnPlatform(BasePlatform):
                             f"[设置封面] ✓ 已点击裁剪确认 (attempt={attempt + 1})"
                         )
                         break
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         logger.info(
                             f"[设置封面] 点击 attempt={attempt + 1} 失败: {e}"
                         )
@@ -785,9 +785,9 @@ class CsdnPlatform(BasePlatform):
                         await confirm_btn.evaluate("el => el.click()")
                         clicked = True
                         logger.info("[设置封面] ✓ JS evaluate click 命中")
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         logger.info(f"[设置封面] JS evaluate click 失败: {e}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[设置封面] 未出现裁剪弹窗（可能无需裁剪）: {e}")
 
             # 4. 等弹窗消失
@@ -799,23 +799,23 @@ class CsdnPlatform(BasePlatform):
                     if still_open == 0:
                         logger.info("[设置封面] ✓ 裁剪弹窗已关闭")
                         break
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(1)
             await asyncio.sleep(1)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[设置封面] 设置封面失败（非致命）: {exc}")
             try:
                 await page.screenshot(
                     path=str(log_dir / "csdn_cover_error.png"),
                     full_page=True,
                 )
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             try:
                 await page.keyboard.press("Escape")
                 await asyncio.sleep(0.5)
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
     @staticmethod
@@ -881,7 +881,7 @@ class CsdnPlatform(BasePlatform):
         ).first
         try:
             await tag_input.wait_for(state="visible", timeout=10000)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[填写标签] 未找到标签输入框: {e}")
             return
 
@@ -895,7 +895,7 @@ class CsdnPlatform(BasePlatform):
                 await tag_input.press("Enter")
                 await asyncio.sleep(1)
                 logger.info(f"[填写标签] ✓ 已输入: {tag}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[填写标签] 输入 '{tag}' 失败: {e}")
 
     @staticmethod
@@ -916,7 +916,7 @@ class CsdnPlatform(BasePlatform):
             await radio_label.click()
             logger.info("[是否推荐] ✓ 已勾选")
             await asyncio.sleep(0.5)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[是否推荐] 勾选失败（非致命）: {exc}")
 
     @staticmethod
@@ -942,14 +942,14 @@ class CsdnPlatform(BasePlatform):
                     clicked = True
                     logger.info(f"[发布] ✓ 已点击发布 (attempt={attempt + 1})")
                     break
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[发布] 点击 attempt={attempt + 1} 失败: {e}")
             if not clicked:
                 try:
                     await publish_btn.evaluate("el => el.click()")
                     clicked = True
                     logger.info("[发布] ✓ JS evaluate click 命中")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[发布] JS evaluate click 失败: {e}")
             if not clicked:
                 return False
@@ -962,7 +962,7 @@ class CsdnPlatform(BasePlatform):
                     return True
             logger.info("[发布] 60s 内页面未跳转，按成功处理")
             return True
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[发布] 点击发布失败: {exc}")
             return False
 

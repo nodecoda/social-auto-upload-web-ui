@@ -104,7 +104,7 @@ class JdPlatform(BasePlatform):
                     await page.goto(
                         JD_CREATOR_CENTER_URL, wait_until="domcontentloaded", timeout=30000
                     )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[jd][登录] 首页导航超时(忽略): {e}")
                 await asyncio.sleep(2)
 
@@ -121,11 +121,11 @@ class JdPlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             if success:
@@ -158,11 +158,11 @@ class JdPlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await ctx.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             await browser.close()
@@ -191,17 +191,17 @@ class JdPlatform(BasePlatform):
                 if name:
                     return {"name": name, "avatar": avatar}
                 return None
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning(f"sync_profile 失败: {e}")
                 return None
             finally:
                 try:
                     await page.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await ctx.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             await browser.close()
@@ -221,12 +221,12 @@ class JdPlatform(BasePlatform):
                 page.goto(JD_CREATOR_CENTER_URL, wait_until="domcontentloaded")
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -407,7 +407,7 @@ class JdPlatform(BasePlatform):
                         if tmp_cover is not None:
                             try:
                                 tmp_cover.unlink(missing_ok=True)
-                            except Exception:  # noqa: S110 -- 文件/资源清理兜底,失败可忽略
+                            except Exception:  # noqa: S110, BLE001 -- 文件/资源清理兜底,失败可忽略
                                 pass
 
                 # 3. 标题
@@ -432,7 +432,7 @@ class JdPlatform(BasePlatform):
                     await page.screenshot(
                         path=str(log_dir / "jd_before_submit.png"), full_page=True,
                     )
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
 
                 # 7. dry-run 或 点击发布
@@ -441,12 +441,12 @@ class JdPlatform(BasePlatform):
                     logger.info("[上传视频] 🐛 当前状态: 标题/封面/关联挂件/声明/定时 已填好")
                     try:
                         await page.screenshot(path=str(log_dir / "jd_dry_run.png"), full_page=True)
-                    except Exception:  # noqa: S110 -- 调试截图兜底,失败可忽略
+                    except Exception:  # noqa: S110, BLE001 -- 调试截图兜底,失败可忽略
                         pass
                     try:
                         logger.info("[上传视频] 🐛 等待浏览器关闭(请手动关闭)...")
                         await page.wait_for_event("close", timeout=0)
-                    except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                    except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                         pass
                 else:
                     await self._click_publish()
@@ -454,12 +454,12 @@ class JdPlatform(BasePlatform):
             finally:
                 try:
                     await context.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             try:
                 await self.close_browser(browser, is_close_by_code=True)
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
             self.browser = None
             self.page = None
@@ -511,7 +511,7 @@ class JdPlatform(BasePlatform):
                 timeout=30_000,
                 state="visible",
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("封面预览未出现,继续")
 
         await asyncio.sleep(1)
@@ -928,7 +928,7 @@ def _ensure_cover_min_size(cover_path: Path, min_size: int = 200 * 1024) -> Path
             scale *= 1.5
 
         return None
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[封面] 京东封面放大处理失败,退化为上传原文件: %s", e)
         return None
 
@@ -956,7 +956,7 @@ async def _scrape_jd_profile(page) -> tuple[str, str]:
                 avatar = (await avatar_el.get_attribute("src") or "").strip()
                 if avatar.startswith("//"):
                     avatar = "https:" + avatar
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[jd] 头像抓取失败: {e}")
 
         try:
@@ -967,13 +967,13 @@ async def _scrape_jd_profile(page) -> tuple[str, str]:
                 name = (await name_el.get_attribute("title") or "").strip()
                 if not name:
                     name = (await name_el.text_content() or "").strip()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[jd] 昵称抓取失败: {e}")
 
         logger.info(
             f"[jd] profile scraped - name={name!r} avatar={avatar[:80] if avatar else 'None'}"
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[jd] profile scrape error: {e}")
 
     return name, avatar

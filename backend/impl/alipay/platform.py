@@ -171,7 +171,7 @@ class AlipayPlatform(BasePlatform):
                     f"(final_url={final_url})"
                 )
                 return valid
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[alipay] cookie 检查异常: {exc}")
                 return False
             finally:
@@ -196,12 +196,12 @@ class AlipayPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -230,7 +230,7 @@ class AlipayPlatform(BasePlatform):
                 # stats 与 name/avatar 在同一个 DOM 区块(.numBox),不用 goto 第二次
                 stats = await self._scrape_alipay_stats(page)
                 return {"name": name, "avatar": avatar, "stats": stats}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[alipay] 同步资料失败: {e}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
@@ -264,7 +264,7 @@ class AlipayPlatform(BasePlatform):
         try:
             try:
                 await page.wait_for_selector(".cntBox___HEIqZ, [class*='cntBox_']", timeout=8000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[alipay stats] 等待 .cntBox 超时")
 
             raw = await page.evaluate(
@@ -295,7 +295,7 @@ class AlipayPlatform(BasePlatform):
                     except (ValueError, TypeError):
                         count = 0
                     stats.append({"ICON": icon, "COUNT": count, "NAME": name, "SORT": sort_no})
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[alipay stats] 抓取失败: {exc}")
 
         stats.sort(key=lambda x: x.get("SORT", 999))
@@ -308,7 +308,7 @@ class AlipayPlatform(BasePlatform):
         """
         try:
             return await self._scrape_alipay_stats(page)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[alipay login] _login_stats_fn 抓取失败: {exc}")
             return []
 
@@ -607,7 +607,7 @@ class AlipayPlatform(BasePlatform):
         ).first
         try:
             await image_input.wait_for(state="attached", timeout=15000)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             # 兜底:找任意非 video 的 file input
             all_inputs = page.locator("input[type='file']")
             cnt = await all_inputs.count()
@@ -636,7 +636,7 @@ class AlipayPlatform(BasePlatform):
                         try:
                             data = await response.json()
                             upload_result["response"] = data
-                        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                             pass
 
                 page.on("response", handle_upload_response)
@@ -688,15 +688,15 @@ class AlipayPlatform(BasePlatform):
                                 await delete_btn.click()
                                 logger.info("[上传图集] 已删除失败项: %s", img_name)
                                 await asyncio.sleep(0.5)
-                        except Exception as e:
+                        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                             logger.warning("[上传图集] 删除失败项异常: %s", e)
 
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                     logger.warning("[上传图集] 上传异常: %s - %s", img_name, e)
                 finally:
                     try:
                         page.remove_listener("response", handle_upload_response)
-                    except Exception:  # noqa: S110 -- 文件/资源清理兜底,失败可忽略
+                    except Exception:  # noqa: S110, BLE001 -- 文件/资源清理兜底,失败可忽略
                         pass
 
         logger.info(
@@ -727,7 +727,7 @@ class AlipayPlatform(BasePlatform):
                 if await title_input.is_visible():
                     logger.info("[上传图集] 表单已可交互(标题输入框可见)")
                     return
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(3)
         raise RuntimeError(
@@ -777,7 +777,7 @@ class AlipayPlatform(BasePlatform):
             await add_music_btn.click()
             logger.info("[上传图集] 已点击「添加音乐」,等待 modal")
             await asyncio.sleep(1.5)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[上传图集] 未找到「添加音乐」按钮: %s", e)
             return
 
@@ -787,7 +787,7 @@ class AlipayPlatform(BasePlatform):
                 'div.antd5-modal[aria-modal="true"]:has-text("选择音乐")'
             ).first
             await music_modal.wait_for(state="visible", timeout=10000)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[上传图集] 音乐 modal 未打开: %s", e)
             return
 
@@ -862,7 +862,7 @@ class AlipayPlatform(BasePlatform):
                 await next_btn.click()
                 logger.info("[上传图集] 翻到第 %d 页", page_num + 1)
                 await asyncio.sleep(1.0)  # 等待下一页加载
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.info("[上传图集] 翻页失败(可能已到最后一页): %s", e)
                 break
 
@@ -870,7 +870,7 @@ class AlipayPlatform(BasePlatform):
             logger.warning("[上传图集] 未找到音乐「%s」,跳过音乐设置", music_title)
             try:
                 await page.keyboard.press("Escape")
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
             return
 
@@ -880,11 +880,11 @@ class AlipayPlatform(BasePlatform):
                 'div.antd5-modal[aria-modal="true"]:has-text("选择音乐")'
             ).wait_for(state="hidden", timeout=8000)
             logger.info("[上传图集] 音乐 modal 已关闭")
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             # 兜底:Esc 强关
             try:
                 await page.keyboard.press("Escape")
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
         await asyncio.sleep(0.5)
 
@@ -1097,7 +1097,7 @@ class AlipayPlatform(BasePlatform):
             await target_input.set_input_files(file_path)
             logger.info("[上传视频] 已通过 set_input_files 提交视频")
             return
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] 直接 set_input_files 失败: %s", e)
 
         # 2. 兜底: expect_file_chooser + 点击上传区
@@ -1113,7 +1113,7 @@ class AlipayPlatform(BasePlatform):
             await fc.set_files(file_path)
             logger.info("[上传视频] 已通过 expect_file_chooser 提交视频")
             return
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] expect_file_chooser 失败: %s", e)
 
         # 3. 最后兜底: 等带标记 input 出现
@@ -1129,7 +1129,7 @@ class AlipayPlatform(BasePlatform):
                     await page.locator(marked_sel).first.set_input_files(file_path)
                     logger.info("[上传视频] 已通过 patched input 提交视频")
                     return
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(0.5)
 
@@ -1167,7 +1167,7 @@ class AlipayPlatform(BasePlatform):
                     )
             except RuntimeError:
                 raise
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
             try:
@@ -1176,7 +1176,7 @@ class AlipayPlatform(BasePlatform):
                         "[上传视频] 标题输入框已可见,上传完成、表单可交互"
                     )
                     return
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
             # 进度旁证(每 60s 一次)
@@ -1186,14 +1186,14 @@ class AlipayPlatform(BasePlatform):
                     logger.info(
                         "[上传视频] 等待上传完成... (剩余 %ds)", remaining,
                     )
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
             await asyncio.sleep(5)
 
         try:
             url = page.url
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
             url = "(unknown)"
         raise RuntimeError(
             f"[上传视频] 等待视频上传完成超时({timeout_s}s),"
@@ -1318,11 +1318,11 @@ class AlipayPlatform(BasePlatform):
                     await page.keyboard.press("Space")
                     logger.info("[上传视频] 已添加话题(无下拉,空格确认): #%s", tag)
                 await asyncio.sleep(0.3)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[上传视频] 添加话题 #%s 失败: %s", tag, e)
                 try:
                     await page.keyboard.press("Escape")
-                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
 
     # ------------------------------------------------------------------
@@ -1352,12 +1352,12 @@ class AlipayPlatform(BasePlatform):
         ).first
         try:
             await upload_trigger.wait_for(state="visible", timeout=10000)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             # 兜底:用文本定位(可能命中多个,取第一个可见的)
             upload_trigger = page.get_by_text("上传封面", exact=True).first
             try:
                 await upload_trigger.wait_for(state="visible", timeout=5000)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[上传视频] 未找到「上传封面」入口: %s", e)
                 return
 
@@ -1378,7 +1378,7 @@ class AlipayPlatform(BasePlatform):
             await asyncio.sleep(1)
             tab_switched = True
             logger.info("[上传视频] 已切换到「上传封面」tab")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] 切换「上传封面」tab 跳过(可能已在目标 tab): %s", e)
 
         # 3. 上传封面文件 —— 用 file_chooser 兜底 + set_input_files 双保险
@@ -1410,7 +1410,7 @@ class AlipayPlatform(BasePlatform):
                 )
                 uploaded = True
                 break
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] 策略① set_input_files 失败: %s", e)
 
         # 策略 ②: 监听原生 file_chooser + 点击上传触发区
@@ -1434,14 +1434,14 @@ class AlipayPlatform(BasePlatform):
                     "[上传视频] 已上传封面(策略② file_chooser): %s",
                     os.path.basename(cover_path),
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.info("[上传视频] 策略② file_chooser 失败: %s", e)
 
         if not uploaded:
             logger.warning("[上传视频] 封面上传所有策略均失败,跳过封面")
             try:
                 await page.keyboard.press("Escape")
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
             return
 
@@ -1455,7 +1455,7 @@ class AlipayPlatform(BasePlatform):
         ).first
         try:
             await done_btn.wait_for(state="visible", timeout=10000)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             # 兜底:文本匹配(antd5 button 内是 <span>完 成</span>)
             done_btn = page.locator(
                 "button.antd5-btn-primary", has_text="完"
@@ -1464,7 +1464,7 @@ class AlipayPlatform(BasePlatform):
             await done_btn.wait_for(state="visible", timeout=10000)
             await done_btn.click(force=True)
             logger.info("[上传视频] 已点击封面「完 成」按钮")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[上传视频] 点击封面确认按钮失败: %s", e)
 
         await asyncio.sleep(1)
@@ -1504,7 +1504,7 @@ class AlipayPlatform(BasePlatform):
             await compilation_input.wait_for(
                 state="visible", timeout=10000
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[上传视频] 未找到合集输入框: %s", e)
             return
 
@@ -1520,7 +1520,7 @@ class AlipayPlatform(BasePlatform):
                     "[上传视频] 已输入合集名「%s」,等待接口响应",
                     compilation_name,
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(
                 "[上传视频] 未捕获到 queryCompilationsByPublicId 响应(%s),"
                 "直接等 DOM 渲染",
@@ -1532,7 +1532,7 @@ class AlipayPlatform(BasePlatform):
             await page.locator(
                 "div.antd5-select-item-option"
             ).first.wait_for(state="visible", timeout=10000)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(
                 "[上传视频] 合集下拉未渲染(可能无匹配合集「%s」): %s",
                 compilation_name, e,
@@ -1589,7 +1589,7 @@ class AlipayPlatform(BasePlatform):
             )
             try:
                 await page.keyboard.press("Escape")
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
         await asyncio.sleep(0.5)
@@ -1656,13 +1656,13 @@ class AlipayPlatform(BasePlatform):
                             f"() => {{ const r = document.querySelector(\"input[name='tagList'][value='{value}']\"); return r && r.checked; }}",
                             timeout=5000,
                         )
-                    except Exception:
+                    except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         # 状态没切换过来,补一次点击保险
                         await label.click()
                     await asyncio.sleep(0.5)
                 logger.info("[上传视频] 已选作者声明: %s (value=%s)", statement, value)
                 return
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning(
                     "[上传视频] 按 value=%s 定位作者声明 radio 失败: %s,回退到 label 匹配",
                     value, e,
@@ -1677,7 +1677,7 @@ class AlipayPlatform(BasePlatform):
             await asyncio.sleep(0.4)
             logger.info("[上传视频] 已选作者声明(label 兜底): %s", statement)
             return
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(
                 "[上传视频] 未找到作者声明选项「%s」(value=%s): %s",
                 statement, value or "?", e,
@@ -1694,7 +1694,7 @@ class AlipayPlatform(BasePlatform):
                 });
             }""")
             logger.info("[上传视频] 当前作者声明可选项: %s", options)
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             pass
 
     # ------------------------------------------------------------------
@@ -1731,7 +1731,7 @@ class AlipayPlatform(BasePlatform):
 
         try:
             await input_loc.wait_for(state="visible", timeout=10000)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[上传视频] 按 id 后缀定位转载来源输入框失败: %s", e)
             # 兜底:按 placeholder 精确匹配
             input_loc = page.locator(
@@ -1740,7 +1740,7 @@ class AlipayPlatform(BasePlatform):
             try:
                 await input_loc.wait_for(state="visible", timeout=5000)
                 logger.info("[上传视频] 转载来源输入框改用 placeholder 兜底定位成功")
-            except Exception as e2:
+            except Exception as e2:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[上传视频] placeholder 兜底也失败: %s", e2)
                 # 排查辅助:列出当前所有可见 input
                 try:
@@ -1755,7 +1755,7 @@ class AlipayPlatform(BasePlatform):
                             }));
                     }""")
                     logger.info("[上传视频] 当前页面所有可见 input: %s", all_inputs)
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 return
 
@@ -1767,7 +1767,7 @@ class AlipayPlatform(BasePlatform):
             await input_loc.press("Tab")
             await asyncio.sleep(0.3)
             logger.info("[上传视频] 已填转载来源: %s", url)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[上传视频] 填写转载来源失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -1808,7 +1808,7 @@ class AlipayPlatform(BasePlatform):
             await label.click(force=True)
             logger.info("[上传视频] 已切换到「定时发布」")
             await asyncio.sleep(0.8)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[上传视频] 切换定时发布失败: %s", e)
             return
 
@@ -1825,7 +1825,7 @@ class AlipayPlatform(BasePlatform):
             await schedule_input.type(time_str, delay=50)
             await asyncio.sleep(0.5)
             logger.info("[上传视频] 已填定时时间: %s", time_str)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[上传视频] 填定时时间失败: %s", e)
             return
 
@@ -1836,11 +1836,11 @@ class AlipayPlatform(BasePlatform):
                 await ok_btn.click()
                 logger.info("[上传视频] 已点击 picker「确定」")
                 await asyncio.sleep(0.5)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] 点击 picker 确定失败(可能已关): %s", e)
             try:
                 await page.keyboard.press("Enter")
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
     # ------------------------------------------------------------------
@@ -1855,7 +1855,7 @@ class AlipayPlatform(BasePlatform):
         ).first
         try:
             await publish_btn.wait_for(state="visible", timeout=15000)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
             raise RuntimeError(f"[上传视频] 未找到「确认发布」按钮: {e}")
 
         # 轮询 disabled(最长 60s),等表单就绪
@@ -1927,7 +1927,7 @@ class AlipayPlatform(BasePlatform):
                         logger.info("[上传视频] 已点击「继续发布」,等待跳转")
                         await asyncio.sleep(1)
                         continue
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.debug("[上传视频] 检测弹窗1异常(忽略): %s", e)
 
             # ---- 弹窗 2:「发布请注意」确认弹窗(ant-modal-confirm) ----
@@ -1950,7 +1950,7 @@ class AlipayPlatform(BasePlatform):
                         logger.info("[上传视频] 已点击弹窗「确认发布」,等待跳转")
                         await asyncio.sleep(1)
                         continue
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.debug("[上传视频] 检测弹窗2异常(忽略): %s", e)
 
             # ---- 成功判据 1: URL 跳转离开发布页(最可靠) ----
@@ -1962,7 +1962,7 @@ class AlipayPlatform(BasePlatform):
                 ):
                     logger.info("[上传视频] 发布成功(URL 已跳转: %s)", current_url)
                     return
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
             # ---- 成功判据 2: 「发布成功」文案 ----
@@ -1970,7 +1970,7 @@ class AlipayPlatform(BasePlatform):
                 if await page.get_by_text("发布成功", exact=True).count() > 0:
                     logger.info("[上传视频] 发布成功(检测到「发布成功」文案)")
                     return
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
             await asyncio.sleep(2)
@@ -2017,6 +2017,6 @@ def _parse_schedule_dt(schedule_time_str: str):
                 return dt
             except ValueError:
                 continue
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info("[上传视频] 解析定时时间失败: %s", e)
     return None

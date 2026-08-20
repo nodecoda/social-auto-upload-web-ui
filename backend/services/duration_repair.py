@@ -394,7 +394,7 @@ def ensure_duration_or_probe(stored_path: str, current_duration: float) -> float
             return _probe_one(conn, material_id, stored_path)
         finally:
             _release(material_id)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[DurationRepair] 提交兜底识别失败 path=%s: %s", stored_path, exc)
         return 0.0
     finally:

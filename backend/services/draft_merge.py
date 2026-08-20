@@ -286,7 +286,7 @@ def _resolve_stored_path(material):
         try:
             from storage import resolve_material_path
             return resolve_material_path(stored) or stored
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
             return stored
     return ''
 

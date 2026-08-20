@@ -136,7 +136,7 @@ class GuanghePickerSession:
         try:
             await self.frame.page.keyboard.press("Escape")
             await asyncio.sleep(0.8)
-        except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+        except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
             pass
 
         await self._open_picker_panel(type_)
@@ -208,7 +208,7 @@ class GuanghePickerSession:
                     ).count()
                     if inp_count > 0:
                         return frame
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             await asyncio.sleep(1)
         return page.main_frame
@@ -219,21 +219,21 @@ class GuanghePickerSession:
         try:
             await _link_ops.switch_radio(frame, type_)
             logger.info(f"[Picker] ✓ 已选 radio={'商品' if type_ == 'product' else '店铺'}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[Picker] radio 点击失败: {e}")
 
         try:
             await _link_ops.click_add_card(frame, type_)
             trigger_text = "添加商品" if type_ == "product" else "添加店铺"
             logger.info(f"[Picker] ✓ 已点击 {trigger_text}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[Picker] 添加卡片点击失败: {e}")
 
         try:
             await _link_ops.wait_panel_ready(frame, type_)
             if type_ == "product":
                 await self.switch_tab("preferred")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[Picker] 面板等待失败: {e}")
 
     async def _scrape(self) -> tuple[list, bool]:
@@ -252,7 +252,7 @@ class GuanghePickerSession:
                 continue
             try:
                 await obj.close()
-            except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
             setattr(self, attr, None)
         self.page = None

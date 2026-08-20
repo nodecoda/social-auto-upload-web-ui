@@ -170,7 +170,7 @@ class WeiboPlatform(BasePlatform):
                 valid = await profile_link.count() > 0
                 logger.info(f"[weibo] cookie {'valid' if valid else 'expired, needs re-login'}")
                 return valid
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[weibo] cookie check error: {exc}")
                 return False
             finally:
@@ -197,12 +197,12 @@ class WeiboPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -233,7 +233,7 @@ class WeiboPlatform(BasePlatform):
                 await page.goto("https://weibo.com/", wait_until="domcontentloaded", timeout=20000)
                 try:
                     await page.wait_for_load_state("networkidle", timeout=8000)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 await asyncio.sleep(1)
 
@@ -244,12 +244,12 @@ class WeiboPlatform(BasePlatform):
                     await avatar_btn.click()
                     # 等跳转到 /u/<id>
                     await page.wait_for_url("**/u/**", timeout=10000)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[weibo] 点击头像跳转个人主页失败: {exc}")
 
                 try:
                     await page.wait_for_load_state("domcontentloaded", timeout=10000)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
                 await asyncio.sleep(1)
 
@@ -308,7 +308,7 @@ class WeiboPlatform(BasePlatform):
                     logger.info(f"[weibo] sync_profile 抓取为空,url={page.url}")
 
                 return {"name": name, "avatar": avatar, "stats": stats}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[weibo] sync profile failed: {e}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
@@ -355,7 +355,7 @@ class WeiboPlatform(BasePlatform):
                         count = 0
                     stats.append({"ICON": icon, "COUNT": count, "NAME": std_name, "SORT": sort_no})
             return stats
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[weibo login] _login_stats_fn 抓取失败: {exc}")
             return [] 
 
@@ -528,7 +528,7 @@ class WeiboPlatform(BasePlatform):
                     await page.get_by_role(
                         "button", name="发送", exact=True
                     ).first.wait_for(state="attached", timeout=15000)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
                     raise RuntimeError(
                         f"[发布图集] 创作卡片未渲染(cookie 失效/未登录?): {e}"
                     )
@@ -675,7 +675,7 @@ class WeiboPlatform(BasePlatform):
             await target_input.wait_for(state="attached", timeout=10000)
             await target_input.set_input_files(files)
             logger.info("[发布] 已通过 set_input_files 提交 %d 张图", len(files))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[发布] 直接 set_input_files 失败: %s", e)
 
             # 兜底 1: expect_file_chooser + 点击 trigger
@@ -685,7 +685,7 @@ class WeiboPlatform(BasePlatform):
                 fc = await fc_info.value
                 await fc.set_files(files)
                 logger.info("[发布] 已通过 expect_file_chooser 提交")
-            except Exception as e2:
+            except Exception as e2:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[发布] expect_file_chooser 失败: %s", e2)
                 # 兜底 2: 等带标记的 input 出现(patch 命中)
                 marked_sel = (
@@ -717,7 +717,7 @@ class WeiboPlatform(BasePlatform):
                 if disabled is None:
                     logger.info("[发布] 图片已上传,发送按钮已启用")
                     return
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(2)
 
@@ -737,7 +737,7 @@ class WeiboPlatform(BasePlatform):
         send_btn = page.get_by_role("button", name="发送", exact=True).first
         try:
             await send_btn.wait_for(state="visible", timeout=10000)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
             raise RuntimeError(f"[发布] 未找到「发送」按钮: {e}")
 
         # 轮询 disabled(最长 60s)
@@ -782,7 +782,7 @@ class WeiboPlatform(BasePlatform):
                     logger.info("[发布] 图集发布成功(textarea 空=%s, send 禁用=%s)",
                                 textarea_empty, send_disabled)
                     return
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             await asyncio.sleep(2)
 
@@ -944,7 +944,7 @@ class WeiboPlatform(BasePlatform):
                         try:
                             body = await response.text()
                             body_preview = body[:500].replace("\n", " ")
-                        except Exception as e:
+                        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                             body_preview = f"<body 读取失败: {e}>"
                         logger.info(
                             "[上传视频] ▼ 响应 #%d status=%d body=%s",
@@ -1137,7 +1137,7 @@ class WeiboPlatform(BasePlatform):
             await fc.set_files(file_path)
             logger.info("[上传视频] 已通过 expect_file_chooser 提交视频")
             triggered = True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] expect_file_chooser 方式失败: %s", e)
 
         # 方式 B: 普通 click + 等带标记 input (patch 命中)
@@ -1145,7 +1145,7 @@ class WeiboPlatform(BasePlatform):
             try:
                 await upload_btn.click(force=True)
                 logger.info("[上传视频] 已点击「上传视频」按钮(force=True)")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[上传视频] force=True click 失败: %s", e)
                 await upload_btn.evaluate("el => el.click()")
                 logger.info("[上传视频] 已点击「上传视频」按钮(JS .click())")
@@ -1164,7 +1164,7 @@ class WeiboPlatform(BasePlatform):
                     found_input = page.locator(marked_sel).first
                     logger.info("[上传视频] 检测到标记的 file input(count=%d)", count)
                     break
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[上传视频] locator count 异常: %s", e)
             await asyncio.sleep(0.5)
 
@@ -1252,7 +1252,7 @@ class WeiboPlatform(BasePlatform):
                             "视为上传完成、表单可交互(转码阶段 spinner 暂未消失)"
                         )
                     return
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
             # 2. 上传失败检测
@@ -1263,7 +1263,7 @@ class WeiboPlatform(BasePlatform):
                     )
             except RuntimeError:
                 raise
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
             # 3. 进度旁证(每 30s 一次,避免刷屏)
@@ -1276,7 +1276,7 @@ class WeiboPlatform(BasePlatform):
                         "上传中=%d (剩余 %ds)",
                         uploading_count, remaining,
                     )
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
             await asyncio.sleep(5)
@@ -1284,7 +1284,7 @@ class WeiboPlatform(BasePlatform):
         # 超时
         try:
             url = page.url
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
             url = "(unknown)"
         raise RuntimeError(
             f"[发布] 等待视频上传完成超时({timeout_s}s = "
@@ -1317,7 +1317,7 @@ class WeiboPlatform(BasePlatform):
             await radio.wait_for(state="visible", timeout=5000)
             await radio.click(force=True)
             logger.info("[发布] 已选类型: %s", target)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[发布] 选择类型失败(%s): %s", target, e)
 
     # ------------------------------------------------------------------
@@ -1374,7 +1374,7 @@ class WeiboPlatform(BasePlatform):
             await page.get_by_text("上传封面").first.wait_for(
                 state="attached", timeout=10000,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[发布] 等「上传封面」链接超时: %s", e)
 
         try:
@@ -1386,7 +1386,7 @@ class WeiboPlatform(BasePlatform):
             await inner.locator("img").first.wait_for(
                 state="attached", timeout=10000,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[发布] 等封面 picture(img) 超时: %s", e)
 
         try:
@@ -1457,7 +1457,7 @@ class WeiboPlatform(BasePlatform):
                 }
                 return [null, { reason: 'aspect div not found in ancestors', ...debug }];
             }""")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[发布] 读取封面区域宽高比失败: %s", e)
             aspect = None
             debug = None
@@ -1522,7 +1522,7 @@ class WeiboPlatform(BasePlatform):
         upload_cover_link = page.get_by_text("上传封面").first
         try:
             await upload_cover_link.wait_for(state="visible", timeout=10000)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[发布] 未找到「上传封面」入口,跳过封面")
             return
 
@@ -1539,7 +1539,7 @@ class WeiboPlatform(BasePlatform):
                 state="visible", timeout=10000
             )
             logger.info("[发布] 封面编辑弹层已出现")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[发布] 等待封面弹层超时: %s", e)
             return
 
@@ -1570,7 +1570,7 @@ class WeiboPlatform(BasePlatform):
             # 拦截 pointer events,导致普通 click 一直 retry(2026-06-17 实测)
             await done_btn.click(force=True)
             logger.info("[发布] 已点击封面完成按钮")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[发布] 点击封面完成按钮失败: %s", e)
 
         # 6. 关键: 等待「编辑封面」弹层真正关闭,否则它会盖住下面的
@@ -1581,7 +1581,7 @@ class WeiboPlatform(BasePlatform):
                 "编辑封面", exact=True,
             ).first.wait_for(state="hidden", timeout=15000)
             logger.info("[发布] 封面编辑弹层已关闭")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(
                 "[发布] 等待封面弹层关闭超时,尝试 ESC 强制关闭: %s", e,
             )
@@ -1637,7 +1637,7 @@ class WeiboPlatform(BasePlatform):
         trigger_text = page.get_by_text("请选择合适的频道", exact=True)
         try:
             await trigger_text.first.wait_for(state="attached", timeout=10000)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[发布] 未找到分类下拉触发器(占位文本): %s", e)
             return
 
@@ -1668,7 +1668,7 @@ class WeiboPlatform(BasePlatform):
             await sub_locator.last.click()
             logger.info("[发布] 已选二级子分类: %s", sub_name)
             await asyncio.sleep(0.5)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(
                 "[发布] 级联选择失败(channel=%s sub=%s): %s",
                 channel_name, sub_name, e,
@@ -1727,7 +1727,7 @@ class WeiboPlatform(BasePlatform):
                     logger.info("[设置合集] 已点击第 %d 个开关(合集开关)", i)
                     switch_clicked = True
                     break
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[设置合集] 点击合集开关失败: %s", e)
 
         if not switch_clicked:
@@ -1739,7 +1739,7 @@ class WeiboPlatform(BasePlatform):
         album_inputs = page.locator('input[type="text"][value*="集"]')
         try:
             await album_inputs.first.wait_for(state="attached", timeout=10000)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[设置合集] 切换开关后合集列表未展开,跳过")
             return
 
@@ -1768,7 +1768,7 @@ class WeiboPlatform(BasePlatform):
                     logger.info("[设置合集] 已勾选合集: %s", collection_name)
                     await asyncio.sleep(0.5)
                     return
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[设置合集] 勾选第 %d 项失败: %s", i, e)
                 continue
 
@@ -1845,7 +1845,7 @@ class WeiboPlatform(BasePlatform):
             logger.info("[内容声明] 探测「请进行内容声明」count=%d", cnt)
             if cnt > 0:
                 v2_detected = True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             # 探测本身异常:打印详情,不静默吞
             logger.warning("[内容声明] 探测版本2 trigger 异常: %s", e)
 
@@ -1889,7 +1889,7 @@ class WeiboPlatform(BasePlatform):
         trigger = page.get_by_text("内容声明", exact=True).first
         try:
             await trigger.wait_for(state="visible", timeout=5000)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[发布] 未找到内容声明入口: %s", e)
             return
 
@@ -1903,7 +1903,7 @@ class WeiboPlatform(BasePlatform):
             await option.click()
             logger.info("[发布] 已选内容声明(版本1): %s", stmt_text)
             await asyncio.sleep(0.5)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(
                 "[发布] 选择内容声明失败(%s): %s", stmt_text, e,
             )
@@ -1943,7 +1943,7 @@ class WeiboPlatform(BasePlatform):
         try:
             await trigger.wait_for(state="visible", timeout=5000)
             logger.info("[内容声明v2] 找到 trigger「请进行内容声明」")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[内容声明v2] 未找到 trigger 入口: %s", e)
             return
 
@@ -1957,7 +1957,7 @@ class WeiboPlatform(BasePlatform):
         try:
             await panel.wait_for(state="visible", timeout=3000)
             logger.info("[发布] 内容声明(版本2)面板已展开")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[发布] 内容声明(版本2)面板未展开(trigger 点击无效?): %s", e)
             return
 
@@ -1982,7 +1982,7 @@ class WeiboPlatform(BasePlatform):
                 else:
                     await btn.first.click(force=True)
                 return True
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[发布] 内容声明(版本2)点击选项「%s」失败: %s", text, e)
                 return False
 
@@ -2019,7 +2019,7 @@ class WeiboPlatform(BasePlatform):
                 await confirm_btn.click(force=True)
             logger.info("[发布] 内容声明(版本2)已点确定,选择提交")
             await asyncio.sleep(0.5)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[发布] 点内容声明(版本2)确定按钮失败: %s", e)
             await page.keyboard.press("Escape")
             await asyncio.sleep(0.3)
@@ -2039,7 +2039,7 @@ class WeiboPlatform(BasePlatform):
         publish_btn = page.get_by_role("button", name="发布", exact=True).first
         try:
             await publish_btn.wait_for(state="visible", timeout=10000)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 捕获后重新抛出,统一异常出口
             raise RuntimeError(f"[发布] 未找到发布按钮: {e}")
 
         # 轮询 disabled 属性(最长 60s)
@@ -2071,7 +2071,7 @@ class WeiboPlatform(BasePlatform):
                 "text=视频已上传成功"
             ).first.wait_for(state="visible", timeout=timeout_s * 1000)
             logger.info("[发布] 发布成功(检测到「视频已上传成功」toast)")
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             # 兜底: 看 URL 是否跳走
             await asyncio.sleep(3)
             current = page.url

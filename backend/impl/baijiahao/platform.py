@@ -183,7 +183,7 @@ class BaijiahaoPlatform(BasePlatform):
                     return False
                 logger.info("[baijiahao] cookie valid")
                 return True
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[baijiahao] cookie check error: {exc}")
                 return False
             finally:
@@ -223,7 +223,7 @@ class BaijiahaoPlatform(BasePlatform):
                 try:
                     await page.goto("https://baijiahao.baidu.com/", wait_until="domcontentloaded", timeout=30000)
                     stats = await self._scrape_baijiahao_stats(page)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[baijiahao] 抓 stats 失败(不影响 name/avatar): {exc}")
                     stats = []
 
@@ -236,7 +236,7 @@ class BaijiahaoPlatform(BasePlatform):
                     logger.info(
                         f"[baijiahao] sync_profile 已回写 storage_state: {cookie_path}"
                     )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[baijiahao] 回写 storage_state 失败: {e}")
 
                 return {"name": name, "avatar": avatar, "stats": stats}
@@ -274,7 +274,7 @@ class BaijiahaoPlatform(BasePlatform):
         try:
             try:
                 await page.wait_for_selector(".FeReactApp-_3a492ee4f8f1a936-filterItem", timeout=10000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[baijiahao stats] 等待 .filterItem 超时")
 
             raw = await page.evaluate(
@@ -301,7 +301,7 @@ class BaijiahaoPlatform(BasePlatform):
                     except (ValueError, TypeError):
                         count = 0
                     stats.append({"ICON": icon, "COUNT": count, "NAME": name, "SORT": sort_no})
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[baijiahao stats] 抓取失败: {exc}")
 
         stats.sort(key=lambda x: x.get("SORT", 999))
@@ -315,10 +315,10 @@ class BaijiahaoPlatform(BasePlatform):
         try:
             try:
                 await page.goto("https://baijiahao.baidu.com/", wait_until="domcontentloaded", timeout=30000)
-            except Exception:  # noqa: S110 -- 页面加载兜底,超时继续后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- 页面加载兜底,超时继续后续逻辑
                 pass
             return await self._scrape_baijiahao_stats(page)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[baijiahao login] _login_stats_fn 抓取失败: {exc}")
             return []
 
@@ -339,12 +339,12 @@ class BaijiahaoPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -559,7 +559,7 @@ class BaijiahaoPlatform(BasePlatform):
                             "div#formMain:visible"
                         )
                         break
-                    except Exception:
+                    except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         logger.info("[上传视频] 正在等待进入视频发布页面...")
                         await asyncio.sleep(0.1)
 
@@ -644,7 +644,7 @@ class BaijiahaoPlatform(BasePlatform):
                         )
                         logger.info("[发布] 人机校验已完成")
                         await asyncio.sleep(3)
-                    except Exception:
+                    except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                         logger.error("[发布] 人机校验等待超时（120秒），退出")
                         raise Exception("人机校验等待超时")
 
@@ -655,7 +655,7 @@ class BaijiahaoPlatform(BasePlatform):
                         timeout=30000,
                     )
                     logger.info("[发布] 视频发布成功! 页面跳转到: %s", page.url)
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                     current_url = page.url
                     logger.error(
                         "[发布] 发布后未跳转到成功页面, 当前URL: %s",
@@ -794,7 +794,7 @@ class BaijiahaoPlatform(BasePlatform):
                 await first_item.click()
                 logger.info("[填写标题] 已选择话题: #%s", tag)
                 await asyncio.sleep(0.5)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[填写标题] 话题 #%s 未出现下拉建议，跳过选择", tag)
 
     # ------------------------------------------------------------------
@@ -896,7 +896,7 @@ class BaijiahaoPlatform(BasePlatform):
             await page.wait_for_selector(
                 f"{input_id}[aria-expanded='true']", timeout=3000
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             await page.wait_for_timeout(500)
         await page.wait_for_timeout(500)
 
@@ -1042,7 +1042,7 @@ class BaijiahaoPlatform(BasePlatform):
                 await asyncio.sleep(2)
                 logger.info("[封面] %s设置完成", cover_type)
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.error("[封面] 设置%s失败: %s", cover_type, e)
 
     # ------------------------------------------------------------------
@@ -1146,5 +1146,5 @@ class BaijiahaoPlatform(BasePlatform):
             await asyncio.sleep(1)
             logger.info("[设置声明] 创作声明设置完成")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[设置声明] 设置创作声明失败（不影响上传）: %s", e)

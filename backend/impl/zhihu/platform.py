@@ -115,11 +115,11 @@ class ZhihuPlatform(BasePlatform):
             finally:
                 try:
                     await page.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
                 try:
                     await context.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             if success:
@@ -143,7 +143,7 @@ class ZhihuPlatform(BasePlatform):
                         "domcontentloaded", timeout=10000
                     )
                     await asyncio.sleep(2)
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 profile_entry = page.locator(".AppHeader-profileEntry").first
                 if await profile_entry.count() > 0:
@@ -183,19 +183,19 @@ class ZhihuPlatform(BasePlatform):
                         ZHIHU_LOGIN_URL, wait_until="domcontentloaded", timeout=30000
                     )
                     name, avatar = await scrape_zhihu_profile(page)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[zhihu] 抓 name/avatar 失败: {exc}")
                     name, avatar = "", ""
 
                 # 2. 后抓 stats(跳转到创作中心两个页面)
                 try:
                     stats = await self._scrape_zhihu_stats(page)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[zhihu] 抓 stats 失败(不影响 name/avatar): {exc}")
                     stats = [] 
 
                 return {"name": name, "avatar": avatar, "stats": stats}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[同步资料] 失败: {e}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
@@ -256,7 +256,7 @@ class ZhihuPlatform(BasePlatform):
             # 等统计行渲染(缩短超时,数据大多数时候已就绪)
             try:
                 await page.wait_for_selector("[class*='css-1fu8ne5'], [class*='css-js8qof']", timeout=6000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[zhihu stats] 阶段1 等待数据超时")
 
             # 用 evaluate 抓标签 + 数值对(忽略占比/昨日变化,只保留关注者总数)
@@ -289,7 +289,7 @@ class ZhihuPlatform(BasePlatform):
                     stats.append({"ICON": icon, "COUNT": count, "NAME": name, "SORT": sort_no})
                 else:
                     logger.info(f"[zhihu stats] 阶段1 未匹配 label: {label!r}")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[zhihu stats] 阶段1(数据总览)抓取失败: {exc}")
 
         # === 阶段 2: 作品分析 - 先点累计,再抓流量+互动 ===
@@ -305,13 +305,13 @@ class ZhihuPlatform(BasePlatform):
             if await accumulated_btn.count() > 0:
                 try:
                     await accumulated_btn.click(timeout=3000)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[zhihu stats] 累计按钮点击失败: {exc}")
 
             # 等 .StatisticCard 渲染(短超时即可,默认数据可能已就绪)
             try:
                 await page.wait_for_selector(".StatisticCard", timeout=8000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[zhihu stats] 阶段2 等待 .StatisticCard 超时")
             # 短 sleep 等 tab 切换后数据 fetch(0.6s 一般够)
             await asyncio.sleep(0.6)
@@ -343,7 +343,7 @@ class ZhihuPlatform(BasePlatform):
 
             if not raw:
                 logger.info(f"[zhihu stats] 阶段2 raw 数据为空,url={page.url}")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[zhihu stats] 阶段2(作品分析)抓取失败: {exc}")
 
         # 去重(同一 label 多次抓取时保留第一次)
@@ -366,7 +366,7 @@ class ZhihuPlatform(BasePlatform):
         """
         try:
             return await self._scrape_zhihu_stats(page)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[zhihu login] _login_stats_fn 抓取失败: {exc}")
             return []
 
@@ -386,12 +386,12 @@ class ZhihuPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -570,7 +570,7 @@ class ZhihuPlatform(BasePlatform):
                     await page.wait_for_load_state(
                         "domcontentloaded", timeout=30000
                     )
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
 
                 # cookie 失效会被重定向到登录页
@@ -617,7 +617,7 @@ class ZhihuPlatform(BasePlatform):
                         path=str(log_dir / "zhihu_before_submit.png"),
                         full_page=True,
                     )
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
 
                 # 10. 点击发布按钮（监听 /api/v4/content/publish 响应判断结果）
@@ -629,7 +629,7 @@ class ZhihuPlatform(BasePlatform):
                             path=str(log_dir / "zhihu_after_submit.png"),
                             full_page=True,
                         )
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                 else:
                     logger.info(f"[上传视频] ✗ 发布失败: {submit_msg}")
@@ -639,7 +639,7 @@ class ZhihuPlatform(BasePlatform):
                             path=str(log_dir / "zhihu_submit_failed.png"),
                             full_page=True,
                         )
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
 
                 # upload_success 跟踪「浏览器流程跑完」（用于决定是否更新 cookie），
@@ -650,18 +650,18 @@ class ZhihuPlatform(BasePlatform):
                     try:
                         await context.storage_state(path=account_file)
                         logger.info("[上传视频] cookie 已更新")
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                 if not DEBUG_DRY_RUN_SUBMIT:
                     try:
                         await context.close()
-                    except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                    except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                         pass
         finally:
             if not DEBUG_DRY_RUN_SUBMIT:
                 try:
                     await self.close_browser(browser, is_close_by_code=True)
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
                 logger.info("[上传视频] 浏览器已关闭")
             else:
@@ -687,7 +687,7 @@ class ZhihuPlatform(BasePlatform):
             await page.screenshot(
                 path=str(log_dir / "zhihu_upload_before.png"), full_page=True
             )
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             pass
 
         try:
@@ -700,7 +700,7 @@ class ZhihuPlatform(BasePlatform):
                 }));
             }""")
             logger.info("[上传视频] 页面 file input 探测: %s", inputs_info)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] file input 探测失败: %s", e)
 
         file_input = None
@@ -717,7 +717,7 @@ class ZhihuPlatform(BasePlatform):
             await input_in_frame.wait_for(state="attached", timeout=3000)
             file_input = input_in_frame
             logger.info("[上传视频] ✓ iframe 内找到 file input")
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] iframe 内未找到 file input，转主页面")
 
         # 策略 2: 主页面 input[accept*=video]
@@ -730,7 +730,7 @@ class ZhihuPlatform(BasePlatform):
                 await candidate.wait_for(state="attached", timeout=5000)
                 file_input = candidate
                 logger.info("[上传视频] ✓ 主页面 video input 命中")
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[上传视频] 主页面未找到 [accept*=video] input")
 
         # 策略 3: 主页面任意 file input（兜底）
@@ -740,7 +740,7 @@ class ZhihuPlatform(BasePlatform):
                 await candidate.wait_for(state="attached", timeout=5000)
                 file_input = candidate
                 logger.info("[上传视频] ✓ 兜底命中主页面第一个 file input")
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[上传视频] 主页面无任何 file input")
 
         # 策略 4: 点击可见的上传按钮/dropzone 后再找 input
@@ -760,7 +760,7 @@ class ZhihuPlatform(BasePlatform):
                 file_input = page.locator('input[type="file"]').first
                 await file_input.wait_for(state="attached", timeout=5000)
                 logger.info("[上传视频] ✓ 点击上传按钮后找到 file input")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[上传视频] 上传按钮兜底失败: %s", e)
 
         if file_input is None:
@@ -769,7 +769,7 @@ class ZhihuPlatform(BasePlatform):
                     path=str(log_dir / "zhihu_upload_no_input.png"),
                     full_page=True,
                 )
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             raise RuntimeError(
                 "未找到视频上传 input，请查看 logs/zhihu_upload_before.png"
@@ -797,7 +797,7 @@ class ZhihuPlatform(BasePlatform):
                     raise RuntimeError("视频上传失败")
             except RuntimeError:
                 raise
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[上传视频] 状态检查异常: {exc}")
             if retry % 10 == 0:
                 logger.info(f"[上传视频] 上传中... ({retry * 3}s)")
@@ -858,7 +858,7 @@ class ZhihuPlatform(BasePlatform):
                 await file_chooser.set_files(thumbnail_path)
                 uploaded = True
                 logger.info("[设置封面] ✓ file_chooser 方式上传成功")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[设置封面] file_chooser 方式失败，兜底直设 input: {e}")
 
             # 兜底：scope 到 Modal 内找 input（避开描述区 EditorArea 的 image input）
@@ -873,7 +873,7 @@ class ZhihuPlatform(BasePlatform):
                     await modal_input.set_input_files(thumbnail_path)
                     uploaded = True
                     logger.info("[设置封面] ✓ Modal 内 input 命中")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[设置封面] Modal 内 input 兜底失败: {e}")
 
             # 再兜底：排除 EditorArea/WritePinV2-Form 的 image input
@@ -900,7 +900,7 @@ class ZhihuPlatform(BasePlatform):
                         # 用 evaluate 找到这个 input 并直接设值（playwright 定位用）
                         # 实际策略：先点 dropzone，再用 file_chooser
                         raise RuntimeError("无法可靠定位封面 input")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[设置封面] 排除法失败: {e}")
 
             if not uploaded:
@@ -920,7 +920,7 @@ class ZhihuPlatform(BasePlatform):
                         preview_found = True
                         logger.info("[设置封面] ✓ 检测到「重新上传」按钮，封面已上传")
                         break
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(1)
 
@@ -946,7 +946,7 @@ class ZhihuPlatform(BasePlatform):
                     clicked = True
                     logger.info(f"[设置封面] ✓ 已点击「确认选择」(attempt={attempt + 1})")
                     break
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[设置封面] 点击 attempt={attempt + 1} 失败: {e}")
             if not clicked:
                 # 最后兜底：JS 直接 dispatch click
@@ -954,7 +954,7 @@ class ZhihuPlatform(BasePlatform):
                     await confirm_btn.evaluate("el => el.click()")
                     clicked = True
                     logger.info("[设置封面] ✓ JS evaluate click 命中")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[设置封面] JS evaluate click 失败: {e}")
 
             # 6. 等模态框消失（确认弹窗关闭 = 真正生效）；超时则 Escape 兜底
@@ -968,7 +968,7 @@ class ZhihuPlatform(BasePlatform):
                         modal_closed = True
                         logger.info("[设置封面] ✓ 弹窗已关闭")
                         break
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(1)
             if not modal_closed:
@@ -976,23 +976,23 @@ class ZhihuPlatform(BasePlatform):
                 try:
                     await page.keyboard.press("Escape")
                     await asyncio.sleep(1)
-                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[设置封面] 设置封面失败（非致命）: {exc}")
             try:
                 await page.screenshot(
                     path=str(log_dir / "zhihu_cover_error.png"),
                     full_page=True,
                 )
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             # 关掉可能仍打开的弹窗，避免遮挡后续步骤
             try:
                 await page.keyboard.press("Escape")
                 await asyncio.sleep(0.5)
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
     @staticmethod
@@ -1054,7 +1054,7 @@ class ZhihuPlatform(BasePlatform):
                 )
                 await page.keyboard.press("Control+V")
                 await asyncio.sleep(0.3)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[填写简介] 粘贴失败，回退 type: {e}")
                 await page.keyboard.type(text)
 
@@ -1118,11 +1118,11 @@ class ZhihuPlatform(BasePlatform):
             await confirm.click()
             logger.info("[视频标记] 已点击确认")
             await asyncio.sleep(1)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[视频标记] 设置失败（非致命）: {exc}")
             try:
                 await page.keyboard.press("Escape")
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
     @staticmethod
@@ -1144,7 +1144,7 @@ class ZhihuPlatform(BasePlatform):
                 logger.info("[原创视频] 已开启原创开关")
             else:
                 logger.info("[原创视频] 原创开关已开启")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[原创视频] 检查失败（非致命）: {exc}")
 
     @staticmethod
@@ -1206,12 +1206,12 @@ class ZhihuPlatform(BasePlatform):
                         raise
             logger.info(f"[所属领域] ✓ 已选择: {category}")
             await asyncio.sleep(0.5)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[所属领域] 设置失败（非致命）: {exc}")
             try:
                 await page.keyboard.press("Escape")
                 await asyncio.sleep(0.3)
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
     @staticmethod
@@ -1245,7 +1245,7 @@ class ZhihuPlatform(BasePlatform):
                 ).first
                 if await cb.count() > 0:
                     is_on = await cb.is_checked()
-            except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+            except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
             if not is_on:
                 await switch.click()
@@ -1268,7 +1268,7 @@ class ZhihuPlatform(BasePlatform):
                     tool = page.locator('.Calendar-topToolDate').first
                     if await tool.count() > 0:
                         tool_text = (await tool.text_content() or "").strip()
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
 
                 if str(target_year) in tool_text and str(target_month) in tool_text:
@@ -1284,7 +1284,7 @@ class ZhihuPlatform(BasePlatform):
                             await page.locator('.Calendar-topToolButton--prevMonth').first.click()
                         await asyncio.sleep(0.5)
                         continue
-                    except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                    except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                         pass
                 await page.locator('.Calendar-topToolButton--nextMonth').first.click()
                 await asyncio.sleep(0.5)
@@ -1314,7 +1314,7 @@ class ZhihuPlatform(BasePlatform):
             ).nth(0)
             try:
                 await hour_trigger.click(timeout=5000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                 # 兜底：第二个 Popover 通常是小时
                 hour_trigger = page.locator('.DateTimePicker button[role="combobox"]').nth(0)
                 await hour_trigger.click(timeout=5000)
@@ -1336,7 +1336,7 @@ class ZhihuPlatform(BasePlatform):
             ).nth(1)
             try:
                 await minute_trigger.click(timeout=5000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[定时发布] 分钟下拉点击失败")
             await asyncio.sleep(0.5)
             minute_opt = page.locator(
@@ -1352,11 +1352,11 @@ class ZhihuPlatform(BasePlatform):
             # 关闭可能仍打开的下拉
             try:
                 await page.keyboard.press("Escape")
-            except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
             await asyncio.sleep(0.5)
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[定时发布] 设置失败: {exc}")
 
     @staticmethod
@@ -1387,7 +1387,7 @@ class ZhihuPlatform(BasePlatform):
         ).first
         try:
             await submit.wait_for(state="visible", timeout=15000)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[上传视频] 找不到「{button_text}」按钮，尝试通用提交")
             submit = page.locator('.VideoUploadForm-submitButton').first
 
@@ -1400,17 +1400,17 @@ class ZhihuPlatform(BasePlatform):
             ) as resp_info:
                 try:
                     await submit.click()
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[上传视频] 点击发布按钮失败: {exc}")
                     return False, f"点击发布按钮失败: {exc}"
             response = await resp_info.value
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[上传视频] 等待发布 API 响应超时: {exc}")
             return False, "等待发布 API 响应超时"
 
         try:
             data = await response.json()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[上传视频] 发布响应解析失败: {exc}")
             return False, "发布响应解析失败"
 
@@ -1498,7 +1498,7 @@ class ZhihuPlatform(BasePlatform):
             for k, v in state.items():
                 logger.info(f"[DEBUG 表单状态] {k}: {v}")
             logger.info("[DEBUG 表单状态] " + "=" * 40)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[DEBUG 表单状态] 抓取失败: {e}")
 
 
@@ -1550,6 +1550,6 @@ def _get_video_orientation(file_path: str) -> str:
             if row:
                 return row["orientation"] or ""
         return ""
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[发布参数] 查询视频方向失败: {e}")
         return ""

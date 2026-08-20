@@ -164,7 +164,7 @@ class DouyinPlatform(BasePlatform):
                         "https://creator.douyin.com/creator-micro/content/upload",
                         timeout=5000,
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info("cookie check: page did not reach target URL")
                     return False
 
@@ -173,7 +173,7 @@ class DouyinPlatform(BasePlatform):
                     await page.get_by_text("扫码登录").wait_for(timeout=5000)
                     logger.info("cookie check: 扫码登录 visible — cookie invalid")
                     return False
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info("cookie check: no login prompt — cookie valid")
                     return True
             finally:
@@ -205,7 +205,7 @@ class DouyinPlatform(BasePlatform):
                         wait_until="domcontentloaded",
                         timeout=30000,
                     )
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 # 等用户卡片渲染(短超时)
                 try:
@@ -213,7 +213,7 @@ class DouyinPlatform(BasePlatform):
                         "[class*='statics-'], [class*='statics-item-']",
                         timeout=8000,
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info("[douyin stats] 等待 statics 超时")
 
                 name, avatar = await scrape_user_profile(page)
@@ -279,7 +279,7 @@ class DouyinPlatform(BasePlatform):
                 "[class*='statics-item-']",
                 timeout=8000,
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[douyin login] 等待 statics 超时")
 
         result = await page.evaluate(
@@ -545,14 +545,14 @@ class DouyinPlatform(BasePlatform):
                             timeout=3000,
                         )
                         break
-                    except Exception:
+                    except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                         try:
                             await page.wait_for_url(
                                 "https://creator.douyin.com/creator-micro/content/post/video?enter_from=publish_page",
                                 timeout=3000,
                             )
                             break
-                        except Exception:
+                        except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                             await asyncio.sleep(0.5)
 
                 await asyncio.sleep(1)
@@ -586,7 +586,7 @@ class DouyinPlatform(BasePlatform):
                             await page.locator(
                                 "div.progress-div [class^='upload-btn-input']"
                             ).set_input_files(file_path)
-                    except Exception:
+                    except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         await asyncio.sleep(2)
                 logger.info("[上传视频] 视频上传成功!")
 
@@ -670,7 +670,7 @@ class DouyinPlatform(BasePlatform):
                         while browser.is_connected():
                             await asyncio.sleep(1)
                         logger.info("[发布调试] 检测到浏览器已关闭,流程结束")
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                     return
 
@@ -689,7 +689,7 @@ class DouyinPlatform(BasePlatform):
                         )
                         logger.info("[发布] 视频发布成功! 页面跳转到: %s", page.url)
                         break
-                    except Exception:
+                    except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                         # Maybe a cover selection is required
                         await self._handle_auto_video_cover(page)
                         await asyncio.sleep(0.5)
@@ -880,9 +880,9 @@ class DouyinPlatform(BasePlatform):
                         "[定时发布] 校验异常，输入框值: %s（期望含 %s）",
                         final_val, dt.strftime("%H:%M"),
                     )
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[定时发布] 设置定时发布时间失败: %s", exc)
 
     # ------------------------------------------------------------------
@@ -965,7 +965,7 @@ class DouyinPlatform(BasePlatform):
                 ".semi-modal-content", state="hidden", timeout=5000
             )
             return False
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[商品链接] 设置失败: %s", e)
             return False
 
@@ -999,7 +999,7 @@ class DouyinPlatform(BasePlatform):
                     portrait_tab_idx = i
                 if "横" in text:
                     landscape_tab_idx = i
-            except Exception:  # noqa: S112 -- 单次探测失败,跳过继续
+            except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
                 continue
         logger.info("[封面] 封面tab索引 - 竖版: %s, 横版: %s", portrait_tab_idx, landscape_tab_idx)
 
@@ -1058,9 +1058,9 @@ class DouyinPlatform(BasePlatform):
                             ).click()
                             await asyncio.sleep(1)
                         return True
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                         logger.warning("[封面] 自动封面选择失败: %s", e)
-        except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
             pass
         return False
 
@@ -1343,7 +1343,7 @@ class DouyinPlatform(BasePlatform):
                         )
                         logger.info("[发布] 图集发布成功! 已跳转到管理页面")
                         result = True
-                    except Exception:
+                    except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                         # 检查当前URL
                         current_url = page.url
                         if "content/manage" in current_url:
@@ -1413,7 +1413,7 @@ class DouyinPlatform(BasePlatform):
             await asyncio.sleep(2)
 
             logger.info("[封面] 封面图片设置成功")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[封面] 封面设置失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -1451,7 +1451,7 @@ class DouyinPlatform(BasePlatform):
                 await page.keyboard.press("Escape")
 
             await asyncio.sleep(1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[设置合集] 合集设置失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -1514,7 +1514,7 @@ class DouyinPlatform(BasePlatform):
                 logger.warning("[选择音乐] 未找到音乐卡片: %s", music_name)
 
             await asyncio.sleep(2)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[选择音乐] 选择音乐失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -1569,7 +1569,7 @@ class DouyinPlatform(BasePlatform):
                     await asyncio.sleep(1)
 
             await asyncio.sleep(1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[设置热点] 设置热点失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -1620,12 +1620,12 @@ class DouyinPlatform(BasePlatform):
                 try:
                     t = await all_opts.nth(oi).text_content()
                     logger.info("[设置标签]   option[%s]: %s", oi, t.strip()[:50] if t else "(空)")
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
             try:
                 type_option = page.get_by_role("option", name=type_text)
                 await type_option.wait_for(state="visible", timeout=5000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[设置标签] 未找到标签类型选项: %s", type_text)
                 await page.keyboard.press("Escape")
                 return
@@ -1776,7 +1776,7 @@ class DouyinPlatform(BasePlatform):
                 await asyncio.sleep(1)
                 try:
                     await page.wait_for_selector('[role="option"]', timeout=8000)
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                     logger.warning("[设置标签] 影视搜索选项未出现")
                 film_options = page.locator('[role="option"]')
                 count = await film_options.count()
@@ -1785,7 +1785,7 @@ class DouyinPlatform(BasePlatform):
                     try:
                         ot = await film_options.nth(oi).text_content()
                         logger.info("[设置标签]   影视option[%s]: %s", oi, (ot or '').strip()[:80])
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                 clicked = False
                 for i in range(count):
@@ -1807,7 +1807,7 @@ class DouyinPlatform(BasePlatform):
                             break
 
             await asyncio.sleep(1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[设置标签] 设置标签失败: %s", e)
 
     @staticmethod
@@ -1837,7 +1837,7 @@ class DouyinPlatform(BasePlatform):
                 await page.keyboard.press("Escape")
 
             await asyncio.sleep(1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[设置位置] 设置位置失败: %s", e)
 
     # ------------------------------------------------------------------
@@ -1891,7 +1891,7 @@ class DouyinPlatform(BasePlatform):
                     await close_btn.first.click()
 
             await asyncio.sleep(1)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(
                 "[内容声明] 声明设置失败 (非阻断): %s", exc
             )

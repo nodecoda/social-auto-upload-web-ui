@@ -280,7 +280,7 @@ class BasePlatform(ABC):
                 stats = []
             else:
                 name, avatar, stats = '', '', []
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             sync_failed = True
             _base_logger.info(
                 "[import_cookie] %s sync_profile 失败: %s",
@@ -302,7 +302,7 @@ class BasePlatform(ABC):
             if cookie_path and cookie_path.exists():
                 try:
                     cookie_path.unlink()
-                except Exception:  # noqa: S110 -- 文件/资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 文件/资源清理兜底,失败可忽略
                     pass
             status_queue.put(json.dumps({
                 "status": "error", "step": 4,

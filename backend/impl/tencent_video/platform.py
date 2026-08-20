@@ -51,21 +51,21 @@ async def _scrape_tencent_video_profile(page) -> tuple[str, str]:
     try:
         # Wait for the user info section to render
         await page.wait_for_selector('div[class*="userInfo"]', timeout=10000)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("userInfo section not found")
 
     try:
         name_el = page.locator('a[href*="videoplus"][class*="name"]').first
         if await name_el.count() > 0:
             name = (await name_el.text_content() or "").strip()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("Failed to scrape nickname: %s", e)
 
     try:
         avatar_el = page.locator('div[class*="userAvatar"] img').first
         if await avatar_el.count() > 0:
             avatar = (await avatar_el.get_attribute("src") or "").strip()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("Failed to scrape avatar: %s", e)
 
     return name, avatar
@@ -162,11 +162,11 @@ class TencentVideoPlatform(BasePlatform):
                 try:
                     await page.wait_for_selector('div[class*="userInfo"]', timeout=5000)
                     return True
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                     return False
             finally:
                 await context.close()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("check_cookie failed: %s", e)
             return False
         finally:
@@ -197,17 +197,17 @@ class TencentVideoPlatform(BasePlatform):
                     # 等数据接口完成(SPA 页面需要等异步请求)
                     try:
                         await page.wait_for_load_state("networkidle", timeout=15000)
-                    except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                    except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                         pass
                     stats = await self._scrape_tencent_video_stats(page)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[tencent_video] 抓 stats 失败(不影响 name/avatar): {exc}")
                     stats = []
 
                 return {"name": name, "avatar": avatar, "stats": stats}
             finally:
                 await context.close()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("sync_profile failed: %s", e)
             return {"name": "", "avatar": "", "stats": []}
         finally:
@@ -256,14 +256,14 @@ class TencentVideoPlatform(BasePlatform):
             # 1. 等待数据渲染:用 [data-name] 属性(更稳定,不依赖 CSS modules hash)
             try:
                 await page.wait_for_selector("[data-name]", timeout=15000)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[tencent_video stats] 等待 [data-name] 超时, url={page.url}")
                 # 打印当前页面 title + 部分 body 文本作为诊断
                 try:
                     title = await page.title()
                     body_text = (await page.evaluate("document.body.innerText") or "")[:300]
                     logger.info(f"[tencent_video stats] title={title!r}, body 预览={body_text!r}")
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
 
             # 2. 用 evaluate 一次性拿所有 (data-name, 数值) 对
@@ -296,7 +296,7 @@ class TencentVideoPlatform(BasePlatform):
 
             if not stats:
                 logger.info(f"[tencent_video stats] 未抓到任何 stats,raw 数据={raw[:3] if raw else '[]'}")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[tencent_video stats] 抓取失败: {exc}")
 
         stats.sort(key=lambda x: x.get("SORT", 999))
@@ -317,12 +317,12 @@ class TencentVideoPlatform(BasePlatform):
                 # 等数据接口完成(SPA 页面需要等异步请求)
                 try:
                     await page.wait_for_load_state("networkidle", timeout=15000)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             return await self._scrape_tencent_video_stats(page)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[tencent_video login] _login_stats_fn 抓取失败: {exc}")
             return []
 
@@ -342,12 +342,12 @@ class TencentVideoPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -549,7 +549,7 @@ class TencentVideoPlatform(BasePlatform):
                         state='attached',
                         timeout=30000,
                     )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                     logger.warning(
                         "[上传视频] 上传入口等待 30s 超时: %s", e,
                     )
@@ -562,7 +562,7 @@ class TencentVideoPlatform(BasePlatform):
                             "[DEBUG] current_url=%s page_title=%s body_excerpt=%s",
                             current_url, page_title, body_text,
                         )
-                    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                     raise Exception("未找到视频上传入口")
 
@@ -727,7 +727,7 @@ class TencentVideoPlatform(BasePlatform):
                     await asyncio.sleep(1)
                 else:
                     logger.warning("[设置封面] Cover '使用' button not found in modal")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[设置封面] Cover upload failed (non-blocking): %s", e)
 
     @staticmethod
@@ -779,7 +779,7 @@ class TencentVideoPlatform(BasePlatform):
                     await asyncio.sleep(1)
                 else:
                     logger.warning("[设置封面] 选填横版'使用'按钮未找到")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[设置封面] 选填横版封面上传失败（非致命）: %s", exc)
 
     @staticmethod
@@ -829,7 +829,7 @@ class TencentVideoPlatform(BasePlatform):
                     await asyncio.sleep(1)
                 else:
                     logger.warning("[设置封面] 选填竖版'使用'按钮未找到")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[设置封面] 选填竖版封面上传失败（非致命）: %s", exc)
 
     @staticmethod
@@ -859,7 +859,7 @@ class TencentVideoPlatform(BasePlatform):
                 await checkbox.click()
                 logger.info("[设置声明] Declaration checked: %s", decl)
                 await asyncio.sleep(0.5)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning(
                     "Failed to set declaration '%s' (non-blocking): %s",
                     decl, e,
@@ -931,7 +931,7 @@ class TencentVideoPlatform(BasePlatform):
                 await confirm_btn.click()
                 logger.info("[定时发布] Schedule time confirmed: %s", publish_date)
                 await asyncio.sleep(1)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning(
                 "Schedule time setup failed (non-blocking): %s", e
             )
@@ -975,7 +975,7 @@ class TencentVideoPlatform(BasePlatform):
                     logger.info("[发布] Publish success text detected!")
                     success = True
                     break
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
             # Also check if URL changed away from publish page
@@ -987,7 +987,7 @@ class TencentVideoPlatform(BasePlatform):
                     )
                     success = True
                     break
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
 
             # After 5s, if button is still enabled and visible, retry click
@@ -997,7 +997,7 @@ class TencentVideoPlatform(BasePlatform):
                     if still_enabled:
                         logger.info("[发布] Button still enabled after 5s, retrying click...")
                         await publish_btn.click()
-                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
 
             await asyncio.sleep(1)

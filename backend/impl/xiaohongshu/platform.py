@@ -184,7 +184,7 @@ class XiaohongshuPlatform(BasePlatform):
 
                 logger.info("[xhs] cookie valid")
                 return True
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[xhs] cookie check error: {exc}")
                 return False
             finally:
@@ -216,7 +216,7 @@ class XiaohongshuPlatform(BasePlatform):
                 name, avatar = await scrape_user_profile(page)
                 stats = await _scrape_xhs_stats(page)
                 return {"name": name, "avatar": avatar, "stats": stats}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[xhs] sync profile failed: {e}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
@@ -233,10 +233,10 @@ class XiaohongshuPlatform(BasePlatform):
         try:
             try:
                 await page.goto(_XHS_CREATOR_URL, wait_until="networkidle", timeout=30000)
-            except Exception:  # noqa: S110 -- 页面加载兜底,超时继续后续逻辑
+            except Exception:  # noqa: S110, BLE001 -- 页面加载兜底,超时继续后续逻辑
                 pass
             return await _scrape_xhs_stats(page)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[xhs login] _login_stats_fn 抓取失败: {exc}")
             return []
 
@@ -257,12 +257,12 @@ class XiaohongshuPlatform(BasePlatform):
                 page.goto(url)
                 try:
                     page.wait_for_event("close", timeout=0)
-                except Exception:  # noqa: S110 -- DOM/页面探测兜底,元素可能不存在
+                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
                 try:
                     browser.close()
-                except Exception:  # noqa: S110 -- 资源清理兜底,失败可忽略
+                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
         thread = threading.Thread(target=_launch, daemon=True)
@@ -541,7 +541,7 @@ class XiaohongshuPlatform(BasePlatform):
                     )
                     if result:
                         success_count += 1
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                     logger.error("[发布图集] 账号 %s 发布失败: %s", cookie_path, e)
 
         logger.info("[发布图集] 图集发布完成: %d/%d 成功", success_count, total)
@@ -615,7 +615,7 @@ async def _publish_single_video(
                     while browser.is_connected():
                         await asyncio.sleep(1)
                     logger.info("[发布调试] 检测到浏览器已关闭,流程结束")
-                except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
             await context.close()
     finally:
@@ -665,7 +665,7 @@ async def _publish_single_image(
             try:
                 await page.wait_for_selector('.upload-wrapper, .upload-input, input[type="file"]', timeout=15000)
                 logger.info("[上传图集] 上传区域已加载")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[上传图集] 未找到上传区域, 尝试继续: %s", e)
 
             # Upload images
@@ -729,12 +729,12 @@ async def _publish_single_image(
             await context.storage_state(path=account_file)
             logger.info("[发布] Cookie状态已更新")
             return True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.error("[发布图集] 图集发布出错: %s", e)
             return False
         finally:
             await context.close()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error("[发布图集] 图集发布浏览器错误: %s", e)
         return False
     finally:
@@ -773,7 +773,7 @@ async def _wait_for_page_ready(page, timeout: int = 120) -> bool:
     try:
         await page.screenshot(path="debug_page_not_ready.png")
         logger.info("[发布就绪] 已保存 debug_page_not_ready.png")
-    except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+    except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
         pass
     return False
 
@@ -854,7 +854,7 @@ async def _upload_video_content(
                     "(uploading_nodes=%s, publish_disabled=%s), 等待...",
                     uploading_count, publish_disabled,
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[上传视频] 上传状态检查: %s", e)
             await asyncio.sleep(2)
     finally:
@@ -1074,7 +1074,7 @@ async def _fill_tags(page, tags: list) -> None:
         # 一直等到话题联想下拉数据出来再按 Space,网络慢时旧 sleep(0.5) 不够
         try:
             await tag_dropdown_item.wait_for(state="visible", timeout=8000)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[填写标签] 话题下拉未出现 (#%s): %s", tag, exc)
         # 按空格触发标签识别(选中默认项 #xxx,下拉会立即销毁)
         await page.keyboard.press("Space")
@@ -1113,7 +1113,7 @@ async def _set_thumbnail(page, thumbnail_path: str) -> None:
             op_loc = page.locator("div.operator.pointer").first
             await op_loc.click(force=True, timeout=5_000)
             logger.info("[封面] 已点击封面操作遮罩")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[封面] 封面悬停/点击失败: %s, 跳过", e)
             return
 
@@ -1139,7 +1139,7 @@ async def _set_thumbnail(page, thumbnail_path: str) -> None:
                     await cover_loc.hover()
                     await page.wait_for_timeout(500)
                     await page.locator("div.operator.pointer").first.click(force=True, timeout=5_000)
-                except Exception:  # noqa: S110 -- UI 操作兜底,失败走后续逻辑
+                except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
 
         if not modal:
@@ -1147,7 +1147,7 @@ async def _set_thumbnail(page, thumbnail_path: str) -> None:
             try:
                 await page.screenshot(path="debug_cover_modal_missing.png")
                 logger.info("[封面] 已保存 debug_cover_modal_missing.png")
-            except Exception:  # noqa: S110 -- 探测性操作兜底,失败走 fallback
+            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
             return
 
@@ -1175,11 +1175,11 @@ async def _set_thumbnail(page, thumbnail_path: str) -> None:
             try:
                 await modal.wait_for(state="hidden", timeout=15000)
                 logger.info("[封面] 封面设置成功")
-            except Exception:
+            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info("[封面] 封面弹窗未关闭, 继续执行")
         else:
             logger.info("[封面] 未找到确定按钮, 跳过封面")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info("[封面] 封面上传失败: %s", e)
 
 
@@ -1216,7 +1216,7 @@ async def _upload_images(page, files: list[str]) -> bool:
         try:
             await file_input.wait_for(state="attached", timeout=10000)
             logger.info("[上传图集] 已找到上传input")
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传图集] 未找到上传input, 尝试其他选择器")
 
         # 如果找不到，尝试其他选择器
@@ -1285,7 +1285,7 @@ async def _upload_images(page, files: list[str]) -> bool:
         )
         return len(uploaded) > 0
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error("[上传图集] 图片上传失败: %s", e)
         return False
 
@@ -1320,7 +1320,7 @@ async def _set_collection(page, collection_id: str, collection_name: str) -> Non
         entry_card = entry.locator("xpath=ancestor::*[contains(.,'选择合集')][1]").first
         try:
             await entry_card.click(timeout=5000)
-        except Exception:
+        except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             # 父级定位失败则直接点文案元素
             await entry.first.click(timeout=5000)
         logger.info("[设置合集] 已展开合集选择浮层")
@@ -1340,7 +1340,7 @@ async def _set_collection(page, collection_id: str, collection_name: str) -> Non
         await option.first.click()
         logger.info("[设置合集] 已选择合集: %s", target_label)
         await asyncio.sleep(1)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[设置合集] 合集设置失败(非致命): %s", e)
 
 
@@ -1432,7 +1432,7 @@ async def _set_content_declaration(
         else:  # repost
             await _fill_repost_dialog(page, repost_source)
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info("[内容声明] 内容声明设置失败 (非致命): %s", exc)
 
 
@@ -1498,7 +1498,7 @@ async def _fill_self_shooting_dialog(page, shoot_location: str, shoot_date: str)
                 try:
                     await day_cell.click(timeout=3000)
                     logger.info("[内容声明-自主拍摄] 拍摄日期已选: %s", shoot_date)
-                except Exception:
+                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info("[内容声明-自主拍摄] 日期单元格点击失败: %s", shoot_date)
                 await asyncio.sleep(0.5)
 
@@ -1510,7 +1510,7 @@ async def _fill_self_shooting_dialog(page, shoot_location: str, shoot_date: str)
             await confirm_btn.first.click()
             logger.info("[内容声明-自主拍摄] 已点确认")
         await asyncio.sleep(1)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[内容声明-自主拍摄] 填写失败(非致命): %s", e)
 
 
@@ -1540,7 +1540,7 @@ async def _fill_repost_dialog(page, repost_source: str) -> None:
             await confirm_btn.first.click()
             logger.info("[内容声明-来源转载] 已点确认")
         await asyncio.sleep(1)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[内容声明-来源转载] 填写失败(非致命): %s", e)
 
 
@@ -1596,7 +1596,7 @@ async def _set_original_declaration(page) -> None:
         else:
             logger.info("[原创声明] 未找到声明原创按钮")
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info("[原创声明] 原创声明设置失败 (非致命): %s", exc)
 
 
@@ -1638,7 +1638,7 @@ async def _scrape_xhs_stats(page) -> list:
     try:
         # 等待数值渲染(最多 8 秒,登录态下通常 <2s)
         await page.wait_for_selector(".numerical", timeout=8000)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info("[xhs stats] 等待 .numerical 超时")
 
     try:
@@ -1668,7 +1668,7 @@ async def _scrape_xhs_stats(page) -> list:
                 except (ValueError, TypeError):
                     count = 0
                 stats.append({"ICON": icon, "COUNT": count, "NAME": name, "SORT": sort_no})
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[xhs stats] 抓取失败: {exc}")
 
     stats.sort(key=lambda x: x.get("SORT", 999))
