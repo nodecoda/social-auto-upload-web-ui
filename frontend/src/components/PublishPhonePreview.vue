@@ -43,7 +43,6 @@
 </template>
 
 <script setup lang="ts">
-import { type PropType } from 'vue'
 import { Upload, Picture, Delete } from '@element-plus/icons-vue'
 
 interface VideoData {
@@ -51,11 +50,14 @@ interface VideoData {
   name?: string
 }
 
-defineProps({
+withDefaults(defineProps<{
   // { url, name } | null
-  videoData: { type: Object as PropType<VideoData | null>, default: null },
+  videoData?: VideoData | null
   // horizontal→landscape, 其余→portrait
-  modeTab: { type: String, default: 'portrait' },
+  modeTab?: string
+}>(), {
+  videoData: null,
+  modeTab: 'portrait',
 })
 
 defineEmits<{

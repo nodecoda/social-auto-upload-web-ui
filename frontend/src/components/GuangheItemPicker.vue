@@ -121,7 +121,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, type PropType } from 'vue'
+import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Check } from '@element-plus/icons-vue'
 import { guangheApi } from '@/api/taobaoGuanghe'
@@ -161,11 +161,15 @@ interface GuangheResponse {
   }
 }
 
-const props = defineProps({
-  modelValue: { type: Boolean, default: false },
-  accountId: { type: String, required: true },
-  mode: { type: String, default: 'product' }, // 'product' | 'shop'
-  initSelected: { type: Array as PropType<Array<GuangheItem | string>>, default: (): Array<GuangheItem | string> => [] },
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  accountId: string
+  mode?: 'product' | 'shop'
+  initSelected?: Array<GuangheItem | string>
+}>(), {
+  modelValue: false,
+  mode: 'product',
+  initSelected: () => [],
 })
 
 const emit = defineEmits<{

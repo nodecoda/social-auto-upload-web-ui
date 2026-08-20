@@ -43,7 +43,6 @@
 </template>
 
 <script setup lang="ts">
-import { type PropType } from 'vue'
 import { Check, Close, InfoFilled } from '@element-plus/icons-vue'
 
 interface PublishResultItem {
@@ -52,11 +51,15 @@ interface PublishResultItem {
   message?: string
 }
 
-defineProps({
-  modelValue: { type: Boolean, required: true },
-  progress: { type: Number, default: 0 },
-  results: { type: Array as PropType<PublishResultItem[]>, default: (): PublishResultItem[] => [] },
-  currentAccount: { type: String, default: '' },
+withDefaults(defineProps<{
+  modelValue: boolean
+  progress?: number
+  results?: PublishResultItem[]
+  currentAccount?: string
+}>(), {
+  progress: 0,
+  results: () => [],
+  currentAccount: '',
 })
 
 defineEmits<{

@@ -59,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch, type PropType } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import ImageGridItem, { type UploadImageItem } from './ImageGridItem.vue'
@@ -77,11 +77,16 @@ interface UploadRespData {
   mime_type: string
 }
 
-const props = defineProps({
-  modelValue: { type: Array as PropType<UploadImageItem[]>, default: (): UploadImageItem[] => [] },
-  maxCount: { type: Number, default: 35 },
-  visibleRows: { type: Number, default: 3 },
-  columns: { type: Number, default: 5 },
+const props = withDefaults(defineProps<{
+  modelValue?: UploadImageItem[]
+  maxCount?: number
+  visibleRows?: number
+  columns?: number
+}>(), {
+  modelValue: () => [],
+  maxCount: 35,
+  visibleRows: 3,
+  columns: 5,
 })
 
 const emit = defineEmits<{

@@ -113,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, type PropType } from 'vue'
+import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Check, Shop } from '@element-plus/icons-vue'
 import { jdApi } from '@/api/jd'
@@ -137,10 +137,14 @@ interface JdPickerResponse {
   data?: { products?: JdProduct[]; total?: number }
 }
 
-const props = defineProps({
-  modelValue: Boolean,
-  accountId: String,
-  initSelected: { type: Array as PropType<Array<JdProduct | string>>, default: (): Array<JdProduct | string> => [] },
+const props = withDefaults(defineProps<{
+  modelValue?: boolean
+  accountId?: string
+  initSelected?: Array<JdProduct | string>
+}>(), {
+  modelValue: false,
+  accountId: '',
+  initSelected: () => [],
 })
 
 const emit = defineEmits<{

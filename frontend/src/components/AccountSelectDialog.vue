@@ -97,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, type PropType } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Check } from '@element-plus/icons-vue'
 import { useAccountStore, type AccountRow } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
@@ -127,11 +127,11 @@ interface SelectableAccount {
   tags?: AccountTag[]
 }
 
-const props = defineProps({
-  modelValue: { type: Boolean, required: true },
-  platforms: { type: Array as PropType<AccountSelectPlatform[]>, required: true },
-  publishAccountIds: { type: Set as PropType<Set<number | string>>, required: true },
-})
+const props = defineProps<{
+  modelValue: boolean
+  platforms: AccountSelectPlatform[]
+  publishAccountIds: Set<number | string>
+}>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void

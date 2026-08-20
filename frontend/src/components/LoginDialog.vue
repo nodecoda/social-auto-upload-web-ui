@@ -95,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, type PropType } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Loading, Select, CloseBold } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'
@@ -126,10 +126,13 @@ interface LoginAccount {
   name?: string
 }
 
-const props = defineProps({
-  modelValue: { type: Boolean, required: true },
-  mode: { type: String, default: 'add' },  // 'add' | 'relogin'
-  account: { type: Object as PropType<LoginAccount | null>, default: null }
+const props = withDefaults(defineProps<{
+  modelValue: boolean
+  mode?: 'add' | 'relogin'
+  account?: LoginAccount | null
+}>(), {
+  mode: 'add',
+  account: null,
 })
 
 const emit = defineEmits<{

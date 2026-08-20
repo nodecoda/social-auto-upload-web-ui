@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, type PropType } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 interface DraftItem {
   id: number | string
@@ -82,10 +82,14 @@ interface TableRow {
   reason: string
 }
 
-const props = defineProps({
-  visible: { type: Boolean, default: false },
-  drafts: { type: Array as PropType<DraftItem[]>, default: (): DraftItem[] => [] },        // [{id, type, title, platforms}]
-  failures: { type: Array as PropType<FailureItem[]>, default: (): FailureItem[] => [] },      // [{draft_id, reason}]
+const props = withDefaults(defineProps<{
+  visible?: boolean
+  drafts?: DraftItem[]        // [{id, type, title, platforms}]
+  failures?: FailureItem[]      // [{draft_id, reason}]
+}>(), {
+  visible: false,
+  drafts: () => [],
+  failures: () => [],
 })
 
 const emit = defineEmits<{
