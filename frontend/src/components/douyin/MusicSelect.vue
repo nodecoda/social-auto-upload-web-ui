@@ -71,14 +71,14 @@ const props = defineProps({
     default: ''
   },
   data: {
-    type: Object as PropType<Record<string, any> | null>,
+    type: Object as PropType<MusicItem | null>,
     default: null
   }
 })
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string | null): void
-  (e: 'change', payload: Record<string, any> | null): void
+  (e: 'change', payload: MusicItem | null): void
 }>()
 
 interface MusicItem {
@@ -103,7 +103,7 @@ watch(() => props.modelValue, (val) => {
   if (val && !musicList.value.find(m => m.title === val)) {
     // 使用完整对象或创建占位项
     if (props.data && props.data.title === val) {
-      musicList.value.unshift(props.data as MusicItem)
+      musicList.value.unshift(props.data)
     } else {
       musicList.value.unshift({
         id: val,
@@ -149,7 +149,7 @@ function handleChange(val: string) {
     const music = musicList.value.find(m => m.title === val)
     emit('update:modelValue', val)
     emit('change', {
-      ...music,
+      ...music!,
       _searchKeyword: searchKeyword.value
     })
   } else {

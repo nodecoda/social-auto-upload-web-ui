@@ -65,14 +65,14 @@ const props = defineProps({
   },
   // 回显用的完整对象(含 id)
   data: {
-    type: Object as PropType<Record<string, any> | null>,
+    type: Object as PropType<CollectionItem | null>,
     default: null
   }
 })
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
-  (e: 'change', payload: Record<string, any> | null): void
+  (e: 'change', payload: CollectionItem | null): void
 }>()
 
 const loading = ref(false)
@@ -100,7 +100,7 @@ watch(() => props.accountId, () => {
 watch(() => props.modelValue, (val) => {
   selectedName.value = val
   if (val && props.data && !collectionList.value.find(c => c.name === val)) {
-    collectionList.value.unshift(props.data as CollectionItem)
+    collectionList.value.unshift(props.data)
   }
 }, { immediate: true })
 

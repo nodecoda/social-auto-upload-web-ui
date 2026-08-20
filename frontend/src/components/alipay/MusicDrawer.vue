@@ -106,7 +106,7 @@ const props = defineProps({
 })
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'select', payload: any): void
+  (e: 'select', payload: MusicItem): void
 }>()
 
 const visible = ref(props.modelValue)
@@ -138,7 +138,7 @@ const hoverId = ref<string | number>('')
 
 // 试听状态(单例播放)
 const audioRef = ref<HTMLAudioElement | null>(null)
-const playingId = ref(null)
+const playingId = ref<string | number | null>(null)
 const currentAudioUrl = ref('')
 
 // 兼容旧模板引用(musicList 指向全量,空状态判断用)
@@ -185,7 +185,7 @@ async function fetchMusicList() {
   }
 }
 
-function togglePlay(music: Record<string, any>) {
+function togglePlay(music: MusicItem) {
   const id = music.musicId || music.title
   if (playingId.value === id) {
     // 当前正在播放 → 暂停
@@ -229,7 +229,7 @@ function onAudioError() {
   playingId.value = null
 }
 
-function handleSelect(music: Record<string, any>) {
+function handleSelect(music: MusicItem) {
   stopPlay()
   emit('select', { ...music })
   visible.value = false

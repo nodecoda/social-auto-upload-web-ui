@@ -186,9 +186,40 @@ useAutoExtractHashtags({
 })
 
 // ===== Douyin-specific handlers =====
-function handleActivityChange(activity: any) {
-  if (activity?.challenge?.length > 0) {
-    for (const topic of activity.challenge) {
+// 各 Select 组件 change 载荷的窄接口(仅声明本面板用到的字段)
+interface ActivityItemPayload {
+  activity_id?: string | number
+  activity_name?: string
+  [key: string]: unknown
+}
+
+interface SelectedMusic {
+  title?: string
+  [key: string]: unknown
+}
+
+interface SelectedHotspot {
+  word?: string
+  [key: string]: unknown
+}
+
+interface SelectedTag {
+  id?: string | number
+  name?: string
+  type?: string
+  [key: string]: unknown
+}
+
+interface SelectedMix {
+  mix_name?: string
+  [key: string]: unknown
+}
+
+function handleActivityChange(activity: ActivityItemPayload[]) {
+  // 兼容历史载荷:旧版单活动对象携带 challenge 话题数组(现 change 载荷为活动数组,该分支实际不触发)
+  const topics = (activity as unknown as { challenge?: string[] } | null)?.challenge
+  if (topics && topics.length > 0) {
+    for (const topic of topics) {
       if (form.tags && !form.tags.includes(topic)) {
         if ((form.activityId?.length || 0) + (form.tags?.length || 0) >= 5) break
         form.tags.push(topic)
@@ -197,9 +228,10 @@ function handleActivityChange(activity: any) {
   }
 }
 
-function handleMusicSelect(music: any) {
+function handleMusicSelect(music: SelectedMusic | null) {
   if (music) {
-    form.selectedMusic = music.title || music.name || ''
+    const musicName = music.name as string | undefined
+    form.selectedMusic = music.title || musicName || ''
     form.selectedMusicData = music
     ElMessage.success(`音乐已选择: ${form.selectedMusic}`)
   } else {
@@ -208,16 +240,16 @@ function handleMusicSelect(music: any) {
   }
 }
 
-function handleHotspotChange(hotspot: any) {
-  if (hotspot) { form.hotspotId = hotspot.word; form.hotspotData = hotspot }
+function handleHotspotChange(hotspot: SelectedHotspot | null) {
+  if (hotspot) { form.hotspotId = hotspot.word || ''; form.hotspotData = hotspot }
   else { form.hotspotId = ''; form.hotspotData = null }
 }
 
-function handleTagSelect(tag: any) {
+function handleTagSelect(tag: SelectedTag | null) {
   if (tag) {
     form.selectedTag = tag
-    const m = { poi: 'location', miniapp: 'miniapp', game: 'gamepad', mark: 'mark' }
-    form.tagType = (m as Record<string, string>)[tag.type] || ''
+    const m: Record<string, string> = { poi: 'location', miniapp: 'miniapp', game: 'gamepad', mark: 'mark' }
+    form.tagType = m[tag.type ?? ''] || ''
     form.tagValue = tag.name || tag.id || ''
     ElMessage.success(`标签已选择: ${tag.name}`)
   } else {
@@ -225,8 +257,8 @@ function handleTagSelect(tag: any) {
   }
 }
 
-function handleMixChange(mix: any) {
-  if (mix) { form.mixId = mix.mix_name; form.mixData = mix }
+function handleMixChange(mix: SelectedMix | null) {
+  if (mix) { form.mixId = mix.mix_name || ''; form.mixData = mix }
   else { form.mixId = ''; form.mixData = null }
 }
 

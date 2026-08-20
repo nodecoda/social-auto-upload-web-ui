@@ -32,14 +32,14 @@ const props = defineProps({
   },
   // 回显用的完整对象(含 poi_id)
   data: {
-    type: Object as PropType<Record<string, any> | null>,
+    type: Object as PropType<PoiItem | null>,
     default: null
   }
 })
 
 defineEmits<{
   (e: 'update:modelValue', value: string): void
-  (e: 'change', payload: any): void
+  (e: 'change', payload: PoiItem | null): void
 }>()
 
 // 走全局公共组件 RemoteSearchSelect:后端搜索模式(必须传 keyword,空关键词不请求)。
@@ -49,7 +49,7 @@ interface PoiItem {
   name?: string
   full_address?: string
   address?: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 async function fetchPoi(keyword: string) {

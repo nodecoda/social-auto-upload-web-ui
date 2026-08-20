@@ -86,11 +86,11 @@ const accountStore = useAccountStore()
 // authorStatement 不在面板显示(图集下拉只有「内容由AI生成」一项,后端兜底默认填它)
 // 音乐数据形状(与 MusicDrawer 的 select 事件一致)
 interface AlipayMusicItem {
-  musicId: string
+  musicId: string | number
   title: string
-  coverUrl: string
-  audioUrl: string
-  duration: number
+  coverUrl?: string
+  audioUrl?: string
+  duration?: number
 }
 
 const ALIPAY_DEFAULTS = {
