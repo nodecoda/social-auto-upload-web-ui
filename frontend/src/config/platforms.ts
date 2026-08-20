@@ -99,7 +99,7 @@ export const PLATFORMS = {
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
     ],
-    defaultSettings: { title: '', description: '', channelsMarkTag: '无需标注', channelsShootDate: '', channelsShootRegion: [], channelsRepostSource: '', channelsActivityName: '', channelsActivityData: null, isOriginal: false, scheduleTime: '', videoFormat: '' },
+    defaultSettings: { title: '', description: '', channelsMarkTag: '无需标注', channelsShootDate: '', channelsShootRegion: [] as string[], channelsRepostSource: '', channelsActivityName: '', channelsActivityData: null as Record<string, unknown> | null, isOriginal: false, scheduleTime: '', videoFormat: '' },
   },
   DOUYIN: {
     id: 3,
@@ -124,7 +124,7 @@ export const PLATFORMS = {
       { key: 'isOriginal', label: '原创声明', type: 'radio', options: [{ label: '原创', value: true }, { label: '非原创', value: false }] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
     ],
-    defaultSettings: { title: '', description: '', tags: [], aiContent: '', isOriginal: false, scheduleTime: '', videoFormat: '' },
+    defaultSettings: { title: '', description: '', tags: [] as string[], aiContent: '', isOriginal: false, scheduleTime: '', videoFormat: '' },
   },
   KUAISHOU: {
     id: 4,
@@ -234,14 +234,14 @@ export const PLATFORMS = {
         { label: '未成年人请在监护人指导下浏览', value: '未成年人请在监护人指导下浏览' },
       ] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间',
-        disabledDate: (time) => {
+        disabledDate: (time: Date) => {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const maxDate = new Date(today);
           maxDate.setDate(maxDate.getDate() + 7);
           return time.getTime() < today.getTime() || time.getTime() > maxDate.getTime();
         },
-        disabledHours: (_role, comparingDate) => {
+        disabledHours: (_role: unknown, comparingDate: any) => {
           if (!comparingDate) return [];
           const now = new Date();
           const d = comparingDate.toDate ? comparingDate.toDate() : comparingDate;
@@ -251,7 +251,7 @@ export const PLATFORMS = {
           if (!isToday) return [];
           return Array.from({ length: now.getHours() + 1 }, (_, i) => i);
         },
-        disabledMinutes: (hour, _role, comparingDate) => {
+        disabledMinutes: (hour: number, _role: unknown, comparingDate: any) => {
           if (!comparingDate) return [];
           const now = new Date();
           const d = comparingDate.toDate ? comparingDate.toDate() : comparingDate;
@@ -416,7 +416,7 @@ export const PLATFORMS = {
           { label: '未成年人请在监护人指导下浏览', value: '未成年人请在监护人指导下浏览' },
         ] },
     ],
-    defaultSettings: { title: '', description: '', videoType: '', weiboCategory: [], contentStatement: '', contentStatement2: '', contentStatement2Optional: '' },
+    defaultSettings: { title: '', description: '', videoType: '', weiboCategory: [] as string[], contentStatement: '', contentStatement2: '', contentStatement2Optional: '' },
   },
   ALIPAY: {
     id: 12,
@@ -472,14 +472,14 @@ export const PLATFORMS = {
       { key: 'extendLink', label: '扩展链接', type: 'switch', description: '在今日头条APP的固定位置插入链接', linkField: 'extendLinkUrl' },
       { key: 'extendLinkUrl', label: '链接地址', type: 'input', placeholder: '请输入扩展链接地址', visibleWhen: { key: 'extendLink', value: true } },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间',
-        disabledDate: (time) => {
+        disabledDate: (time: Date) => {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const maxDate = new Date(today);
           maxDate.setDate(maxDate.getDate() + 7);
           return time.getTime() < today.getTime() || time.getTime() > maxDate.getTime();
         },
-        disabledHours: (_role, comparingDate) => {
+        disabledHours: (_role: unknown, comparingDate: any) => {
           if (!comparingDate) return [];
           const now = new Date();
           const d = comparingDate.toDate ? comparingDate.toDate() : comparingDate;
@@ -489,7 +489,7 @@ export const PLATFORMS = {
           if (!isToday) return [];
           return Array.from({ length: now.getHours() + 1 }, (_, i) => i);
         },
-        disabledMinutes: (hour, _role, comparingDate) => {
+        disabledMinutes: (hour: number, _role: unknown, comparingDate: any) => {
           if (!comparingDate) return [];
           const now = new Date();
           const d = comparingDate.toDate ? comparingDate.toDate() : comparingDate;
@@ -504,7 +504,7 @@ export const PLATFORMS = {
       },
       { key: 'videoFormat', label: '视频格式', type: 'radio', options: [{ label: '横版', value: 'landscape' }, { label: '竖版', value: 'portrait' }] },
     ],
-    defaultSettings: { title: '', description: '', creationDeclaration: [], enableGenerateImage: true, collection: '', extendLink: false, extendLinkUrl: '', scheduleTime: '', videoFormat: '' },
+    defaultSettings: { title: '', description: '', creationDeclaration: [] as string[], enableGenerateImage: true, collection: '', extendLink: false, extendLinkUrl: '', scheduleTime: '', videoFormat: '' },
   },
   ZHIHU: {
     id: 14,
@@ -562,14 +562,14 @@ export const PLATFORMS = {
         { label: '音乐', value: '音乐' },
       ] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间',
-        disabledDate: (time) => {
+        disabledDate: (time: Date) => {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const maxDate = new Date(today);
           maxDate.setMonth(maxDate.getMonth() + 1);
           return time.getTime() < today.getTime() || time.getTime() > maxDate.getTime();
         },
-        disabledHours: (_role, comparingDate) => {
+        disabledHours: (_role: unknown, comparingDate: any) => {
           if (!comparingDate) return [];
           const now = new Date();
           const d = comparingDate.toDate ? comparingDate.toDate() : comparingDate;
@@ -579,7 +579,7 @@ export const PLATFORMS = {
           if (!isToday) return [];
           return Array.from({ length: now.getHours() + 1 }, (_, i) => i);
         },
-        disabledMinutes: (hour, _role, comparingDate) => {
+        disabledMinutes: (hour: number, _role: unknown, comparingDate: any) => {
           if (!comparingDate) return [];
           const now = new Date();
           const d = comparingDate.toDate ? comparingDate.toDate() : comparingDate;
@@ -645,9 +645,9 @@ export const PLATFORMS = {
         options: [{ label: '允许', value: '允许' }, { label: '不允许', value: '不允许' }] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
     ],
-    defaultSettings: { title: '', description: '', vivoLocationName: '', vivoLocationData: null,
+    defaultSettings: { title: '', description: '', vivoLocationName: '', vivoLocationData: null as Record<string, unknown> | null,
       vivoDistribution: false, vivoDeclaration: '', vivoPrivacy: '公开',
-      vivoDownloadPermission: '允许', scheduleTime: '', tags: [] },
+      vivoDownloadPermission: '允许', scheduleTime: '', tags: [] as string[] },
   },
   WEIXIN_GZH: {
     id: 17,
@@ -674,7 +674,7 @@ export const PLATFORMS = {
         ] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间（最近7天，需大于当前1小时）' },
     ],
-    defaultSettings: { title: '', description: '', isOriginal: false, gzhClaimSource: '', gzhCollectionName: '', gzhCollectionData: null, scheduleTime: '', videoFormat: '' },
+    defaultSettings: { title: '', description: '', isOriginal: false, gzhClaimSource: '', gzhCollectionName: '', gzhCollectionData: null as Record<string, unknown> | null, scheduleTime: '', videoFormat: '' },
   },
   TAOBAO_GUANGHE: {
     id: 18,
@@ -701,7 +701,7 @@ export const PLATFORMS = {
         ] },
       { key: 'scheduleTime', label: '定时发布', type: 'datetime', placeholder: '选择时间' },
     ],
-    defaultSettings: { title: '', description: '', guangheClaim: '', guangheLinkType: '', guangheProducts: [], guangheShops: [], scheduleTime: '' },
+    defaultSettings: { title: '', description: '', guangheClaim: '', guangheLinkType: '', guangheProducts: [] as any[], guangheShops: [] as any[], scheduleTime: '' },
   },
   JINGMAI: {
     id: 19,
@@ -733,7 +733,7 @@ export const PLATFORMS = {
       title: '',
       description: '',
       jdRelatedType: '',
-      jdProducts: [],
+      jdProducts: [] as any[],
       jdNovel: '',
       jdDeclaration: '',
       scheduleTime: '',
@@ -764,21 +764,21 @@ export const platformCssMap = Object.fromEntries(
 /**
  * 根据平台ID获取平台配置
  */
-export function getPlatformById(id) {
+export function getPlatformById(id: number) {
   return platformList.find(p => p.id === id) || null
 }
 
 /**
  * 根据平台名称获取平台配置
  */
-export function getPlatformByName(name) {
+export function getPlatformByName(name: string) {
   return platformList.find(p => p.name === name) || null
 }
 
 /**
  * 根据 key 获取平台配置
  */
-export function getPlatformByKey(key) {
+export function getPlatformByKey(key: string) {
   return platformList.find(p => p.key === key) || null
 }
 

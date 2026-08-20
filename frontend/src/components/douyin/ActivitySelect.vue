@@ -62,7 +62,7 @@ const props = defineProps({
   // v-model 存已选活动名数组(发布时按名称匹配 activity_id)
   modelValue: {
     type: Array as PropType<string[]>,
-    default: () => []
+    default: (): string[] => []
   }
 })
 
@@ -102,14 +102,14 @@ async function loadActivityList() {
   }
 }
 
-function handleChange(val) {
+function handleChange(val: string[]) {
   emit('update:modelValue', val)
   const activities = activityList.value.filter(a => val.includes(a.activity_name))
   emit('change', activities)
 }
 
-function onImageError(e) {
-  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZjVmNWY1Ii8+PHRleHQgeD0iMjAiIHk9IjI0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuKcqOW+izwvdGV4dD48L3N2Zz4=';
+function onImageError(e: Event) {
+  ;(e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZjVmNWY1Ii8+PHRleHQgeD0iMjAiIHk9IjI0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuKcqOW+izwvdGV4dD48L3N2Zz4=';
 }
 </script>
 

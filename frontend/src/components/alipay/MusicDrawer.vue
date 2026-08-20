@@ -172,7 +172,7 @@ async function fetchMusicList() {
   }
 }
 
-function togglePlay(music) {
+function togglePlay(music: Record<string, any>) {
   const id = music.musicId || music.title
   if (playingId.value === id) {
     // 当前正在播放 → 暂停
@@ -216,7 +216,7 @@ function onAudioError() {
   playingId.value = null
 }
 
-function handleSelect(music) {
+function handleSelect(music: Record<string, any>) {
   stopPlay()
   emit('select', { ...music })
   visible.value = false
@@ -226,18 +226,18 @@ function handleClose() {
   visible.value = false
 }
 
-function formatDuration(duration) {
+function formatDuration(duration: string | number) {
   // 支付宝返回的 duration 是 audioTime 秒数(整数)
   if (!duration && duration !== 0) return '00:00'
-  const sec = parseInt(duration, 10)
+  const sec = parseInt(duration as string, 10)
   if (isNaN(sec)) return String(duration)
   const m = Math.floor(sec / 60)
   const r = Math.floor(sec % 60)
   return `${m.toString().padStart(2, '0')}:${r.toString().padStart(2, '0')}`
 }
 
-function onImageError(e) {
-  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjMmEyYTRhIi8+PHRleHQgeD0iMjQiIHk9IjI4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM2NDc0OGIiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuWGm+S6rDwvdGV4dD48L3N2Zz4='
+function onImageError(e: Event) {
+  ;(e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjMmEyYTRhIi8+PHRleHQgeD0iMjQiIHk9IjI4IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM2NDc0OGIiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuWGm+S6rDwvdGV4dD48L3N2Zz4='
 }
 
 onBeforeUnmount(() => stopPlay())

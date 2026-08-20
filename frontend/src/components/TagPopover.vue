@@ -58,7 +58,7 @@ interface TagItem {
 const props = defineProps({
   visible: { type: Boolean, default: false },
   accountId: { type: Number, required: true },
-  selectedTags: { type: Array as PropType<TagItem[]>, default: () => [] }
+  selectedTags: { type: Array as PropType<TagItem[]>, default: (): any[] => [] }
 })
 
 const emit = defineEmits(['update:visible', 'changed'])

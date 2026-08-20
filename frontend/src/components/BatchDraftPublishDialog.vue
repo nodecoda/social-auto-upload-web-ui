@@ -24,7 +24,7 @@
             <el-checkbox
               :model-value="selectedIds.includes(row.id)"
               :disabled="row.status !== 'ok'"
-              @change="(val) => toggleRow(row.id, val)"
+              @change="(val: boolean) => toggleRow(row.id, val)"
             />
           </template>
         </el-table-column>
@@ -84,8 +84,8 @@ interface TableRow {
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
-  drafts: { type: Array as PropType<DraftItem[]>, default: () => [] },        // [{id, type, title, platforms}]
-  failures: { type: Array as PropType<FailureItem[]>, default: () => [] },      // [{draft_id, reason}]
+  drafts: { type: Array as PropType<DraftItem[]>, default: (): any[] => [] },        // [{id, type, title, platforms}]
+  failures: { type: Array as PropType<FailureItem[]>, default: (): any[] => [] },      // [{draft_id, reason}]
 })
 
 const emit = defineEmits(['update:visible', 'confirm'])

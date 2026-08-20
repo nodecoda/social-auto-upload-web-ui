@@ -2,7 +2,7 @@ import { http } from '@/utils/request'
 
 export const materialsApi = {
   /** 上传文件 */
-  upload(formData, onProgress) {
+  upload(formData: FormData, onProgress?: (e: unknown) => void) {
     return http.upload('/api/materials/upload', formData, onProgress)
   },
 
@@ -10,7 +10,7 @@ export const materialsApi = {
    * 封面专用上传：写 covers/ 目录，不入素材库。
    * 用于视频封面裁剪后保存 —— 不污染素材库列表。
    */
-  coversUpload(formData, onProgress) {
+  coversUpload(formData: FormData, onProgress?: (e: unknown) => void) {
     return http.upload('/api/materials/covers/upload', formData, onProgress)
   },
 
@@ -27,17 +27,17 @@ export const materialsApi = {
   },
 
   /** 删除素材 */
-  delete(id) {
+  delete(id: string | number) {
     return http.delete(`/api/materials/${id}`)
   },
 
   /** 批量删除素材 */
-  batchDelete(ids) {
+  batchDelete(ids: Array<string | number>) {
     return http.post('/api/materials/batch-delete', { ids })
   },
 
   /** 识别存量视频元数据（用于选中素材时同步补全 duration/size） */
-  probe(id) {
+  probe(id: string | number) {
     return http.post(`/api/materials/${id}/probe`)
   },
 }

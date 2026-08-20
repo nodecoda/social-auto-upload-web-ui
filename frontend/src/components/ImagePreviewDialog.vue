@@ -113,7 +113,7 @@ interface PreviewImage {
 }
 
 const props = defineProps({
-  images: { type: Array as PropType<PreviewImage[]>, default: () => [] },
+  images: { type: Array as PropType<PreviewImage[]>, default: (): any[] => [] },
   initialIndex: { type: Number, default: 0 },
 })
 
@@ -186,7 +186,7 @@ function next() {
   }
 }
 
-function goTo(index) {
+function goTo(index: number) {
   if (index >= 0 && index < props.images.length && index !== currentIndex.value) {
     currentIndex.value = index
     resetTransform()

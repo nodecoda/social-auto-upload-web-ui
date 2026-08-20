@@ -127,7 +127,7 @@ function handleClear() {
   collectionList.value = []
 }
 
-function handleChange(val) {
+function handleChange(val: string) {
   emit('update:modelValue', val)
   const col = collectionList.value.find(c => c.name === val)
   // change 事件带完整对象(含 id),供父组件存到 collectionId/collectionName

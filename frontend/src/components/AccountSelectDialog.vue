@@ -267,7 +267,7 @@ watch(() => props.modelValue, async (visible) => {
       try {
         const res = (await accountApi.getAccounts()) as { code?: number; data?: unknown }
         if (res.code === 200 && res.data) {
-          accountStore.setAccounts(res.data)
+          accountStore.setAccounts(res.data as any[])
         }
       } catch (e) {
         console.error('加载账号失败:', e)

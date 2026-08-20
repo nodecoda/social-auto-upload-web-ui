@@ -1435,7 +1435,7 @@ const currentSettings = computed(() =>
 )
 
 // ========== Account-level Settings Merging ==========
-function getAccountSettings(accountId, platformKey) {
+function getAccountSettings(accountId: number | string, platformKey: string) {
   const platform = platformConfigs[platformKey] || {}
   const override = accountOverrides[accountId] || {}
   const merged = { ...platform }
@@ -1591,7 +1591,7 @@ function getMergedSettings() {
     if (override && Object.keys(override).length > 0) {
       // 过滤媒体字段:它们由 currentEditTarget 管理,不应该进 form,
       // 否则 watch(form) 的 diff 会把 null 写回 accountOverrides,覆盖已选的视频/封面
-      const pickFormFields = (obj) => Object.fromEntries(
+      const pickFormFields = (obj: PlatformConfig | AccountOverride) => Object.fromEntries(
         Object.entries(obj).filter(([k, v]) => !MEDIA_KEYS.has(k))
       )
       return {
@@ -1649,7 +1649,7 @@ watch(form, (newVal) => {
   const platform = platformConfigs[platformKey]
 
   if (selectedAccountId.value) {
-    const diff = {}
+    const diff: Record<string, unknown> = {}
     for (const key of Object.keys(newVal)) {
       // 跳过媒体字段:它们由 currentEditTarget 管理,不属于 form 表单字段
       if (MEDIA_KEYS.has(key)) continue
@@ -1807,7 +1807,7 @@ function handleDouyinHotspotChange(hotspot: { word: string } | null) {
 
 // 抖音关联热点 —— RemoteSearchSelect 数据源(后端搜索模式,必须传 keyword)
 async function fetchDouyinHotspots(keyword: string) {
-  const resp = (await douyinImageApi.searchHotspot(selectedAccountId.value || '', keyword || '')) as ApiResponse<{ sentences?: unknown[] }>
+  const resp = (await douyinImageApi.searchHotspot(String(selectedAccountId.value || ''), keyword || '')) as ApiResponse<{ sentences?: unknown[] }>
   return { list: resp.data?.sentences || [] }
 }
 // 热点字段映射:word 标题,hot_value 派生热度文案,word_cover.url_list.0 嵌套封面
@@ -1824,7 +1824,7 @@ function formatHotValue(value: number) {
 
 // 京东小说 —— RemoteSearchSelect 数据源(后端搜索模式,必须传 keyword)
 async function fetchJdNovels(keyword: string) {
-  const resp = (await jdApi.novelSearch(selectedAccountId.value || '', keyword || '')) as ApiResponse<{ novels?: unknown[] }>
+  const resp = (await jdApi.novelSearch(String(selectedAccountId.value || ''), keyword || '')) as ApiResponse<{ novels?: unknown[] }>
   return { list: resp.data?.novels || [] }
 }
 // 小说字段映射:title 书名(做 modelValue label),image 封面,desc 由分类+阅读人数拼出
@@ -1847,7 +1847,7 @@ function handleJdNovelChange(novel: { title: string; [key: string]: unknown } | 
 function handleDouyinTagSelect(tag: DouyinTag | null) {
   if (tag) {
     form.selectedTag = tag
-    const m = { poi: 'location', miniapp: 'miniapp', game: 'gamepad', mark: 'mark', film: 'film' }
+    const m: Record<string, string> = { poi: 'location', miniapp: 'miniapp', game: 'gamepad', mark: 'mark', film: 'film' }
     form.tagType = m[tag.type] || ''
     form.tagValue = tag.name || tag.id || ''
     ElMessage.success(`标签已选择: ${tag.name}`)
@@ -2449,10 +2449,11 @@ async function restoreDraft(draftId: number | string) {
       if (!Array.isArray(tg.guangheProducts)) tg.guangheProducts = []
       if (!Array.isArray(tg.guangheShops)) tg.guangheShops = []
       // 旧草稿可能是字符串数组 → 转为统一的对象数组格式 [{title, image}]
-      const normalize = arr => arr.map(it =>
-        typeof it === 'string' ? { title: it, image: '' }
-          : { title: it?.title || '', image: it?.image || '' }
-      ).filter(it => it.title)
+      const normalize = (arr: Array<string | { title?: string; image?: string }>): any[] =>
+        arr.map(it =>
+          typeof it === 'string' ? { title: it, image: '' }
+            : { title: it?.title || '', image: it?.image || '' }
+        ).filter(it => it.title)
       tg.guangheProducts = normalize(tg.guangheProducts)
       tg.guangheShops = normalize(tg.guangheShops)
     }

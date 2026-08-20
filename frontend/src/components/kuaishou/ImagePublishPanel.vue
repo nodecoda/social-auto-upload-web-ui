@@ -69,14 +69,14 @@ const emit = defineEmits(['config-changed', 'publish-result'])
 
 const accountStore = useAccountStore()
 
-const KS_DEFAULTS = { ...PLATFORMS.KUAISHOU.defaultSettings, tags: [] }
+const KS_DEFAULTS = { ...PLATFORMS.KUAISHOU.defaultSettings, tags: [] as string[] }
 
 const declarationOptions = computed(() => {
   const field = PLATFORMS.KUAISHOU.settingsFields.find(f => f.key === 'aiContent')
   return field?.options || []
 })
 
-function handleMusicChange(music) {
+function handleMusicChange(music: Record<string, any>) {
   if (music) {
     form.selectedMusicId = music.musicId
     form.selectedMusicData = music
@@ -163,7 +163,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(index) { form.tags.splice(index, 1) }
+function removeTag(index: number) { form.tags.splice(index, 1) }
 
 // 自动提取描述中的 #xxx 到标签数组(快手最多 4 个)
 useAutoExtractHashtags({

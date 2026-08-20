@@ -12,8 +12,8 @@ import { getPlatformByKey } from '@/config/platforms'
  * @param {object} refs  { platformConfigs, accountOverrides, accountChecked, accountStore }
  * @returns {{ applyBatchSet: (checkedPlatformKeys: string[], payload: { title: string, description: string, tags: string[], scheduleTime: string }) => void }}
  */
-export function useBatchSetApply({ platformConfigs, accountOverrides, accountChecked, accountStore }) {
-  function applyBatchSet(checkedPlatformKeys, payload) {
+export function useBatchSetApply({ platformConfigs, accountOverrides, accountChecked, accountStore }: { platformConfigs: any; accountOverrides: any; accountChecked: any; accountStore: any }) {
+  function applyBatchSet(checkedPlatformKeys: string[], payload: any) {
     const { title, description, tags, scheduleTime } = payload
     const mode = payload.mode || 'full'
     const tagsCopy = Array.isArray(tags) ? [...tags] : []
@@ -39,7 +39,7 @@ export function useBatchSetApply({ platformConfigs, accountOverrides, accountChe
       //    故批量设置应替换该渠道下所有账号，无论是否已个性化。
       const platformCfg = getPlatformByKey(pk)
       if (!platformCfg) continue
-      const accounts = (accountStore?.accounts || []).filter(a => a.platform === platformCfg.name)
+      const accounts = (accountStore?.accounts || []).filter((a: any) => a.platform === platformCfg.name)
       for (const acc of accounts) {
         if (!accountOverrides[acc.id]) accountOverrides[acc.id] = {}
         if (!isPartial || hasTitle) accountOverrides[acc.id].title = title

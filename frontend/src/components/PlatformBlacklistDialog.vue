@@ -53,7 +53,7 @@ import { platformList } from '@/config/platforms'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
-  disabledKeys: { type: Array as PropType<string[]>, default: () => [] }
+  disabledKeys: { type: Array as PropType<string[]>, default: (): any[] => [] }
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm'])

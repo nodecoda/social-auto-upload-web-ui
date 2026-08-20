@@ -80,11 +80,20 @@ const accountStore = useAccountStore()
 
 // 支付宝图集默认字段
 // authorStatement 不在面板显示(图集下拉只有「内容由AI生成」一项,后端兜底默认填它)
+// 音乐数据形状(与 MusicDrawer 的 select 事件一致)
+interface AlipayMusicItem {
+  musicId: string
+  title: string
+  coverUrl: string
+  audioUrl: string
+  duration: number
+}
+
 const ALIPAY_DEFAULTS = {
   title: '',
   description: '',
-  tags: [],
-  music: null, // { musicId, title, coverUrl, audioUrl, duration }
+  tags: [] as string[],
+  music: null as AlipayMusicItem | null, // { musicId, title, coverUrl, audioUrl, duration }
   authorStatement: '',
 }
 
@@ -159,7 +168,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(index) { form.tags.splice(index, 1) }
+function removeTag(index: number) { form.tags.splice(index, 1) }
 
 // 自动提取描述中的 #xxx 到标签数组(alipay 发布时拼成 #话题1 #话题2)
 useAutoExtractHashtags({
@@ -172,7 +181,7 @@ function openMusicDrawer() {
   musicDrawerVisible.value = true
 }
 
-function onMusicSelect(music) {
+function onMusicSelect(music: AlipayMusicItem) {
   form.music = { ...music }
 }
 
@@ -180,8 +189,8 @@ function clearMusic() {
   form.music = null
 }
 
-function onMusicImgError(e) {
-  e.target.style.display = 'none'
+function onMusicImgError(e: Event) {
+  ;(e.target as HTMLElement).style.display = 'none'
 }
 
 defineExpose(publicApi)

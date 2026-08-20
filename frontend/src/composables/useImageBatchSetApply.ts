@@ -14,8 +14,8 @@ import { getPlatformByKey } from '@/config/platforms'
  * @param {object} refs  { panels, accountStore } — panels 用 platformKey 索引
  * @returns {{ applyImageBatchSet: (checkedPlatformKeys: string[], payload: { title: string, description: string, tags: string[], scheduleTime: string }) => void }}
  */
-export function useImageBatchSetApply({ panels, accountStore }) {
-  function applyImageBatchSet(checkedPlatformKeys, payload) {
+export function useImageBatchSetApply({ panels, accountStore }: { panels: any[]; accountStore: any }) {
+  function applyImageBatchSet(checkedPlatformKeys: string[], payload: any) {
     const { title, description, tags, scheduleTime } = payload
     const mode = payload.mode || 'full'
     const tagsCopy = Array.isArray(tags) ? [...tags] : []
@@ -44,7 +44,7 @@ export function useImageBatchSetApply({ panels, accountStore }) {
     }
 
     for (const pk of checkedPlatformKeys) {
-      const panel = panels.get?.(pk) || panels[pk]
+      const panel = (panels as any).get?.(pk) || (panels as any)[pk]
       // panel 组件用 defineExpose(publicApi) 直接展开方法,所以方法在 panel 上而非 panel.publicApi 下
       // 但保留 panel.publicApi 兼容 (未来如果 wrap 一下)
       const api = panel?.publicApi || panel
@@ -62,7 +62,7 @@ export function useImageBatchSetApply({ panels, accountStore }) {
       //    批量设置应替换所选渠道下所有账号，无论是否已个性化（五角星）。
       const platformCfg = getPlatformByKey(pk)
       if (platformCfg) {
-        const accounts = (accountStore?.accounts || []).filter(a => a.platform === platformCfg.name)
+        const accounts = (accountStore?.accounts || []).filter((a: any) => a.platform === platformCfg.name)
         for (const acc of accounts) {
           api.setAccountOverride(acc.id, fields)
         }

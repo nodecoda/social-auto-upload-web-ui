@@ -42,7 +42,7 @@ export const useImagePublishStore = defineStore('imagePublish', () => {
    * @param {File} file - 图片文件
    * @returns {Promise<object>} 上传结果，包含 url 等信息
    */
-  async function upload(file) {
+  async function upload(file: File) {
     const entry = {
       url: '',
       name: file.name,
@@ -77,7 +77,7 @@ export const useImagePublishStore = defineStore('imagePublish', () => {
    * 移除指定位置的图片
    * @param {number} index - 图片索引
    */
-  function removeImage(index) {
+  function removeImage(index: number) {
     if (index >= 0 && index < images.value.length) {
       images.value.splice(index, 1)
     }
@@ -88,7 +88,7 @@ export const useImagePublishStore = defineStore('imagePublish', () => {
    * @param {number} fromIndex - 原位置
    * @param {number} toIndex - 目标位置
    */
-  function reorder(fromIndex, toIndex) {
+  function reorder(fromIndex: number, toIndex: number) {
     if (
       fromIndex < 0 || fromIndex >= images.value.length ||
       toIndex < 0 || toIndex >= images.value.length ||
@@ -106,7 +106,7 @@ export const useImagePublishStore = defineStore('imagePublish', () => {
    * @param {File} file - 新图片文件
    * @returns {Promise<object>} 上传结果
    */
-  async function replaceImage(index, file) {
+  async function replaceImage(index: number, file: File) {
     if (index < 0 || index >= images.value.length) {
       throw new Error('无效的图片索引')
     }
@@ -144,11 +144,11 @@ export const useImagePublishStore = defineStore('imagePublish', () => {
    * @param {string|number} accountId - 账号 ID
    * @param {object} config - 配置对象 { title, description }
    */
-  function updateAccountConfig(accountId, config) {
+  function updateAccountConfig(accountId: string | number, config: any) {
     accountConfigs.value = {
       ...accountConfigs.value,
       [accountId]: {
-        ...accountConfigs.value[accountId],
+        ...(accountConfigs.value as Record<string, any>)[accountId],
         ...config
       }
     }
@@ -158,10 +158,10 @@ export const useImagePublishStore = defineStore('imagePublish', () => {
    * 将批量标题/描述同步到所有已选账号
    */
   function syncBatchToAll() {
-    const newConfigs = {}
+    const newConfigs: Record<string, any> = {}
     for (const accountId of selectedAccounts.value) {
       newConfigs[accountId] = {
-        ...accountConfigs.value[accountId],
+        ...(accountConfigs.value as Record<string, any>)[accountId],
         title: batchTitle.value,
         description: batchDescription.value
       }
@@ -201,7 +201,7 @@ export const useImagePublishStore = defineStore('imagePublish', () => {
    * @param {string|null} scheduledAt - 定时发布时间，null 表示立即发布
    * @returns {Promise<object>} 发布结果
    */
-  async function publish(scheduledAt = null) {
+  async function publish(scheduledAt: string | null = null) {
     if (!canPublish.value) {
       ElMessage.warning('请至少上传一张图片并选择一个账号')
       return

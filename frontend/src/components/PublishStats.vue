@@ -47,7 +47,7 @@ const metrics = [
   { key: 'comments', label: '评论', value: props.comments, icon: ChatLineRound, theme: 'green' },
 ]
 
-function formatValue(v) {
+function formatValue(v: unknown) {
   if (v == null) return '--'
   if (typeof v === 'number') {
     if (v >= 10000) return (v / 10000).toFixed(1) + 'w'
@@ -56,7 +56,7 @@ function formatValue(v) {
   return v
 }
 
-function isPlaceholder(v) {
+function isPlaceholder(v: unknown) {
   return v == null
 }
 </script>

@@ -10,10 +10,10 @@ export function listFeedback({ status, includeAll = false, page = 1, pageSize = 
   return http.get('/api/feedback/list', params)
 }
 
-export function submitFeedback(formData) {
+export function submitFeedback(formData: FormData) {
   return http.upload('/api/feedback/submit', formData)
 }
 
-export function voteFeedback({ id }) {
+export function voteFeedback({ id }: { id: string | number }) {
   return http.post('/api/feedback/vote', { id })
 }

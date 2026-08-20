@@ -9,7 +9,7 @@ export const useAppStore = defineStore('app', () => {
   // 自动填充标题设置
   const autoFillTitle = ref(true)
 
-  const setAutoFillTitle = (value) => {
+  const setAutoFillTitle = (value: boolean) => {
     autoFillTitle.value = value
     const settings = JSON.parse(localStorage.getItem('app_settings') || '{}')
     settings.autoFillTitle = value
@@ -25,14 +25,14 @@ export const useAppStore = defineStore('app', () => {
   const autoSaveDraft = ref(true)
   const autoSaveInterval = ref(10) // 秒
 
-  const setAutoSaveDraft = (value) => {
+  const setAutoSaveDraft = (value: boolean) => {
     autoSaveDraft.value = value
     const settings = JSON.parse(localStorage.getItem('app_settings') || '{}')
     settings.autoSaveDraft = value
     localStorage.setItem('app_settings', JSON.stringify(settings))
   }
 
-  const setAutoSaveInterval = (value) => {
+  const setAutoSaveInterval = (value: number) => {
     autoSaveInterval.value = value
     const settings = JSON.parse(localStorage.getItem('app_settings') || '{}')
     settings.autoSaveInterval = value
@@ -71,12 +71,12 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // 更新素材列表
-  const setMaterials = (materialList) => {
+  const setMaterials = (materialList: any[]) => {
     materials.value = materialList
   }
 
   // 删除素材
-  const removeMaterial = (materialId) => {
+  const removeMaterial = (materialId: number | string) => {
     const index = materials.value.findIndex(m => m.id === materialId)
     if (index > -1) {
       materials.value.splice(index, 1)
@@ -84,7 +84,7 @@ export const useAppStore = defineStore('app', () => {
   }
   
   // 设置账号管理页面刷新状态
-  const setAccountRefreshing = (status) => {
+  const setAccountRefreshing = (status: boolean) => {
     isAccountRefreshing.value = status
   }
 
@@ -96,7 +96,7 @@ export const useAppStore = defineStore('app', () => {
   // 'startup' = 项目启动时后台自动检测; 'pre-publish' = 发布前检测(默认)
   const accountCheckMode = ref('pre-publish')
 
-  const setAccountCheckMode = (value) => {
+  const setAccountCheckMode = (value: string) => {
     accountCheckMode.value = value
     const settings = JSON.parse(localStorage.getItem('app_settings') || '{}')
     settings.accountCheckMode = value
@@ -109,19 +109,19 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // 判断某平台 key 是否被拉黑
-  const isPlatformDisabled = (key) => disabledPlatforms.value.includes(key)
+  const isPlatformDisabled = (key: string) => disabledPlatforms.value.includes(key)
 
   // ========== 主题（dark / light） ==========
   // 默认 dark（保持改造前视觉）。切换时同步 <html> 的 class，并持久化。
   const theme = ref('dark')
 
-  const applyTheme = (value) => {
+  const applyTheme = (value: string) => {
     const el = document.documentElement
     el.classList.remove('dark', 'light')
     el.classList.add(value)
   }
 
-  const setTheme = (value) => {
+  const setTheme = (value: string) => {
     theme.value = value
     applyTheme(value)
     const settings = JSON.parse(localStorage.getItem('app_settings') || '{}')
@@ -140,7 +140,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // 批量添加(单次 PUT)
-  const addDisabledPlatforms = async (keys) => {
+  const addDisabledPlatforms = async (keys: string[]) => {
     const newKeys = keys.filter(k => !disabledPlatforms.value.includes(k))
     if (newKeys.length === 0) return
     const snapshot = [...disabledPlatforms.value]
@@ -156,7 +156,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   // 移除单个
-  const removeDisabledPlatform = async (key) => {
+  const removeDisabledPlatform = async (key: string) => {
     const snapshot = [...disabledPlatforms.value]
     disabledPlatforms.value = disabledPlatforms.value.filter(k => k !== key)
     try {

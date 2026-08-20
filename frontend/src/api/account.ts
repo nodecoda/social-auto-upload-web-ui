@@ -13,22 +13,22 @@ export const accountApi = {
   },
 
   // 添加账号
-  addAccount(data) {
+  addAccount(data: unknown) {
     return http.post('/account', data)
   },
 
   // 更新账号
-  updateAccount(data) {
+  updateAccount(data: unknown) {
     return http.post('/updateUserinfo', data)
   },
 
   // 删除账号（DELETE，带副作用操作不走 GET）
-  deleteAccount(id) {
+  deleteAccount(id: string | number) {
     return http.delete(`/deleteAccount?id=${id}`)
   },
 
   // 同步账号资料（头像+昵称）
-  syncProfile(id) {
+  syncProfile(id: string | number) {
     return http.post('/syncProfile', { id })
   },
 
@@ -37,26 +37,26 @@ export const accountApi = {
     return http.get('/api/tags')
   },
 
-  createTag(data) {
+  createTag(data: unknown) {
     return http.post('/api/tags', data)
   },
 
-  deleteTag(id) {
+  deleteTag(id: string | number) {
     return http.delete(`/api/tags/${id}`)
   },
 
-  setAccountTags(accountId, tagIds) {
+  setAccountTags(accountId: string | number, tagIds: Array<string | number>) {
     return http.put(`/api/accounts/${accountId}/tags`, { tag_ids: tagIds })
   },
 
-  setBatchAccountTags(accountIds, tagIds) {
+  setBatchAccountTags(accountIds: Array<string | number>, tagIds: Array<string | number>) {
     return http.put('/api/accounts/batch/tags', {
       account_ids: accountIds,
       tag_ids: tagIds
     })
   },
 
-  getAccountTags(accountId) {
+  getAccountTags(accountId: string | number) {
     return http.get(`/api/accounts/${accountId}/tags`)
   },
 
@@ -68,7 +68,7 @@ export const accountApi = {
   },
 
   // 启动一个 cookie 导入任务，返回 task_id
-  startImportAccount(data) {
+  startImportAccount(data: unknown) {
     return http.post('/importAccount', data)
   },
 }

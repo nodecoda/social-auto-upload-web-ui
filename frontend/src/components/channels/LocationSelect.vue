@@ -119,7 +119,7 @@ function handleClear() {
   locationList.value = []
 }
 
-function handleChange(val) {
+function handleChange(val: string) {
   emit('update:modelValue', val)
   const loc = locationList.value.find(c => c.name === val)
   emit('change', loc ? { ...loc, _searchKeyword: searchKeyword.value } : null)

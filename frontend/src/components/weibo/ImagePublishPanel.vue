@@ -62,14 +62,14 @@ const statementOptions = computed(() => statementField?.options || [])
 const WEIBO_DEFAULTS = {
   title: '',
   description: '',
-  tags: [],
+  tags: [] as string[],
   enableTimer: false,
   scheduleTime: '',
   aiContent: '',
   isOriginal: false,
   // 微博视频版残留字段(冗余但无害):
   videoType: '',
-  weiboCategory: [],
+  weiboCategory: [] as string[],
   contentStatement: '',
 }
 
@@ -140,7 +140,7 @@ function addTag() {
   tagInput.value = ''
 }
 
-function removeTag(index) { form.tags.splice(index, 1) }
+function removeTag(index: number) { form.tags.splice(index, 1) }
 
 // 自动提取描述中的 #xxx 到标签数组(微博发布时会拼成 #话题1 #话题2)
 useAutoExtractHashtags({

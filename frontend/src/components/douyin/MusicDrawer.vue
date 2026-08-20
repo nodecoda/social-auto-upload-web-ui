@@ -179,14 +179,14 @@ async function searchMusic() {
   }
 }
 
-function handleScroll(e) {
-  const { scrollTop, scrollHeight, clientHeight } = e.target
+function handleScroll(e: Event) {
+  const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLElement
   if (scrollHeight - scrollTop - clientHeight < 100 && !loading.value && hasMore.value) {
     searchMusic()
   }
 }
 
-function handleSelect(music) {
+function handleSelect(music: Record<string, any>) {
   emit('select', music)
   visible.value = false
 }
@@ -195,14 +195,14 @@ function handleClose() {
   visible.value = false
 }
 
-function formatDuration(seconds) {
+function formatDuration(seconds: number) {
   if (!seconds) return '00:00'
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
 
-function formatUserCount(count) {
+function formatUserCount(count: number) {
   if (!count) return '0'
   if (count >= 10000) {
     return (count / 10000).toFixed(1) + '万'
@@ -210,8 +210,8 @@ function formatUserCount(count) {
   return count.toString()
 }
 
-function onImageError(e) {
-  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZjVmNWY1Ii8+PHRleHQgeD0iMjAiIHk9IjI0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCflKQ8L3RleHQ+PC9zdmc+'
+function onImageError(e: Event) {
+  ;(e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZjVmNWY1Ii8+PHRleHQgeD0iMjAiIHk9IjI0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCflKQ8L3RleHQ+PC9zdmc+'
 }
 </script>
 

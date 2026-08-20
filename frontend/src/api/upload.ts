@@ -15,7 +15,7 @@ export const uploadApi = {
    * @param {number} [data.chunk_size] 单位字节，默认 50MB
    * @returns {Promise<{upload_id, total_chunks, chunk_size, uploaded_chunks: number[]}>}
    */
-  init(data) {
+  init(data: unknown) {
     return http.post('/api/uploads/init', data)
   },
 
@@ -27,7 +27,7 @@ export const uploadApi = {
    * @param {(evt: {loaded, total}) => void} [onProgress] 单片进度回调
    * @returns {Promise<{uploaded_chunks, total_chunks}>}
    */
-  uploadChunk(upload_id, chunk_index, chunkBlob, onProgress) {
+  uploadChunk(upload_id: string, chunk_index: number, chunkBlob: Blob, onProgress?: (e: unknown) => void) {
     const formData = new FormData()
     formData.append('upload_id', upload_id)
     formData.append('chunk_index', String(chunk_index))
@@ -40,7 +40,7 @@ export const uploadApi = {
    * @param {string} upload_id
    * @returns {Promise<{id, original_filename, stored_path, file_type, file_size, ...}>}
    */
-  merge(upload_id) {
+  merge(upload_id: string) {
     return http.post('/api/uploads/merge', { upload_id })
   },
 
@@ -49,7 +49,7 @@ export const uploadApi = {
    * @param {string} upload_id
    * @returns {Promise<{uploaded_chunks: number[], total_chunks, status, ...}>}
    */
-  status(upload_id) {
+  status(upload_id: string) {
     return http.get(`/api/uploads/status?upload_id=${encodeURIComponent(upload_id)}`)
   },
 
@@ -57,7 +57,7 @@ export const uploadApi = {
    * 取消上传 + 清理临时分片
    * @param {string} upload_id
    */
-  cancel(upload_id) {
+  cancel(upload_id: string) {
     return http.delete(`/api/uploads?upload_id=${encodeURIComponent(upload_id)}`)
   },
 }

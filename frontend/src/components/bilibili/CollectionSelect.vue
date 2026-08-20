@@ -120,7 +120,7 @@ function handleClear() {
   collectionList.value = []
 }
 
-function handleChange(val) {
+function handleChange(val: string) {
   emit('update:modelValue', val)
   const col = collectionList.value.find(c => c.name === val)
   emit('change', col ? { ...col, _searchKeyword: searchKeyword.value } : null)
