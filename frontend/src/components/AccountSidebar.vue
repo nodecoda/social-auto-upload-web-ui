@@ -70,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type PropType } from 'vue'
+import { computed } from 'vue'
 import { ArrowRight, StarFilled, Close } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'
 import { getDefaultAvatar, proxyAvatar } from '@/utils/avatar'
@@ -95,19 +95,19 @@ interface AccountGroup {
 
 const appStore = useAppStore()
 
-const props = defineProps({
-  mode: {
-    type: String,
-    default: 'edit',
-    validator: (v: string) => ['edit', 'readonly'].includes(v),
-  },
-  accountGroups: { type: Array as PropType<AccountGroup[]>, required: true },
-  totalCount: { type: Number, required: true },
-  selectedPlatform: { type: String, default: null },
-  selectedAccountId: { type: [Number, String] as PropType<number | string | null>, default: null },
-  expandedGroups: { type: Set as PropType<Set<string>>, required: true },
-  publishAccountIds: { type: Set as PropType<Set<number | string>>, required: true },
-  hasAccountOverride: { type: Function as PropType<(id: number | string) => boolean>, required: true },
+const props = withDefaults(defineProps<{
+  mode?: 'edit' | 'readonly'
+  accountGroups: AccountGroup[]
+  totalCount: number
+  selectedPlatform?: string | null
+  selectedAccountId?: number | string | null
+  expandedGroups: Set<string>
+  publishAccountIds: Set<number | string>
+  hasAccountOverride: (id: number | string) => boolean
+}>(), {
+  mode: 'edit',
+  selectedPlatform: null,
+  selectedAccountId: null,
 })
 
 defineEmits<{

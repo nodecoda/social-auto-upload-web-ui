@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, type PropType } from 'vue'
+import { ref, computed } from 'vue'
 import { Check, Plus } from '@element-plus/icons-vue'
 import { accountApi } from '@/api/account'
 import { useAccountStore } from '@/stores/account'
@@ -55,10 +55,13 @@ interface TagItem {
   color?: string
 }
 
-const props = defineProps({
-  visible: { type: Boolean, default: false },
-  accountId: { type: Number, required: true },
-  selectedTags: { type: Array as PropType<TagItem[]>, default: (): TagItem[] => [] }
+const props = withDefaults(defineProps<{
+  visible?: boolean
+  accountId: number
+  selectedTags?: TagItem[]
+}>(), {
+  visible: false,
+  selectedTags: () => [],
 })
 
 const emit = defineEmits<{

@@ -89,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, nextTick, type PropType } from 'vue'
+import { ref, reactive, computed, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Upload, Picture, PictureFilled, Check } from '@element-plus/icons-vue'
 import { materialsApi } from '@/api/materials'
@@ -137,15 +137,21 @@ interface CropCoverData {
   type: string
 }
 
-const props = defineProps({
-  videoLandscape: { type: Object as PropType<VideoMaterialData | null>, default: null },
-  videoPortrait: { type: Object as PropType<VideoMaterialData | null>, default: null },
+const props = withDefaults(defineProps<{
+  videoLandscape?: VideoMaterialData | null
+  videoPortrait?: VideoMaterialData | null
   // 当前弹窗方向：'landscape'（横版）或 'portrait'（竖版）
-  orientation: { type: String, default: 'landscape' },
+  orientation?: 'landscape' | 'portrait'
   // 主尺寸封面（横版=4:3，竖版=3:4）
-  coverPrimary: { type: Object as PropType<CoverImageData | null>, default: null },
+  coverPrimary?: CoverImageData | null
   // 次尺寸封面（横版=16:9，竖版=9:16）
-  coverSecondary: { type: Object as PropType<CoverImageData | null>, default: null },
+  coverSecondary?: CoverImageData | null
+}>(), {
+  videoLandscape: null,
+  videoPortrait: null,
+  orientation: 'landscape',
+  coverPrimary: null,
+  coverSecondary: null,
 })
 
 const emit = defineEmits<{

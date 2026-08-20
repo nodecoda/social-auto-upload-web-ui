@@ -58,30 +58,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, type PropType } from 'vue'
+import { ref, watch } from 'vue'
 import { Search, Loading, Picture } from '@element-plus/icons-vue'
 import { alipayApi } from '@/api/alipay'
 import { toutiaoApi } from '@/api/toutiao'
 import { type ApiResponse } from '@/utils/request'
 
-const props = defineProps({
-  accountId: {
-    type: [String, Number] as PropType<string | number | null>,
-    default: ''
-  },
-  modelValue: {
-    type: String,
-    default: ''
-  },
-  data: {
-    type: Object as PropType<CompilationItem | null>,
-    default: null
-  },
-  platform: {
-    type: String,
-    default: 'alipay', // 'alipay' | 'toutiao'
-    validator: (value: string) => ['alipay', 'toutiao'].includes(value)
-  }
+const props = withDefaults(defineProps<{
+  accountId?: string | number | null
+  modelValue?: string
+  data?: CompilationItem | null
+  platform?: 'alipay' | 'toutiao'
+}>(), {
+  accountId: '',
+  modelValue: '',
+  data: null,
+  platform: 'alipay',
 })
 
 const emit = defineEmits<{

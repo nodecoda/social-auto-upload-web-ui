@@ -28,7 +28,7 @@ const groups = [
 ]
 
 const defaultProps = () => ({
-  mode: 'edit',
+  mode: 'edit' as const,
   accountGroups: groups,
   totalCount: 3,
   selectedPlatform: undefined,

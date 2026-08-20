@@ -88,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, type PropType } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import BatchChannelPicker from '@/components/BatchChannelPicker.vue'
 
@@ -101,10 +101,12 @@ interface PlatformOption {
   count: number
 }
 
-const props = defineProps({
-  modelValue: { type: Boolean, required: true },
-  platforms: { type: Array as PropType<PlatformOption[]>, required: true },
-  title: { type: String, default: '批量设置' },
+const props = withDefaults(defineProps<{
+  modelValue: boolean
+  platforms: PlatformOption[]
+  title?: string
+}>(), {
+  title: '批量设置',
 })
 
 const emit = defineEmits<{

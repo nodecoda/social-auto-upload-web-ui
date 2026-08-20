@@ -31,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, type PropType } from 'vue'
+import { ref, computed } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
 
 const THUMB_WIDTH = 80
@@ -48,11 +48,16 @@ interface TimeMarker {
   position: number
 }
 
-const props = defineProps({
-  frames: { type: Array as PropType<TimelineFrame[]>, default: (): TimelineFrame[] => [] },
-  duration: { type: Number, default: 0 },
-  modelValue: { type: Number, default: 0 },
-  extracting: { type: Boolean, default: false },
+const props = withDefaults(defineProps<{
+  frames?: TimelineFrame[]
+  duration?: number
+  modelValue?: number
+  extracting?: boolean
+}>(), {
+  frames: () => [],
+  duration: 0,
+  modelValue: 0,
+  extracting: false,
 })
 
 const emit = defineEmits<{

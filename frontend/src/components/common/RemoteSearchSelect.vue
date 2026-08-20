@@ -91,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onUnmounted, type PropType } from 'vue'
+import { ref, watch, computed, onUnmounted } from 'vue'
 import { Search, CircleClose, Promotion, Picture, Check, MagicStick } from '@element-plus/icons-vue'
 
 // 服务端返回的选项项(其余字段透传)
@@ -101,67 +101,49 @@ interface RemoteItem {
 
 type FieldResolver = string | ((item: RemoteItem) => string)
 
-const props = defineProps({
+const props = withDefaults(defineProps<{
   // v-model 绑定的名称字符串(原契约)
-  modelValue: {
-    type: String,
-    default: ''
-  },
+  modelValue?: string
   // 回显用的完整对象(原契约)
-  data: {
-    type: Object as PropType<RemoteItem | null>,
-    default: null
-  },
+  data?: RemoteItem | null
   /**
    * 数据源函数。调用方在此内联调 api + 取 list。
    * 签名:(keyword?: string) => Promise<{ list: unknown[], total?: number }>
    * 组件内部零硬编码 api,item 形状由 fieldMap 解读。
    */
-  fetcher: {
-    type: Function as PropType<(keyword: string) => Promise<{ list: unknown[]; total?: number }>>,
-    required: true
-  },
+  fetcher: (keyword: string) => Promise<{ list: unknown[]; total?: number }>
   /**
    * 字段映射。label/desc/cover 既可是字段名字符串,也可是 (item)=>string 函数。
    * 覆盖 name/mix_name/title、note_num 派生、嵌套封面图等所有差异。
    */
-  fieldMap: {
-    type: Object as PropType<Record<string, FieldResolver>>,
-    default: () => ({ label: 'name' })
-  },
+  fieldMap?: Record<string, FieldResolver>
   /**
    * frontend(默认):空关键词也调 fetcher 展示全量
    * backend:空关键词不调(对应 location/compilation)
    */
-  searchMode: {
-    type: String,
-    default: 'frontend'
-  },
+  searchMode?: string
   /**
    * autoLoad=true 时:下拉打开即调 fetcher 加载全量,隐藏搜索框。
    * 适用于「后端一次返回全量」的场景(合集/mix)。默认跟随 searchMode:
    * frontend → true(打开即加载),backend → false(需手动搜索)。
    */
-  autoLoad: {
-    type: Boolean,
-    default: null
-  },
+  autoLoad?: boolean | null
   /**
    * 空关键词行为(仅 searchMode=frontend 时生效):
    * load-all(默认) / clear / block
    */
-  emptyBehavior: {
-    type: String,
-    default: 'load-all'
-  },
-  placeholder: {
-    type: String,
-    default: '请选择'
-  },
-  searchPlaceholder: {
-    type: String,
-    default: '输入关键词搜索'
-  }
+  emptyBehavior?: string
+  placeholder?: string
+  searchPlaceholder?: string
+}>(), {
+  modelValue: '',
+  data: null,
+  fieldMap: () => ({ label: 'name' }),
+  searchMode: 'frontend',
+  autoLoad: null,
+  emptyBehavior: 'load-all',
+  placeholder: '请选择',
+  searchPlaceholder: '输入关键词搜索',
 })
 
 const emit = defineEmits<{

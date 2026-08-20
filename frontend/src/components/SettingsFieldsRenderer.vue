@@ -28,7 +28,6 @@
 
 </template>
 <script setup lang="ts">
-import { type PropType } from 'vue'
 import SettingFieldControl from '@/components/SettingFieldControl.vue'
 
 // 平台 settingsFields 字段项(部分字段仅特定 type 使用;其余字段透传)
@@ -56,15 +55,20 @@ interface SettingsField {
   [key: string]: unknown
 }
 
-const props = defineProps({
+const props = withDefaults(defineProps<{
   // 平台配置 settingsFields 字段数组
-  fields: { type: Array as PropType<SettingsField[]>, default: (): SettingsField[] => [] },
+  fields?: SettingsField[]
   // 发布表单（本组件直接读写其中的字段）
-  form: { type: Object as PropType<Record<string, unknown>>, required: true },
+  form: Record<string, unknown>
   // 当前平台配置（color/key/hideFields 等）
-  platform: { type: Object as PropType<SettingsPlatform>, default: () => ({}) },
-  selectedPlatform: { type: String, default: null },
-  selectedAccountId: { type: [String, Number] as PropType<string | number | null>, default: null },
+  platform?: SettingsPlatform
+  selectedPlatform?: string | null
+  selectedAccountId?: string | number | null
+}>(), {
+  fields: () => [],
+  platform: () => ({}) as SettingsPlatform,
+  selectedPlatform: null,
+  selectedAccountId: null,
 })
 
 // ----- 小红书拍摄地点(POI)选择回调:存完整对象到 <key>Data,publishData 取 poi 名称 -----

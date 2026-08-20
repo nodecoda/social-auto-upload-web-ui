@@ -47,7 +47,6 @@
 </template>
 
 <script setup lang="ts">
-import { type PropType } from 'vue'
 import { Picture, Edit, Delete } from '@element-plus/icons-vue'
 import { getFileUrl } from '@/utils/storage'
 
@@ -62,16 +61,22 @@ interface CoverImage {
   [key: string]: unknown
 }
 
-const props = defineProps({
-  label: { type: String, default: '横版封面' },
+const props = withDefaults(defineProps<{
+  label?: string
   // 比例列表，如 ['3:4', '9:16'] 或 ['4:3', '16:9']
-  ratios: { type: Array as PropType<string[]>, default: () => ['16:9'] },
+  ratios?: string[]
   // 当前激活的比例（v-model:activeRatio）
-  activeRatio: { type: String, required: true },
+  activeRatio: string
   // 当前激活比例对应的封面对象（v-model）
-  modelValue: { type: Object as PropType<CoverImage | null>, default: null },
-  hasVideo: { type: Boolean, default: false },
-  disabled: { type: Boolean, default: false },
+  modelValue?: CoverImage | null
+  hasVideo?: boolean
+  disabled?: boolean
+}>(), {
+  label: '横版封面',
+  ratios: () => ['16:9'],
+  modelValue: null,
+  hasVideo: false,
+  disabled: false,
 })
 
 defineEmits<{
