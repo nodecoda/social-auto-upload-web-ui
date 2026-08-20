@@ -84,7 +84,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, h } from 'vue'
 import headImg from '@/assets/head.png'
 import qrcodeImg from '@/assets/qrcode.png'
@@ -146,7 +146,7 @@ const authorInfo = {
   ]
 }
 
-const starsRef = ref(null)
+const starsRef = ref<HTMLElement | null>(null)
 
 onMounted(() => {
   if (starsRef.value) {

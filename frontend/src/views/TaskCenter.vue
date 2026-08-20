@@ -116,14 +116,24 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Refresh, List } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { taskApi } from '@/api/v2'
 import { platformCssMap } from '@/config/platforms'
+import { type ApiResponse } from '@/utils/request'
 
-const tasks = ref([])
+interface TaskItem {
+  id: number | string
+  platform?: string
+  account_name?: string
+  batch_title?: string
+  status?: string
+  created_at?: string
+}
+
+const tasks = ref<TaskItem[]>([])
 const loading = ref(false)
 const activeFilter = ref('all')
 const searchKeyword = ref('')
@@ -143,7 +153,7 @@ const filterOptions = [
 const fetchTasks = async () => {
   loading.value = true
   try {
-    const res = await taskApi.getTasks()
+    const res = (await taskApi.getTasks(undefined)) as ApiResponse<TaskItem[]>
     if (res.code === 200) tasks.value = res.data || []
   } catch (e) {
     console.error('获取任务列表失败:', e)
@@ -155,7 +165,7 @@ const fetchTasks = async () => {
 // Fetch queue status
 const fetchQueueStatus = async () => {
   try {
-    const res = await taskApi.getQueueStatus()
+    const res = (await taskApi.getQueueStatus()) as ApiResponse<{ active: number; waiting: number }>
     if (res.code === 200) queueStatus.value = res.data || { active: 0, waiting: 0 }
   } catch (e) {
     console.error('获取队列状态失败:', e)
@@ -163,7 +173,7 @@ const fetchQueueStatus = async () => {
 }
 
 // SSE connection for real-time updates
-let eventSource = null
+let eventSource: EventSource | null = null
 const connectSSE = () => {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
   eventSource = new EventSource(`${baseUrl}/api/v2/tasks/stream`)
@@ -213,7 +223,7 @@ const paginatedTasks = computed(() => {
 })
 
 // Actions
-const handleCancel = async (task) => {
+const handleCancel = async (task: TaskItem) => {
   try {
     await taskApi.cancelTask(task.id)
     ElMessage.success('任务已取消')
@@ -225,7 +235,7 @@ const handleCancel = async (task) => {
   }
 }
 
-const handleRetry = async (task) => {
+const handleRetry = async (task: TaskItem) => {
   try {
     await taskApi.retryTask(task.id)
     ElMessage.success('任务已重新提交')
@@ -243,18 +253,18 @@ const handleRefresh = () => {
 }
 
 // Helpers
-const shortId = (id) => {
+const shortId = (id: number | string) => {
   if (!id) return '-'
   const str = String(id)
   return str.length > 8 ? str.slice(0, 8) : str
 }
 
-const getPlatformClass = (platform) => {
+const getPlatformClass = (platform: string) => {
   return platformCssMap[platform] || ''
 }
 
-const getStatusClass = (status) => {
-  const classMap = {
+const getStatusClass = (status: string) => {
+  const classMap: Record<string, string> = {
     '排队中': 'pending',
     '发布中': 'running',
     '成功': 'success',
@@ -263,7 +273,7 @@ const getStatusClass = (status) => {
   return classMap[status] || ''
 }
 
-const formatTime = (time) => {
+const formatTime = (time: string) => {
   if (!time) return '-'
   try {
     const d = new Date(time)

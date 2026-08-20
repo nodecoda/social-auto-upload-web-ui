@@ -49,12 +49,19 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ArrowRight } from '@element-plus/icons-vue'
 import { changelogApi } from '@/api/changelog'
+import { type ApiResponse } from '@/utils/request'
 
-const logs = ref([])
+interface ChangelogItem {
+  filename: string
+  date: string
+  url: string
+}
+
+const logs = ref<ChangelogItem[]>([])
 const loading = ref(true)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -62,19 +69,19 @@ const dialogUrl = ref('')
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
 
-function formatDay(dateStr) {
+function formatDay(dateStr: string) {
   if (!dateStr) return ''
   return dateStr.split('-')[2]
 }
 
-function formatMonth(dateStr) {
+function formatMonth(dateStr: string) {
   if (!dateStr) return ''
   const months = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
   const month = parseInt(dateStr.split('-')[1], 10)
   return months[month - 1] || ''
 }
 
-function openLog(log) {
+function openLog(log: ChangelogItem) {
   dialogTitle.value = `更新日志 ${log.date}`
   dialogUrl.value = `${apiBaseUrl}${log.url}`
   dialogVisible.value = true
@@ -83,7 +90,7 @@ function openLog(log) {
 async function loadChangelog() {
   loading.value = true
   try {
-    const resp = await changelogApi.getChangelogList()
+    const resp = (await changelogApi.getChangelogList()) as ApiResponse<ChangelogItem[]>
     logs.value = resp.data || []
   } catch (e) {
     console.error('Failed to load changelog:', e)

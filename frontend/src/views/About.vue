@@ -52,7 +52,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { APP_NAME, APP_NAME_EN, APP_VERSION } from '@/config/app'
 </script>
 
