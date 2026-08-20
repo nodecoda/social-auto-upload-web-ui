@@ -52,7 +52,7 @@ export function countDescriptionHashtags(text?: string | null): number {
   return (text.match(HASHTAG_RE) || []).length
 }
 
-export interface UseAutoExtractHashtagsOptions<T extends Record<string, any>> {
+export interface UseAutoExtractHashtagsOptions<T extends Record<string, unknown>> {
   form: T
   descKey?: string
   tagKey?: string
@@ -78,7 +78,7 @@ export function useAutoExtractHashtags<T extends Record<string, unknown>>(option
     getReservedTagCount = () => 0,
   } = options || {}
   // 局部转为宽松 Record 以允许写索引 (泛型 T 在 TS 4.9+ 禁止写索引)
-  const form: Record<string, any> = (options?.form || {}) as Record<string, any>
+  const form: Record<string, unknown> = (options?.form || {}) as Record<string, unknown>
 
   if (!form) return
 
@@ -111,7 +111,7 @@ export function useAutoExtractHashtags<T extends Record<string, unknown>>(option
         // 追加标签(去重)
         if (toAdd.length > 0) {
           if (!Array.isArray(form[tagKey])) form[tagKey] = []
-          const tags: string[] = form[tagKey]
+          const tags: string[] = form[tagKey] as string[]
           for (const tag of toAdd) {
             if (!tags.includes(tag)) tags.push(tag)
           }

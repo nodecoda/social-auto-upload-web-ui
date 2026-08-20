@@ -8,7 +8,16 @@ const KB = 1024
 const MB = 1024 * 1024
 const GB = 1024 * 1024 * 1024
 
-export const VIDEO_LIMITS: Record<string, any> = {
+export interface VideoLimit {
+  minDuration: number
+  maxDuration: number
+  maxSize: number
+  maxTitleLength: number
+  minTitleLength?: number
+  maxDescLength?: number
+}
+
+export const VIDEO_LIMITS: Record<string, VideoLimit> = {
   tencent_video: { minDuration: 5,    maxDuration: 5400,         maxSize: 20 * GB, maxTitleLength: 80 },
   iqiyi:         { minDuration: 5,    maxDuration: 3600,         maxSize: 16 * GB, maxTitleLength: Infinity },
   douyin:        { minDuration: 5,    maxDuration: 3600,         maxSize: 16 * GB, maxTitleLength: Infinity },
