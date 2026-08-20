@@ -64,14 +64,14 @@ const props = defineProps({
   },
   // 回显用的完整对象(含 address)
   data: {
-    type: Object as PropType<Record<string, any> | null>,
+    type: Object as PropType<Record<string, unknown> | null>,
     default: null
   }
 })
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
-  (e: 'change', payload: Record<string, any> | null): void
+  (e: 'change', payload: Record<string, unknown> | null): void
 }>()
 
 const loading = ref(false)

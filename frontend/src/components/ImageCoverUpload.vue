@@ -82,14 +82,15 @@ const emit = defineEmits<{
 }>()
 const uploaderVisible = ref(false)
 
-function onUploaded(d: Record<string, any>) {
+function onUploaded(d: Record<string, unknown>) {
+  // 上传接口返回字段名与 CoverImage 不一致,逐字段收窄映射
   emit('update:modelValue', {
-    id: d.id,
-    name: d.original_filename,
-    url: getFileUrl(d.stored_path),
-    stored_path: d.stored_path,
-    size: d.file_size,
-    type: d.mime_type,
+    id: d.id as number | string | undefined,
+    name: d.original_filename as string | undefined,
+    url: getFileUrl(d.stored_path as string),
+    stored_path: d.stored_path as string | undefined,
+    size: d.file_size as number | undefined,
+    type: d.mime_type as string | undefined,
   })
   ElMessage.success('封面上传成功')
 }

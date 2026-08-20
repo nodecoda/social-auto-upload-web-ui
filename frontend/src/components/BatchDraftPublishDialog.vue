@@ -84,8 +84,8 @@ interface TableRow {
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
-  drafts: { type: Array as PropType<DraftItem[]>, default: (): any[] => [] },        // [{id, type, title, platforms}]
-  failures: { type: Array as PropType<FailureItem[]>, default: (): any[] => [] },      // [{draft_id, reason}]
+  drafts: { type: Array as PropType<DraftItem[]>, default: (): DraftItem[] => [] },        // [{id, type, title, platforms}]
+  failures: { type: Array as PropType<FailureItem[]>, default: (): FailureItem[] => [] },      // [{draft_id, reason}]
 })
 
 const emit = defineEmits<{

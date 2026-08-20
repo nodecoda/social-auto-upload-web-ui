@@ -64,12 +64,12 @@ import { type ApiResponse } from '@/utils/request'
 const props = defineProps({
   accountId: { type: [String, Number] as PropType<string | number | null>, default: '' },
   modelValue: { type: String, default: '' },
-  data: { type: Object as PropType<Record<string, any> | null>, default: null },
+  data: { type: Object as PropType<MusicItem | null>, default: null },
 })
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string | null): void
-  (e: 'change', payload: Record<string, any> | null): void
+  (e: 'change', payload: MusicItem | null): void
 }>()
 
 const loading = ref(false)
@@ -90,7 +90,7 @@ watch(() => props.modelValue, (val) => {
   selectedMusicId.value = val || ''
   if (val && !musicList.value.find(m => m.musicId === val)) {
     if (props.data && props.data.musicId === val) {
-      musicList.value.unshift(props.data as MusicItem)
+      musicList.value.unshift(props.data)
     } else {
       musicList.value.unshift({ musicId: val, title: val, author: '', duration: 0, cover: '' })
     }
@@ -122,7 +122,7 @@ function handleChange(val: string) {
   if (val) {
     const music = musicList.value.find(m => m.musicId === val)
     emit('update:modelValue', val)
-    emit('change', { ...music, _searchKeyword: searchKeyword.value })
+    emit('change', { ...music!, _searchKeyword: searchKeyword.value })
   } else {
     emit('update:modelValue', null)
     emit('change', null)

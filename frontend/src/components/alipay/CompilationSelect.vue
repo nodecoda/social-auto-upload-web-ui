@@ -74,7 +74,7 @@ const props = defineProps({
     default: ''
   },
   data: {
-    type: Object as PropType<Record<string, any> | null>,
+    type: Object as PropType<CompilationItem | null>,
     default: null
   },
   platform: {
@@ -86,7 +86,7 @@ const props = defineProps({
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
-  (e: 'change', payload: Record<string, any> | null): void
+  (e: 'change', payload: CompilationItem | null): void
 }>()
 
 const loading = ref(false)
@@ -128,7 +128,7 @@ watch(() => props.modelValue, (val) => {
   selectedCompilationId.value = val || ''
   if (val && !compilationList.value.find(c => c.title === val)) {
     if (props.data && props.data.title === val) {
-      compilationList.value.unshift(props.data as CompilationItem)
+      compilationList.value.unshift(props.data)
     } else {
       compilationList.value.unshift({
         compilationId: '',

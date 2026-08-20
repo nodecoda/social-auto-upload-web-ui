@@ -84,7 +84,7 @@ interface CarouselImage {
 }
 
 const props = defineProps({
-  images: { type: Array as PropType<CarouselImage[]>, default: (): any[] => [] },
+  images: { type: Array as PropType<CarouselImage[]>, default: (): CarouselImage[] => [] },
   initialIndex: { type: Number, default: 0 },
 })
 

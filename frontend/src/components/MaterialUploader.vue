@@ -200,7 +200,7 @@ const CHUNK_RETRY_MAX = 3
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'uploaded', payload: Record<string, any>): void
+  (e: 'uploaded', payload: Record<string, unknown>): void
   (e: 'all-uploaded', payload: unknown[]): void
   (e: 'error', payload: unknown): void
   (e: 'closed'): void
@@ -321,7 +321,7 @@ async function uploadSimple(item: UploadFileItem) {
       item.status = 'success'
       item.percent = 100
       item.response = resp.data
-      emit('uploaded', resp.data as Record<string, any>)
+      emit('uploaded', resp.data as Record<string, unknown>)
     } else {
       item.status = 'failed'
       item.error = resp.msg || '上传失败'
@@ -421,7 +421,7 @@ async function uploadByChunks(item: UploadFileItem) {
     item.status = 'success'
     item.percent = 100
     item.response = mergeResp.data
-    emit('uploaded', mergeResp.data as Record<string, any>)
+    emit('uploaded', mergeResp.data as Record<string, unknown>)
   } catch (err) {
     if (item.cancelling) {
       // 用户主动取消，状态已由 cancelUpload 设置

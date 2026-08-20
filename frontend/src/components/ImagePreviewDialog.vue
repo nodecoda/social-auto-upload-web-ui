@@ -113,7 +113,7 @@ interface PreviewImage {
 }
 
 const props = defineProps({
-  images: { type: Array as PropType<PreviewImage[]>, default: (): any[] => [] },
+  images: { type: Array as PropType<PreviewImage[]>, default: (): PreviewImage[] => [] },
   initialIndex: { type: Number, default: 0 },
 })
 

@@ -105,7 +105,7 @@ const props = defineProps({
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'select', payload: Record<string, any>): void
+  (e: 'select', payload: MusicItem): void
 }>()
 
 interface MusicItem {
@@ -200,7 +200,7 @@ function handleScroll(e: Event) {
   }
 }
 
-function handleSelect(music: Record<string, any>) {
+function handleSelect(music: MusicItem) {
   emit('select', music)
   visible.value = false
 }

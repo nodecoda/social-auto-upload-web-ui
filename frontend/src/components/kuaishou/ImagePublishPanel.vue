@@ -80,7 +80,7 @@ const declarationOptions = computed(() => {
   return field?.options || []
 })
 
-function handleMusicChange(music: Record<string, any> | null) {
+function handleMusicChange(music: Record<string, unknown> | null) {
   if (music) {
     form.selectedMusicId = music.musicId
     form.selectedMusicData = music

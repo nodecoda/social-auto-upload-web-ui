@@ -112,7 +112,7 @@ const props = defineProps({
 
 defineEmits<{
   (e: 'toggle-group', key: string): void
-  (e: 'select-account', account: PlatformAccount, group: { key: string } & Record<string, any>): void
+  (e: 'select-account', account: PlatformAccount, group: AccountGroup): void
   (e: 'remove-account', id: number | string): void
   (e: 'open-account-dialog'): void
 }>()

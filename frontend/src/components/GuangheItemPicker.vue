@@ -165,7 +165,7 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   accountId: { type: String, required: true },
   mode: { type: String, default: 'product' }, // 'product' | 'shop'
-  initSelected: { type: Array as PropType<Array<GuangheItem | string>>, default: (): any[] => [] },
+  initSelected: { type: Array as PropType<Array<GuangheItem | string>>, default: (): Array<GuangheItem | string> => [] },
 })
 
 const emit = defineEmits<{
