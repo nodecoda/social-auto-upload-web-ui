@@ -139,3 +139,50 @@ export const elementDialogStubs = {
   ElTag,
   ElDatePicker,
 }
+
+/** ElSwitch:可点击的布尔开关,v-model 点击翻转 */
+export const ElSwitch = {
+  name: 'ElSwitch',
+  props: ['modelValue', 'disabled'],
+  emits: ['update:modelValue'],
+  template: '<button class="el-switch-stub" type="button" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)"><slot /></button>',
+}
+
+/** ElInputNumber:数字输入框 */
+export const ElInputNumber = {
+  name: 'ElInputNumber',
+  props: ['modelValue', 'min', 'max'],
+  emits: ['update:modelValue'],
+  template: '<input class="el-input-number-stub" type="number" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
+}
+
+/** ElSelect:透传插槽渲染选项 */
+export const ElSelect = {
+  name: 'ElSelect',
+  props: ['modelValue'],
+  emits: ['update:modelValue'],
+  template: '<div class="el-select-stub"><slot /></div>',
+}
+
+/** ElOption:选项行,点击发出 select 选择 */
+export const ElOption = {
+  name: 'ElOption',
+  props: ['label', 'value'],
+  emits: ['select'],
+  template: '<span class="el-option-stub" @click="$emit(\'select\', value)">{{ label }}</span>',
+}
+
+/** ElCollapse:折叠容器 */
+export const ElCollapse = {
+  name: 'ElCollapse',
+  props: ['modelValue'],
+  emits: ['update:modelValue'],
+  template: '<div class="el-collapse-stub"><slot /></div>',
+}
+
+/** ElCollapseItem:折叠项,渲染标题 + 默认插槽 */
+export const ElCollapseItem = {
+  name: 'ElCollapseItem',
+  props: ['title', 'name'],
+  template: '<div class="el-collapse-item-stub"><span class="el-collapse-item-title">{{ title }}</span><slot /></div>',
+}
