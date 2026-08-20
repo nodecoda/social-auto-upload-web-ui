@@ -743,9 +743,9 @@ interface SettingsField {
   options?: Array<{ label: string; value: string | boolean }>
   visibleWhen?: { key: string; value: string | number | boolean }
   disabledWhen?: { key: string; value: string | number | boolean }
-  disabledDate?: (...args: any[]) => boolean
-  disabledHours?: (...args: any[]) => number[]
-  disabledMinutes?: (...args: any[]) => number[]
+  disabledDate?: (date: Date) => boolean
+  disabledHours?: (role: string, comparingDate?: Date | { toDate: () => Date } | null) => number[]
+  disabledMinutes?: (hour: number, role: string, comparingDate?: Date | { toDate: () => Date } | null) => number[]
   props?: Record<string, unknown>
   [key: string]: unknown
 }
@@ -806,7 +806,7 @@ interface AccountOverride {
 interface DouyinTag {
   type: string
   name: string
-  id?: string
+  id?: string | number
   _searchKeyword?: string
   [key: string]: unknown
 }
@@ -1790,10 +1790,19 @@ useAutoExtractHashtags({
   getReservedTagCount: () => (selectedPlatform.value === 'douyin' ? (form.activityId?.length || 0) : 0),
 })
 
+// 各 Select 组件 change 载荷的窄接口(仅声明本面板用到的字段)
+interface ActivityItemPayload {
+  activity_id?: string | number
+  activity_name?: string
+  [key: string]: unknown
+}
+
 // ========== Douyin-specific Methods ==========
-function handleDouyinActivityChange(activity: any) {
-  if (activity?.challenge && activity.challenge.length > 0) {
-    for (const topic of activity.challenge) {
+function handleDouyinActivityChange(activity: ActivityItemPayload[]) {
+  // 兼容历史载荷:旧版单活动对象携带 challenge 话题数组(现 change 载荷为活动数组,该分支实际不触发)
+  const topics = (activity as unknown as { challenge?: string[] } | null)?.challenge
+  if (topics && topics.length > 0) {
+    for (const topic of topics) {
       if (form.tags && !form.tags.includes(topic)) {
         if ((form.activityId?.length || 0) + (form.tags?.length || 0) >= 5) break
         form.tags.push(topic)
@@ -1802,9 +1811,9 @@ function handleDouyinActivityChange(activity: any) {
   }
 }
 
-function handleDouyinHotspotChange(hotspot: Record<string, any> | null) {
+function handleDouyinHotspotChange(hotspot: Record<string, unknown> | null) {
   if (hotspot) {
-    form.hotspotId = hotspot.word
+    form.hotspotId = hotspot.word as string | undefined
     form.hotspotData = hotspot
   } else {
     form.hotspotId = ''
@@ -1841,9 +1850,9 @@ const jdNovelFieldMap: Record<string, string | ((item: JdNovelItem) => string)> 
   desc: (item) => [item.category, item.read_count ? `${item.read_count}人已读` : ''].filter((s): s is string => Boolean(s)).join(' | '),
   cover: 'image'
 }
-function handleJdNovelChange(novel: Record<string, any> | null) {
+function handleJdNovelChange(novel: Record<string, unknown> | null) {
   if (novel) {
-    form.jdNovel = novel.title
+    form.jdNovel = novel.title as string | undefined
     form.jdNovelData = novel
   } else {
     form.jdNovel = ''
@@ -1851,12 +1860,12 @@ function handleJdNovelChange(novel: Record<string, any> | null) {
   }
 }
 
-function handleDouyinTagSelect(tag: any | null) {
+function handleDouyinTagSelect(tag: DouyinTag | null) {
   if (tag) {
     form.selectedTag = tag
     const m: Record<string, string> = { poi: 'location', miniapp: 'miniapp', game: 'gamepad', mark: 'mark', film: 'film' }
-    form.tagType = m[tag.type] || ''
-    form.tagValue = tag.name || tag.id || ''
+    form.tagType = m[tag.type ?? ''] || ''
+    form.tagValue = tag.name || (tag.id ? String(tag.id) : '')
     ElMessage.success(`标签已选择: ${tag.name}`)
   } else {
     form.selectedTag = null
@@ -1865,9 +1874,9 @@ function handleDouyinTagSelect(tag: any | null) {
   }
 }
 
-function handleDouyinMixChange(mix: Record<string, any> | null) {
+function handleDouyinMixChange(mix: Record<string, unknown> | null) {
   if (mix) {
-    form.mixId = mix.mix_name
+    form.mixId = mix.mix_name as string | undefined
     form.mixData = mix
   } else {
     form.mixId = ''
@@ -2227,15 +2236,16 @@ function pickRecommendedFrames<T>(frames: T[], count: number): T[] {
   return result
 }
 
-async function onVideoUploaded(d: Record<string, any>) {
+async function onVideoUploaded(d: Record<string, unknown>) {
+  // 上传接口返回字段名与 MediaAsset 不一致,逐字段收窄映射
   const videoData: MediaAsset = {
-    id: d.id,
-    name: d.original_filename,
-    url: getFileUrl(d.stored_path),
-    stored_path: d.stored_path,
-    size: d.file_size,
-    type: d.mime_type,
-    duration: d.duration ?? 0,
+    id: d.id as number | string,
+    name: d.original_filename as string,
+    url: getFileUrl(d.stored_path as string),
+    stored_path: d.stored_path as string | undefined,
+    size: d.file_size as number | undefined,
+    type: d.mime_type as string | undefined,
+    duration: (d.duration as number | undefined) ?? 0,
   }
   if (videoUploadTarget.value === 'portrait') {
     currentEditTarget.value.videoPortrait = videoData
@@ -2459,13 +2469,14 @@ async function restoreDraft(draftId: number | string) {
       if (!Array.isArray(tg.guangheProducts)) tg.guangheProducts = []
       if (!Array.isArray(tg.guangheShops)) tg.guangheShops = []
       // 旧草稿可能是字符串数组 → 转为统一的对象数组格式 [{title, image}]
-      const normalize = (arr: Array<string | { title?: string; image?: string }>): any[] =>
+      const normalize = (arr: Array<string | { title?: string; image?: string }>): Array<{ title: string; image: string }> =>
         arr.map(it =>
           typeof it === 'string' ? { title: it, image: '' }
             : { title: it?.title || '', image: it?.image || '' }
         ).filter(it => it.title)
-      tg.guangheProducts = normalize(tg.guangheProducts)
-      tg.guangheShops = normalize(tg.guangheShops)
+      // 旧草稿条目无 id(字符串数组迁移产物);GuangheItemPicker 以 title 兜底,发布前重选会补全
+      tg.guangheProducts = normalize(tg.guangheProducts) as GuangheItem[]
+      tg.guangheShops = normalize(tg.guangheShops) as GuangheItem[]
     }
 
     // 兼容旧草稿:京东关联挂件字段
@@ -3234,9 +3245,11 @@ function cancelBatch() {
   ElMessage.info('正在取消发布...')
 }
 
-function handleOneClickFill(record: Record<string, any>) {
-  const histConfig = record.account_configs || {}
-  const channels = record.channels || []
+function handleOneClickFill(record: Record<string, unknown>) {
+  // 历史发布记录载荷:account_configs 为各平台配置,channels 为账号勾选列表
+  const r = record as { account_configs?: Record<string, unknown>; channels?: Array<{ platform: string }> }
+  const histConfig = r.account_configs || {}
+  const channels = r.channels || []
   // 1. 复原账号选择：清空当前选中，按历史 channels 自动勾选对应平台下的所有账号
   publishAccountIds.clear()
   let selectedAccounts = 0

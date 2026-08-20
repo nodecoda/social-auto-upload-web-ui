@@ -50,8 +50,8 @@ interface SettingsField {
   visibleWhen?: { key: string; value: string | number | boolean }
   disabledWhen?: { key: string; value: string | number | boolean }
   disabledDate?: (date: Date) => boolean
-  disabledHours?: () => number[]
-  disabledMinutes?: (h: number) => number[]
+  disabledHours?: (role: string, comparingDate?: Date | { toDate: () => Date } | null) => number[]
+  disabledMinutes?: (hour: number, role: string, comparingDate?: Date | { toDate: () => Date } | null) => number[]
   props?: Record<string, unknown>
   [key: string]: unknown
 }
