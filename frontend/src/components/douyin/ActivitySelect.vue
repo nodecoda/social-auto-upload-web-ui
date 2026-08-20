@@ -71,8 +71,17 @@ const emit = defineEmits<{
   (e: 'change', payload: any[]): void
 }>()
 
+interface ActivityItem {
+  activity_id: string | number
+  activity_name: string
+  cover_image?: string
+  hot_score?: number
+  show_end_time?: string
+  [key: string]: unknown
+}
+
 const loading = ref(false)
-const activityList = ref<any[]>([])
+const activityList = ref<ActivityItem[]>([])
 const selectedActivities = ref<string[]>(props.modelValue || [])
 
 watch(() => props.modelValue, (val) => {
@@ -96,7 +105,7 @@ async function loadActivityList() {
   try {
     const resp = (await douyinImageApi.getActivityList(props.accountId || '')) as ApiResponse<{ activity_list?: any[] }>
     if (resp.code === 200) {
-      activityList.value = resp.data?.activity_list || []
+      activityList.value = (resp.data?.activity_list || []) as ActivityItem[]
     }
   } catch (e) {
     console.error('加载活动列表失败:', e)

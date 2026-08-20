@@ -108,10 +108,21 @@ const emit = defineEmits<{
   (e: 'select', payload: Record<string, any>): void
 }>()
 
+interface MusicItem {
+  id: string | number
+  title: string
+  author?: string
+  cover_medium?: { url_list?: string[] }
+  cover_thumb?: { url_list?: string[] }
+  duration?: number
+  user_count?: number
+  [key: string]: unknown
+}
+
 const visible = ref(props.modelValue)
 const keyword = ref('')
 const loading = ref(false)
-const musicList = ref<any[]>([])
+const musicList = ref<MusicItem[]>([])
 const searched = ref(false)
 const hoverId = ref<string | number | null>(null)
 const listRef = ref<HTMLElement | null>(null)
@@ -163,7 +174,7 @@ async function searchMusic() {
 
     if (resp.code === 200) {
       const data = resp.data
-      const newMusic = data?.music || []
+      const newMusic = (data?.music || []) as MusicItem[]
 
       if (cursor.value === 0) {
         musicList.value = newMusic
@@ -198,14 +209,14 @@ function handleClose() {
   visible.value = false
 }
 
-function formatDuration(seconds: number) {
+function formatDuration(seconds?: number) {
   if (!seconds) return '00:00'
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
 
-function formatUserCount(count: number) {
+function formatUserCount(count?: number) {
   if (!count) return '0'
   if (count >= 10000) {
     return (count / 10000).toFixed(1) + '万'

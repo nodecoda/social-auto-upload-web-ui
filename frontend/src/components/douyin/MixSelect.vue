@@ -81,7 +81,15 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
-const mixList = ref<any[]>([])
+const mixList = ref<MixItem[]>([])
+interface MixItem {
+  mix_id: string | number
+  mix_name: string
+  cover_url?: { url_list?: string[] }
+  desc?: string
+  [key: string]: unknown
+}
+
 const selectedMixId = ref(props.modelValue)
 const searchKeyword = ref('')
 
@@ -94,7 +102,7 @@ watch(() => props.modelValue, (val) => {
   selectedMixId.value = val
   // 如果有值但 mixList 中没有对应的选项，直接把完整对象放到列表
   if (val && props.data && !mixList.value.find(m => m.mix_name === val)) {
-    mixList.value.unshift(props.data)
+    mixList.value.unshift(props.data as MixItem)
   }
 }, { immediate: true })
 
@@ -117,7 +125,7 @@ async function handleSearch() {
     console.log('合集搜索结果:', resp)
     if (resp.code === 200) {
       // 前端过滤合集列表
-      const allMixes = resp.data?.mix_list || []
+      const allMixes = (resp.data?.mix_list || []) as MixItem[]
       mixList.value = allMixes.filter(m =>
         m.mix_name?.toLowerCase().includes(keyword.toLowerCase())
       )

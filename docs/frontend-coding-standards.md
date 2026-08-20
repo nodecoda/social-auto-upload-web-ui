@@ -285,6 +285,8 @@ it('emits confirm with payload', async () => {
 | `v-if` + `v-for` 同元素 | 0 处 ✓ | — |
 | 组件文件名 PascalCase | ✓ | — |
 | `storeToRefs` 使用 | 0 处（现为 `store.xxx`） | 合规；新代码按 Rule 5 |
+| `allowJs` | `false`（原 `true`，0 个 .js 源文件） | 已收紧（2026-08 批 11） |
+| 平台 Select 列表 `any[]` | douyin 系 7 处已收敛 | 已定义 ActivityItem/TagItem/MixItem/HotspotItem/MusicItem 接口（批 11）；其余平台下一批 |
 
 ---
 
