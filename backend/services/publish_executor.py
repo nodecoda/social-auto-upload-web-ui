@@ -66,7 +66,7 @@ def _worker() -> None:
 
 
 def _ensure_worker() -> None:
-    global _worker_started
+    global _worker_started  # noqa: PLW0603 -- 惰性 worker 单例,锁+双重检查保护
     if _worker_started:
         return
     with _lock:

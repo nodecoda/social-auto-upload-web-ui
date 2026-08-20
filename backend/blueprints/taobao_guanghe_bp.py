@@ -42,7 +42,7 @@ _picker_thread = None
 
 def _ensure_picker_loop():
     """惰性启动后台 event loop 线程(全局单例)。"""
-    global _picker_loop, _picker_thread
+    global _picker_loop, _picker_thread  # noqa: PLW0603 -- 惰性 event loop 单例,锁保护
     with _picker_loop_lock:
         if _picker_loop is None:
             _picker_loop = asyncio.new_event_loop()

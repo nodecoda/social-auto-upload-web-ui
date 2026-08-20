@@ -28,7 +28,7 @@ _loop_ready = threading.Event()
 
 
 def _start_loop():
-    global _loop
+    global _loop  # noqa: PLW0603 -- 惰性 event loop 单例,锁+双重检查保护
     _loop = asyncio.new_event_loop()
     asyncio.set_event_loop(_loop)
     _loop_ready.set()
@@ -36,7 +36,7 @@ def _start_loop():
 
 
 def _ensure_loop():
-    global _loop_thread
+    global _loop_thread  # noqa: PLW0603 -- 惰性线程单例,锁+双重检查保护
     if _loop_thread is None or not _loop_thread.is_alive():
         with _loop_lock:
             # 双重检查:拿锁后再次判定,避免并发请求各起一个 event loop
