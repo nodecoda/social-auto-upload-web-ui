@@ -4,117 +4,18 @@
     <p class="page-subtitle">配置应用偏好</p>
 
     <!-- 代理设置 -->
-    <div class="settings-card">
-      <h3 class="card-title">
-        <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        网络代理
-      </h3>
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">HTTP 代理地址</span>
-          <span class="setting-desc">用于 YouTube、TikTok 等海外平台的浏览器连接，国内平台无需代理</span>
-        </div>
-        <div class="setting-control">
-          <el-input
-            v-model="settings.proxyUrl"
-            placeholder="http://127.0.0.1:7897"
-            style="width: 300px"
-            clearable
-          />
-        </div>
-      </div>
-      <div class="proxy-platforms">
-        <span class="proxy-tag" v-for="p in overseasPlatforms" :key="p.key">
-          <img :src="p.logo" :alt="p.name" class="proxy-tag-logo" />
-          {{ p.name }}
-        </span>
-      </div>
-    </div>
+    <ProxySettingsCard v-model:proxy-url="settings.proxyUrl" :overseas-platforms="overseasPlatforms" />
 
     <!-- 发布设置 -->
-    <div class="settings-card">
-      <h3 class="card-title">
-        <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-        发布设置
-      </h3>
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">上传视频后自动填充标题</span>
-          <span class="setting-desc">上传视频成功后，自动将文件名填入所有渠道的标题字段</span>
-        </div>
-        <div class="setting-control">
-          <el-switch v-model="settings.autoFillTitle" />
-        </div>
-      </div>
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">自动保存草稿</span>
-          <span class="setting-desc">发布界面内容（视频、封面、标题、描述等）发生变更时，自动定时将当前内容保存为草稿，避免意外丢失</span>
-        </div>
-        <div class="setting-control">
-          <el-switch v-model="settings.autoSaveDraft" />
-        </div>
-      </div>
-      <div class="setting-row" v-if="settings.autoSaveDraft">
-        <div class="setting-info">
-          <span class="setting-label">自动保存间隔（秒）</span>
-          <span class="setting-desc">检测到内容变更后，等待指定时间再执行保存。间隔过短可能频繁触发请求，建议设置为 10-30 秒</span>
-        </div>
-        <div class="setting-control">
-          <el-input-number v-model="settings.autoSaveInterval" :min="10" :max="300" controls-position="right" style="width: 120px" />
-        </div>
-      </div>
-      <div class="setting-row">
-        <div class="setting-info">
-          <span class="setting-label">账号登录状态检查机制</span>
-          <span class="setting-desc">选择账号 Cookie 有效性的检测时机。两个机制互斥，只能生效一个</span>
-        </div>
-        <div class="setting-control">
-          <el-select v-model="settings.accountCheckMode" style="width: 220px">
-            <el-option label="发布前检测（默认）" value="pre-publish" />
-            <el-option label="项目启动时后台检测" value="startup" />
-          </el-select>
-        </div>
-      </div>
-    </div>
+    <PublishSettingsCard
+      v-model:auto-fill-title="settings.autoFillTitle"
+      v-model:auto-save-draft="settings.autoSaveDraft"
+      v-model:auto-save-interval="settings.autoSaveInterval"
+      v-model:account-check-mode="settings.accountCheckMode"
+    />
 
     <!-- 渠道黑名单 -->
-    <div class="settings-card">
-      <div class="card-header">
-        <h3 class="card-title">
-          <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-          渠道黑名单
-        </h3>
-        <el-button type="primary" @click="openBlacklistDialog">
-          <el-icon><Plus /></el-icon> 添加渠道
-        </el-button>
-      </div>
-      <p class="card-desc">
-        被加入黑名单的渠道，将无法在视频发布、图集发布、账号登录场景下被选择
-      </p>
-
-      <!-- 已拉黑渠道的小卡片网格 -->
-      <div v-if="disabledPlatformObjects.length" class="blacklist-grid">
-        <div
-          v-for="p in disabledPlatformObjects"
-          :key="p.key"
-          class="blacklist-chip"
-          :class="`platform-${p.cssClass}`"
-        >
-          <img v-if="p.logo" :src="p.logo" :alt="p.name" class="chip-logo" />
-          <span class="chip-name">{{ p.name }}</span>
-          <button class="chip-remove" type="button" @click="removeFromBlacklist(p.key)">
-            <el-icon><Close /></el-icon>
-          </button>
-        </div>
-      </div>
-
-      <!-- 空态 -->
-      <div v-else class="blacklist-empty">
-        <el-icon class="empty-icon"><Warning /></el-icon>
-        <span>暂无黑名单渠道，点击右上角「添加渠道」开始</span>
-      </div>
-    </div>
+    <BlacklistCard :platforms="disabledPlatformObjects" @open="openBlacklistDialog" @remove="removeFromBlacklist" />
 
     <!-- 文件存储 -->
     <StorageSettingsCard :storage="settings.storage" />
@@ -196,12 +97,15 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ChatDotRound, Plus, Close, Warning } from '@element-plus/icons-vue'
+import { ChatDotRound } from '@element-plus/icons-vue'
 import { settingsApi } from '@/api/v2'
 import { platformList, getPlatformByKey } from '@/config/platforms'
 import { http, type ApiResponse } from '@/utils/request'
 import { useAppStore } from '@/stores/app'
 import PlatformBlacklistDialog from '@/components/PlatformBlacklistDialog.vue'
+import ProxySettingsCard from '@/components/ProxySettingsCard.vue'
+import PublishSettingsCard from '@/components/PublishSettingsCard.vue'
+import BlacklistCard from '@/components/BlacklistCard.vue'
 import StorageSettingsCard, { type StorageConfig, type S3Config } from '@/components/StorageSettingsCard.vue'
 import CacheSettingsCard, { type CacheInfoState, type ClearCacheTarget, type CacheEntry, type LogsCacheEntry } from '@/components/CacheSettingsCard.vue'
 
@@ -544,165 +448,6 @@ onMounted(() => {
         display: flex;
         align-items: center;
         gap: 12px;
-      }
-
-      .cache-size {
-        font-size: 12px;
-        color: $text-muted;
-        font-family: 'Fira Code', monospace;
-        white-space: nowrap;
-
-        &.empty {
-          opacity: 0.5;
-        }
-      }
-
-      .cache-btn {
-        padding: 8px 20px;
-        border: 1px solid rgba($danger-color, 0.3);
-        border-radius: $radius-base;
-        background: rgba($danger-color, 0.06);
-        color: $danger-color;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: $transition-base;
-        font-family: inherit;
-        outline: none;
-
-        &:hover:not(:disabled) {
-          background: rgba($danger-color, 0.12);
-          border-color: rgba($danger-color, 0.5);
-        }
-
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      }
-    }
-
-    .proxy-platforms {
-      display: flex;
-      gap: $spacing-sm;
-      margin-top: $spacing-sm;
-      padding-left: 4px;
-
-      .proxy-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 14px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 500;
-        background: $bg-surface;
-        border: 1px solid $border;
-        color: $text-secondary;
-
-        .proxy-tag-logo {
-          width: 16px;
-          height: 16px;
-          border-radius: 3px;
-        }
-      }
-    }
-
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: $spacing-md;
-      margin: 0 0 $spacing-sm 0;
-      padding-bottom: $spacing-sm;
-      border-bottom: 1px solid $border;
-
-      .card-title {
-        margin: 0;
-        border-bottom: none;
-        padding-bottom: 0;
-      }
-    }
-
-    .card-desc {
-      margin: 0 0 $spacing-md 0;
-      font-size: 12px;
-      color: $text-muted;
-      line-height: 1.5;
-    }
-
-    .blacklist-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .blacklist-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border-radius: 8px;
-      border: 1px solid $border;
-      background: $bg-surface;
-      position: relative;
-      transition: all 0.2s;
-
-      &:hover {
-        border-color: var(--el-color-primary);
-      }
-    }
-
-    .chip-logo {
-      width: 18px;
-      height: 18px;
-      border-radius: 4px;
-    }
-
-    .chip-name {
-      font-size: 13px;
-      color: $text-primary;
-    }
-
-    .chip-remove {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 16px;
-      height: 16px;
-      border: 0;
-      border-radius: 50%;
-      background: rgba(0, 0, 0, 0.4);
-      color: white;
-      cursor: pointer;
-      opacity: 0;
-      transition: opacity 0.2s;
-      padding: 0;
-      margin-left: 2px;
-
-      .blacklist-chip:hover & {
-        opacity: 1;
-      }
-
-      &:hover {
-        background: var(--el-color-danger);
-      }
-    }
-
-    .blacklist-empty {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: $text-secondary;
-      font-size: 13px;
-      margin-top: 12px;
-      padding: 16px;
-      background: $bg-surface;
-      border-radius: 8px;
-
-      .empty-icon {
-        font-size: 18px;
       }
     }
   }
