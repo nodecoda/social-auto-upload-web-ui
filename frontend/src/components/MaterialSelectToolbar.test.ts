@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import MaterialSelectToolbar from './MaterialSelectToolbar.vue'
+import { Grid, PictureFilled, VideoCamera } from '@element-plus/icons-vue'
+import { type ExtractPropTypes } from 'vue'
 
 const stubs = {
   ElInput: { props: ['modelValue', 'placeholder'], template: '<input :value="modelValue" :placeholder="placeholder" @input="$emit(\'update:modelValue\', $event.target.value); $emit(\'input\', $event)" @clear="$emit(\'clear\')" />' },
@@ -8,12 +10,12 @@ const stubs = {
 }
 
 const typeOptions = [
-  { value: 'all', label: '全部', icon: 'Grid' },
-  { value: 'image', label: '图片', icon: 'PictureFilled' },
-  { value: 'video', label: '视频', icon: 'VideoCamera' },
+  { value: 'all', label: '全部', icon: Grid },
+  { value: 'image', label: '图片', icon: PictureFilled },
+  { value: 'video', label: '视频', icon: VideoCamera },
 ]
 
-const mountIt = (over: any = {}) =>
+const mountIt = (over: Partial<ExtractPropTypes<typeof MaterialSelectToolbar['props']>> = {}) =>
   mount(MaterialSelectToolbar, {
     props: { modelValue: '', typeOptions, typeFilter: 'all', ...over },
     global: { stubs },

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { type ExtractPropTypes } from 'vue'
 import SettingFieldControl from './SettingFieldControl.vue'
 
 const stubs = {
@@ -14,7 +15,12 @@ const stubs = {
   RemoteSearchSelect: { template: '<div class="remote-stub" @click="$emit(\'change\', { compilationId: 9 })" />' },
 }
 
-const mountIt = (field: any, modelValue: any = null, form: any = {}, over: any = {}) =>
+const mountIt = (
+  field: ExtractPropTypes<typeof SettingFieldControl['props']>['field'],
+  modelValue: ExtractPropTypes<typeof SettingFieldControl['props']>['modelValue'] = null,
+  form: Record<string, unknown> = {},
+  over: Partial<ExtractPropTypes<typeof SettingFieldControl['props']>> = {},
+) =>
   mount(SettingFieldControl, {
     props: {
       field,

@@ -13,17 +13,17 @@ const groups = [
   {
     key: 'douyin', name: '抖音', color: '#000000', letter: '抖', logo: '',
     accounts: [
-      { id: 1, name: '账号A', status: '正常', avatar: '' },
-      { id: 2, name: '账号B', status: '异常', avatar: 'http://sinaimg.cn/a/b.jpg' },
+      { id: 1, name: '账号A', status: '正常', avatar: '', platform: '抖音' },
+      { id: 2, name: '账号B', status: '异常', avatar: 'http://sinaimg.cn/a/b.jpg', platform: '抖音' },
     ],
   },
   {
     key: 'kuaishou', name: '快手', color: '#ff0000', letter: '快', logo: '',
-    accounts: [{ id: 3, name: '账号C', status: '正常', avatar: '' }],
+    accounts: [{ id: 3, name: '账号C', status: '正常', avatar: '', platform: '快手' }],
   },
   {
     key: 'blocked', name: '被禁用平台', color: '#888888', letter: '禁', logo: '',
-    accounts: [{ id: 9, name: '账号X', status: '正常', avatar: '' }],
+    accounts: [{ id: 9, name: '账号X', status: '正常', avatar: '', platform: '被禁用' }],
   },
 ]
 
@@ -31,7 +31,7 @@ const defaultProps = () => ({
   mode: 'edit',
   accountGroups: groups,
   totalCount: 3,
-  selectedPlatform: null,
+  selectedPlatform: undefined,
   selectedAccountId: null,
   expandedGroups: new Set(['douyin']),
   publishAccountIds: new Set([1, 2]),
@@ -39,7 +39,7 @@ const defaultProps = () => ({
 })
 
 const mountIt = (over = {}) => mount(AccountSidebar, {
-  props: { ...defaultProps(), ...over } as any,
+  props: { ...defaultProps(), ...over },
   global: { stubs: { ElIcon } },
 })
 

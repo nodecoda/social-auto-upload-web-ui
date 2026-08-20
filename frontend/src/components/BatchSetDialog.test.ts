@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import {
   ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElTag, ElDatePicker, ElMessage,
 } from '../../tests/stubs'
@@ -19,9 +19,9 @@ const mountIt = (over = {}) => mount(BatchSetDialog, {
 })
 
 /** 打开对话框(触发 watch 重置/预选) */
-const open = async (w: any) => { await w.setProps({ modelValue: true }); await w.vm.$nextTick() }
+const open = async (w: VueWrapper) => { await w.setProps({ modelValue: true }); await w.vm.$nextTick() }
 
-const cardOf = (w: any, name: string) => w.findAll('.channel-card').find((c: any) => c.text().includes(name))
+const cardOf = (w: VueWrapper, name: string) => w.findAll('.channel-card').find(c => c.text().includes(name))!
 
 describe('BatchSetDialog', () => {
   beforeEach(() => {

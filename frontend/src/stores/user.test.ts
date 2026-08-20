@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useUserStore } from './user'
 
 describe('useUserStore', () => {
-  let store: any
+  let store: ReturnType<typeof useUserStore>
 
   beforeEach(() => {
     setActivePinia(createPinia())

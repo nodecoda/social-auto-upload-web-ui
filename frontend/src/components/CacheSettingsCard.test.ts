@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import CacheSettingsCard, { type CacheInfoState } from './CacheSettingsCard.vue'
+import { type ExtractPropTypes } from 'vue'
 
 const fullInfo: CacheInfoState = {
   frames: { count: 12, size: 1024 * 1024 * 3.5 },
@@ -16,7 +17,7 @@ const emptyInfo: CacheInfoState = {
   covers: { count: 0, size: 0 },
 }
 
-const mountIt = (over: any = {}) =>
+const mountIt = (over: Partial<ExtractPropTypes<typeof CacheSettingsCard['props']>> = {}) =>
   mount(CacheSettingsCard, {
     props: { cacheInfo: fullInfo, clearing: false, ...over },
   })

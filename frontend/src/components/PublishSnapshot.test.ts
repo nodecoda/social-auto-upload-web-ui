@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PublishSnapshot, { type BatchItem } from './PublishSnapshot.vue'
+import { type ExtractPropTypes } from 'vue'
 
 const ElIcon = { template: '<i class="el-icon-stub"><slot /></i>' }
 const ElTag = { props: ['size'], template: '<span class="el-tag-stub"><slot /></span>' }
@@ -17,7 +18,7 @@ const successItem: BatchItem = {
   },
 }
 
-const mountIt = (over: any = {}) =>
+const mountIt = (over: Partial<ExtractPropTypes<typeof PublishSnapshot['props']>> = {}) =>
   mount(PublishSnapshot, {
     props: {
       item: over.item ?? successItem,

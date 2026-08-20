@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useAccountStore } from './account'
+import { useAccountStore, type AccountRow } from './account'
 import { accountApi } from '@/api/account'
 
 vi.mock('@/api/account', () => ({
@@ -10,7 +10,7 @@ vi.mock('@/api/account', () => ({
 }))
 
 describe('useAccountStore', () => {
-  let store: any
+  let store: ReturnType<typeof useAccountStore>
 
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -19,7 +19,20 @@ describe('useAccountStore', () => {
   })
 
   // 后端 SELECT * 行: [id, type, filePath, userName, status, avatar, fans, likes, follows, stats, tags]
-  const makeRow = (over: any = {}) => [
+  interface AccountRowOver {
+    id?: number
+    type?: number
+    filePath?: string
+    name?: string
+    status?: number
+    avatar?: string
+    fans?: number
+    likes?: number
+    follows?: number
+    stats?: string | Array<{ name: string }>
+    tags?: string[]
+  }
+  const makeRow = (over: AccountRowOver = {}): AccountRow => [
     over.id ?? 1,
     over.type ?? 2,          // 视频号 id=2
     over.filePath ?? '/path/1.jpg',
@@ -58,7 +71,7 @@ describe('useAccountStore', () => {
       makeRow({ id: 2, status: 1 }),
       makeRow({ id: 3, status: 0 }),
     ])
-    expect(store.accounts.map((a: any) => a.status)).toEqual(['验证中', '正常', '异常'])
+    expect(store.accounts.map(a => a.status)).toEqual(['验证中', '正常', '异常'])
   })
 
   it('setAccounts 映射 platform: 按 platformIdToName, 未知 id 为 未知', () => {
@@ -80,15 +93,15 @@ describe('useAccountStore', () => {
 
   it('setAccounts 缺省 tags 时回退为空数组', () => {
     // 只有 10 项且最后一项为空字符串 → item[10] undefined, item[last] 空 → []
-    const shortRow = makeRow({ tags: undefined }).slice(0, 10)
-    shortRow[9] = ''
+    // 旧版 10 列行(无 tags):slice 去掉 tags 列,stats 置空模拟非法/缺失
+    const shortRow = makeRow({ tags: undefined, stats: '' }).slice(0, 10) as AccountRow
     store.setAccounts([shortRow])
     expect(store.accounts[0].tags).toEqual([])
   })
 
   it('addAccount 追加到列表末尾', () => {
     store.setAccounts([makeRow()])
-    store.addAccount({ id: 2, name: '新账号', platform: '小红书' })
+    store.addAccount({ id: 2, type: 1, filePath: '/path/2.jpg', name: '新账号', status: '正常', platform: '小红书', avatar: '', fans: 0, likes: 0, follows: 0, stats: [], tags: [] })
     expect(store.accounts).toHaveLength(2)
     expect(store.accounts[1].name).toBe('新账号')
   })
@@ -106,7 +119,7 @@ describe('useAccountStore', () => {
   it('deleteAccount 删除指定 id, 不存在的 id 不改变列表', () => {
     store.setAccounts([makeRow({ id: 1 }), makeRow({ id: 2 })])
     store.deleteAccount(1)
-    expect(store.accounts.map((a: any) => a.id)).toEqual([2])
+    expect(store.accounts.map(a => a.id)).toEqual([2])
     store.deleteAccount(99)
     expect(store.accounts).toHaveLength(1)
   })
@@ -118,7 +131,7 @@ describe('useAccountStore', () => {
       makeRow({ id: 3, type: 1 }),            // 小红书
     ])
     const result = store.getAccountsByPlatform('视频号')
-    expect(result.map((a: any) => a.id)).toEqual([1, 2])
+    expect(result.map(a => a.id)).toEqual([1, 2])
   })
 
   it('loadTags 成功时写入 allTags', async () => {
@@ -138,9 +151,9 @@ describe('useAccountStore', () => {
   })
 
   it('loadTags 返回非 200 时不清空已有标签', async () => {
-    store.allTags = ['old']
+    store.allTags = [{ id: 1, name: 'old' }]
     vi.mocked(accountApi.getTags).mockResolvedValue({ code: 500, data: [] })
     await store.loadTags()
-    expect(store.allTags).toEqual(['old'])
+    expect(store.allTags).toEqual([{ id: 1, name: 'old' }])
   })
 })
