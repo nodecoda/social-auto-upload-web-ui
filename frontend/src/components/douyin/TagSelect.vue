@@ -115,9 +115,23 @@ const emit = defineEmits<{
   (e: 'change', payload: Record<string, any> | null): void
 }>()
 
+interface TagItem {
+  id: string | number
+  name: string
+  desc?: string
+  icon?: string
+  type: string
+  typeName?: string
+  playCount?: number
+  enable_mount?: boolean
+  reason?: string
+  data?: Record<string, any>
+  [key: string]: unknown
+}
+
 const selectedType = ref('')
 const loading = ref(false)
-const tagList = ref<any[]>([])
+const tagList = ref<TagItem[]>([])
 const selectedTagId = ref('')
 const searchKeyword = ref('')
 
@@ -313,7 +327,7 @@ function handleChange(val: string) {
       emit('change', null)
       return
     }
-    emit('update:modelValue', tag)
+    emit('update:modelValue', tag ? { ...tag } : null)
     emit('change', tag ? { ...tag, _searchKeyword: searchKeyword.value } : null)
   } else {
     emit('update:modelValue', null)
@@ -325,7 +339,7 @@ function onImageError(e: Event) {
   ;(e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZjVmNWY1Ii8+PHRleHQgeD0iMjAiIHk9IjI0IiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPiM8L3RleHQ+PC9zdmc+'
 }
 
-function formatPlayCount(n: number) {
+function formatPlayCount(n?: number) {
   if (!n) return '0'
   if (n >= 100000000) return (n / 100000000).toFixed(1) + '亿'
   if (n >= 10000) return (n / 10000).toFixed(1) + '万'

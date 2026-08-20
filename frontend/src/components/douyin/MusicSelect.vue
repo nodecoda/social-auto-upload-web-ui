@@ -81,8 +81,19 @@ const emit = defineEmits<{
   (e: 'change', payload: Record<string, any> | null): void
 }>()
 
+interface MusicItem {
+  id: string | number
+  title: string
+  author?: string
+  cover_medium?: { url_list?: string[] }
+  cover_thumb?: { url_list?: string[] }
+  duration?: number
+  user_count?: number
+  [key: string]: unknown
+}
+
 const loading = ref(false)
-const musicList = ref<any[]>([])
+const musicList = ref<MusicItem[]>([])
 const selectedMusicId = ref(props.modelValue || '')
 const searchKeyword = ref('')
 
@@ -92,7 +103,7 @@ watch(() => props.modelValue, (val) => {
   if (val && !musicList.value.find(m => m.title === val)) {
     // 使用完整对象或创建占位项
     if (props.data && props.data.title === val) {
-      musicList.value.unshift(props.data)
+      musicList.value.unshift(props.data as MusicItem)
     } else {
       musicList.value.unshift({
         id: val,
@@ -118,7 +129,7 @@ async function handleSearch() {
     const resp = (await douyinImageApi.searchMusic(props.accountId || '', keyword)) as ApiResponse<{ music?: any[] }>
     console.log('音乐搜索结果:', resp)
     if (resp.code === 200) {
-      musicList.value = resp.data?.music || []
+      musicList.value = (resp.data?.music || []) as MusicItem[]
       console.log('音乐列表:', musicList.value)
     }
   } catch (e) {
@@ -147,14 +158,14 @@ function handleChange(val: string) {
   }
 }
 
-function formatDuration(seconds: number) {
+function formatDuration(seconds?: number) {
   if (!seconds) return '00:00'
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
 
-function formatUserCount(count: number) {
+function formatUserCount(count?: number) {
   if (!count) return '0'
   if (count >= 10000) {
     return (count / 10000).toFixed(1) + '万'

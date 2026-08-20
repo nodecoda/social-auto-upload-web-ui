@@ -82,8 +82,16 @@ const emit = defineEmits<{
   (e: 'change', payload: Record<string, any> | null): void
 }>()
 
+interface HotspotItem {
+  sentence_id?: string | number
+  word: string
+  hot_value?: number
+  word_cover?: { url_list?: string[] }
+  [key: string]: unknown
+}
+
 const loading = ref(false)
-const hotspotList = ref<any[]>([])
+const hotspotList = ref<HotspotItem[]>([])
 const selectedHotspot = ref(props.modelValue)
 const searchKeyword = ref('')
 
@@ -91,7 +99,7 @@ watch(() => props.modelValue, (val) => {
   selectedHotspot.value = val
   // 如果有值但 hotspotList 中没有对应的选项，直接把完整对象放到列表
   if (val && props.data && !hotspotList.value.find(h => h.word === val)) {
-    hotspotList.value.unshift(props.data)
+    hotspotList.value.unshift(props.data as HotspotItem)
   }
 }, { immediate: true })
 
@@ -108,7 +116,7 @@ async function handleSearch() {
     const resp = (await douyinImageApi.searchHotspot(props.accountId || '', keyword)) as ApiResponse<{ sentences?: any[] }>
     console.log('热点搜索结果:', resp)
     if (resp.code === 200) {
-      hotspotList.value = resp.data?.sentences || []
+      hotspotList.value = (resp.data?.sentences || []) as HotspotItem[]
       console.log('热点列表:', hotspotList.value)
     }
   } catch (e) {
@@ -132,7 +140,7 @@ function handleChange(val: string) {
   emit('change', hotspot ? { ...hotspot, _searchKeyword: searchKeyword.value } : null)
 }
 
-function formatHotValue(value: number) {
+function formatHotValue(value?: number) {
   if (!value) return '0'
   if (value >= 10000) {
     return (value / 10000).toFixed(1) + '万'
