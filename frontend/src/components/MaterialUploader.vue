@@ -127,12 +127,52 @@
   </el-dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { UploadFilled, VideoCamera, Picture, CircleCheckFilled, CircleCloseFilled, Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import type { UploadFile, UploadInstance } from 'element-plus'
 import { materialsApi } from '@/api/materials'
 import { uploadApi } from '@/api/upload'
+
+type UploadItemStatus = 'pending' | 'uploading' | 'success' | 'failed'
+
+interface UploadFileItem {
+  uid: string
+  name: string
+  size: number
+  fileType: 'video' | 'image'
+  raw: File
+  status: UploadItemStatus
+  percent: number
+  speed: number
+  error: string
+  isChunkUpload: boolean
+  uploadId: string
+  totalChunks?: number
+  chunkSize?: number
+  completedBytes?: number
+  cancelling: boolean
+  response?: unknown
+  _ref: unknown
+}
+
+interface ApiResult {
+  code?: number
+  msg?: string
+  data?: unknown
+}
+
+interface ChunkInitData {
+  upload_id: string
+  total_chunks: number
+  chunk_size: number
+}
+
+interface ProgressLike {
+  loaded: number
+  total?: number
+}
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -157,31 +197,33 @@ const visible = computed({
   set: (v) => emit('update:modelValue', v),
 })
 
-const fileList = ref([])
+const fileList = ref<UploadFileItem[]>([])
 const uploading = ref(false)
-const uploadRef = ref(null)
+const uploadRef = ref<UploadInstance | null>(null)
 
 let _uidCounter = 0
 function makeUid() { return `mu-${Date.now()}-${++_uidCounter}` }
 
-function getFileType(file) {
-  if (file.type?.startsWith('video/')) return 'video'
-  if (file.type?.startsWith('image/')) return 'image'
+function getFileType(file: UploadFile) {
+  // el-upload 的 UploadFile 无 type 字段, 保持原运行时语义: 类型判定只走扩展名兜底
+  const f = file as UploadFile & { type?: string }
+  if (f.type?.startsWith('video/')) return 'video'
+  if (f.type?.startsWith('image/')) return 'image'
   // 兜底扩展名
   const name = (file.name || '').toLowerCase()
   if (/\.(mp4|mov|avi|mkv|webm|flv|m4v|wmv|mpeg|mpg)$/.test(name)) return 'video'
   return 'image'
 }
 
-function onFileChange(file) {
+function onFileChange(file: UploadFile) {
   // el-upload 会先把 file 放进 uploadFiles（内部 list），再触发 onChange
   if (file.status === 'ready') {
-    const item = {
+    const item: UploadFileItem = {
       uid: makeUid(),
       name: file.name,
-      size: file.size,
+      size: file.size as number,
       fileType: getFileType(file),
-      raw: file.raw,
+      raw: file.raw as File,
       status: 'pending',  // pending | uploading | success | failed
       percent: 0,
       speed: 0,
@@ -202,13 +244,13 @@ function onFileChange(file) {
   }
 }
 
-function onFileChangeAppend(file) {
+function onFileChangeAppend(file: UploadFile) {
   if (file.status === 'ready') {
     onFileChange(file)
   }
 }
 
-function removeFile(idx) {
+function removeFile(idx: number) {
   fileList.value.splice(idx, 1)
 }
 
@@ -222,19 +264,19 @@ function onClosed() {
   emit('closed')
 }
 
-function formatSize(bytes) {
+function formatSize(bytes: number) {
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
   if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB'
   return (bytes / 1024 / 1024 / 1024).toFixed(1) + ' GB'
 }
 
-function formatSpeed(bytesPerSec) {
+function formatSpeed(bytesPerSec: number) {
   if (!bytesPerSec) return ''
   return formatSize(bytesPerSec) + '/s'
 }
 
-async function uploadOne(idx) {
+async function uploadOne(idx: number) {
   const item = fileList.value[idx]
   if (!item || item.status !== 'pending') return
   item.status = 'uploading'
@@ -248,18 +290,19 @@ async function uploadOne(idx) {
   }
 }
 
-async function uploadSimple(item) {
+async function uploadSimple(item: UploadFileItem) {
   const startTime = Date.now()
   const formData = new FormData()
   formData.append('file', item.raw)
   try {
-    const resp = await materialsApi.upload(formData, (progressEvent) => {
-      const loaded = progressEvent.loaded
-      const total = progressEvent.total || item.size
+    const resp = (await materialsApi.upload(formData, (progressEvent) => {
+      const pe = progressEvent as ProgressLike
+      const loaded = pe.loaded
+      const total = pe.total || item.size
       item.percent = Math.round((loaded / total) * 100)
       const elapsed = (Date.now() - startTime) / 1000
       if (elapsed > 0.1) item.speed = loaded / elapsed
-    })
+    })) as ApiResult
     if (resp.code === 200) {
       item.status = 'success'
       item.percent = 100
@@ -272,25 +315,25 @@ async function uploadSimple(item) {
     }
   } catch (err) {
     item.status = 'failed'
-    item.error = err.message || '网络错误'
+    item.error = (err as Error).message || '网络错误'
     emit('error', err)
   }
 }
 
-async function uploadByChunks(item) {
+async function uploadByChunks(item: UploadFileItem) {
   const startTime = Date.now()
   try {
     // 1. init session
-    const initResp = await uploadApi.init({
+    const initResp = (await uploadApi.init({
       filename: item.name,
       file_size: item.size,
       mime_type: item.raw.type || '',
       chunk_size: DEFAULT_CHUNK_SIZE,
-    })
+    })) as ApiResult & { data?: ChunkInitData }
     if (initResp.code !== 200) {
       throw new Error(initResp.msg || '初始化上传失败')
     }
-    const { upload_id, total_chunks, chunk_size } = initResp.data
+    const { upload_id, total_chunks, chunk_size } = initResp.data as ChunkInitData
     item.uploadId = upload_id
     item.totalChunks = total_chunks
     item.chunkSize = chunk_size
@@ -298,22 +341,23 @@ async function uploadByChunks(item) {
     // 2. 并发上传分片
     const completedBytes = 0
     item.completedBytes = completedBytes  // 已完成分片的累计字节
-    let uploaded = []  // 已上传分片索引列表（断点续传：init 时 server 端为 []）
+    let uploaded: number[] = []  // 已上传分片索引列表（断点续传：init 时 server 端为 []）
     let nextIdx = 0
-    const inFlight = new Set()
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+    const inFlight = new Set<Promise<void>>()
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
-    const uploadOneChunk = async (idx) => {
+    const uploadOneChunk = async (idx: number) => {
       const start = idx * chunk_size
       const end = Math.min(start + chunk_size, item.size)
       const blob = item.raw.slice(start, end)
-      let lastErr = null
+      let lastErr: unknown = null
       for (let attempt = 1; attempt <= CHUNK_RETRY_MAX; attempt++) {
         if (item.cancelling || item.status === 'failed') return
         try {
           await uploadApi.uploadChunk(upload_id, idx, blob, (progressEvent) => {
-            const chunkLoaded = progressEvent.loaded
-            const chunkTotal = progressEvent.total || blob.size
+            const pe = progressEvent as ProgressLike
+            const chunkLoaded = pe.loaded
+            const chunkTotal = pe.total || blob.size
             const overallLoaded = (item.completedBytes || 0) + chunkLoaded
             item.percent = Math.round((overallLoaded / item.size) * 100)
             const elapsed = (Date.now() - startTime) / 1000
@@ -356,7 +400,7 @@ async function uploadByChunks(item) {
     }
 
     // 3. merge
-    const mergeResp = await uploadApi.merge(upload_id)
+    const mergeResp = (await uploadApi.merge(upload_id)) as ApiResult
     if (mergeResp.code !== 200) {
       throw new Error(mergeResp.msg || '合并失败')
     }
@@ -370,12 +414,12 @@ async function uploadByChunks(item) {
       return
     }
     item.status = 'failed'
-    item.error = err.message || '网络错误'
+    item.error = (err as Error).message || '网络错误'
     emit('error', err)
   }
 }
 
-async function cancelUpload(idx) {
+async function cancelUpload(idx: number) {
   const item = fileList.value[idx]
   if (!item || !item.isChunkUpload || !item.uploadId) return
   item.cancelling = true
@@ -390,7 +434,7 @@ async function cancelUpload(idx) {
   item.cancelling = false
 }
 
-function formatProgressText(percent, item) {
+function formatProgressText(percent: number, item?: UploadFileItem) {
   const speed = item?.speed ? ` · ${formatSpeed(item.speed)}` : ''
   return `${percent}%${speed}`
 }
@@ -411,7 +455,7 @@ async function startUpload() {
   }
 }
 
-function retryUpload(idx) {
+function retryUpload(idx: number) {
   fileList.value[idx].status = 'pending'
   fileList.value[idx].error = ''
   fileList.value[idx].percent = 0

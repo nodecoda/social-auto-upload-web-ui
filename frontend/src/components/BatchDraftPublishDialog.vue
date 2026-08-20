@@ -59,29 +59,49 @@
   </el-dialog>
 </template>
 
-<script setup>
-import { ref, computed, watch } from 'vue'
+<script setup lang="ts">
+import { ref, computed, watch, type PropType } from 'vue'
+
+interface DraftItem {
+  id: number | string
+  type?: string
+  title?: string
+  platforms?: string[]
+}
+
+interface FailureItem {
+  draft_id: number | string
+  reason: string
+}
+
+interface TableRow {
+  id: number | string
+  title: string
+  platforms: string
+  status: 'fail' | 'ok'
+  reason: string
+}
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
-  drafts: { type: Array, default: () => [] },        // [{id, type, title, platforms}]
-  failures: { type: Array, default: () => [] },      // [{draft_id, reason}]
+  drafts: { type: Array as PropType<DraftItem[]>, default: () => [] },        // [{id, type, title, platforms}]
+  failures: { type: Array as PropType<FailureItem[]>, default: () => [] },      // [{draft_id, reason}]
 })
 
 const emit = defineEmits(['update:visible', 'confirm'])
 
 const submitting = ref(false)
-const selectedIds = ref([])
+const selectedIds = ref<Array<number | string>>([])
 
 // 失败集合（draft_id → reason）
 const failureMap = computed(() => {
-  const m = new Map()
+  const m = new Map<number | string, string>()
   for (const f of props.failures) m.set(f.draft_id, f.reason)
   return m
 })
 
 // 表格数据：每条草稿带 status/reason/platforms
-const tableData = computed(() =>
+const tableData = computed<TableRow[]>(() =>
   props.drafts.map((d) => {
     const reason = failureMap.value.get(d.id)
     return {
@@ -112,7 +132,7 @@ const okIds = computed(() => tableData.value.filter((r) => r.status === 'ok').ma
 const allChecked = computed(() => okIds.value.length > 0 && okIds.value.every((id) => selectedIds.value.includes(id)))
 const someChecked = computed(() => !allChecked.value && selectedIds.value.length > 0)
 
-function toggleRow(id, checked) {
+function toggleRow(id: number | string, checked: boolean) {
   if (checked) {
     if (!selectedIds.value.includes(id)) selectedIds.value.push(id)
   } else {
@@ -120,7 +140,7 @@ function toggleRow(id, checked) {
   }
 }
 
-function toggleAll(checked) {
+function toggleAll(checked: boolean) {
   selectedIds.value = checked ? [...okIds.value] : []
 }
 

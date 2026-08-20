@@ -42,13 +42,20 @@
   </el-dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import { type PropType } from 'vue'
 import { Check, Close, InfoFilled } from '@element-plus/icons-vue'
+
+interface PublishResultItem {
+  status: 'success' | 'error' | 'pending' | string
+  label: string
+  message?: string
+}
 
 defineProps({
   modelValue: { type: Boolean, required: true },
   progress: { type: Number, default: 0 },
-  results: { type: Array, default: () => [] },
+  results: { type: Array as PropType<PublishResultItem[]>, default: () => [] },
   currentAccount: { type: String, default: '' },
 })
 

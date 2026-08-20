@@ -13,19 +13,26 @@
   </div>
 </template>
 
-<script setup>
-import { ref, nextTick, watch } from 'vue'
+<script setup lang="ts">
+import { ref, nextTick, watch, type PropType } from 'vue'
+
+interface ChannelSummaryItem {
+  platform: string
+  name: string
+  count: number
+  logo?: string
+}
 
 const props = defineProps({
-  channels: { type: Array, required: true },
-  overflowKey: { type: [String, Number], default: '' },
+  channels: { type: Array as PropType<ChannelSummaryItem[]>, required: true },
+  overflowKey: { type: [String, Number] as PropType<string | number>, default: '' },
 })
 
-const trackEl = ref(null)
+const trackEl = ref<HTMLElement | null>(null)
 const isOverflow = ref(false)
 
-function setRef(el) {
-  if (el) trackEl.value = el
+function setRef(el: unknown) {
+  if (el) trackEl.value = el as HTMLElement
 }
 
 function checkOverflow() {

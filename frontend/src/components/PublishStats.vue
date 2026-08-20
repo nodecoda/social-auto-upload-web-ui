@@ -29,7 +29,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { VideoPlay, Star, Collection, ChatLineRound } from '@element-plus/icons-vue'
 
 const props = defineProps({

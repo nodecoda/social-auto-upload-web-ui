@@ -89,16 +89,35 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount, watch, type PropType } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Delete, RefreshRight, FolderOpened, Rank } from '@element-plus/icons-vue'
 import Sortable from 'sortablejs'
 import { materialsApi } from '@/api/materials'
 import { getFileUrl } from '@/utils/storage'
 
+interface UploadImageItem {
+  id: number | string
+  name: string
+  url: string
+  stored_path?: string
+  size?: number
+  type?: string
+  uploading: boolean
+  progress: number
+}
+
+interface UploadRespData {
+  id: number | string
+  original_filename: string
+  stored_path: string
+  file_size: number
+  mime_type: string
+}
+
 const props = defineProps({
-  modelValue: { type: Array, default: () => [] },
+  modelValue: { type: Array as PropType<UploadImageItem[]>, default: () => [] },
   maxCount: { type: Number, default: 35 },
   visibleRows: { type: Number, default: 3 },
   columns: { type: Number, default: 5 },
@@ -106,13 +125,13 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'open-material-library'])
 
-const fileInputRef = ref(null)
-const gridRef = ref(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+const gridRef = ref<HTMLElement | null>(null)
 const isDragOver = ref(false)
-let sortableInstance = null
+let sortableInstance: Sortable | null = null
 
 // Local copy of images for two-way binding
-const images = ref([])
+const images = ref<UploadImageItem[]>([])
 
 // Sync with parent
 watch(() => props.modelValue, (newVal) => {
@@ -163,8 +182,9 @@ function triggerUpload() {
 }
 
 // Handle file selection
-function onFileSelected(e) {
-  const files = Array.from(e.target.files || [])
+function onFileSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const files = Array.from(input.files || [])
   if (!files.length) return
 
   const remainingSlots = props.maxCount - images.value.length
@@ -177,11 +197,11 @@ function onFileSelected(e) {
   filesToUpload.forEach(file => uploadFile(file))
 
   // Reset input
-  e.target.value = ''
+  input.value = ''
 }
 
 // Upload a single file
-async function uploadFile(file) {
+async function uploadFile(file: File) {
   const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp']
   if (!validTypes.includes(file.type)) {
     ElMessage.warning('不支持的图片格式')
@@ -192,7 +212,7 @@ async function uploadFile(file) {
     return
   }
 
-  const placeholder = {
+  const placeholder: UploadImageItem = {
     id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: file.name,
     url: URL.createObjectURL(file),
@@ -208,13 +228,14 @@ async function uploadFile(file) {
   try {
     const formData = new FormData()
     formData.append('file', file)
-    const resp = await materialsApi.upload(formData, (percent) => {
+    // materialsApi.upload 返回类型未精确标注, 按响应结构做最小标注
+    const resp = (await materialsApi.upload(formData, (percent: number) => {
       if (images.value[index]) {
         images.value[index].progress = percent
       }
-    })
+    })) as { code?: number; data?: UploadRespData }
     if (resp.code === 200) {
-      const d = resp.data
+      const d = resp.data as UploadRespData
       images.value[index] = {
         id: d.id,
         name: d.original_filename,
@@ -233,17 +254,17 @@ async function uploadFile(file) {
 }
 
 // Remove image
-function removeImage(index) {
+function removeImage(index: number) {
   images.value.splice(index, 1)
 }
 
 // Re-upload image
-function reUpload(index) {
+function reUpload(index: number) {
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = 'image/jpeg,image/png,image/webp'
   input.onchange = (e) => {
-    const file = e.target.files?.[0]
+    const file = (e.target as HTMLInputElement).files?.[0]
     if (!file) return
 
     // Remove old image and upload new one
@@ -254,26 +275,26 @@ function reUpload(index) {
 }
 
 // Open material library
-function openMaterialLibrary(index) {
+function openMaterialLibrary(index: number) {
   emit('open-material-library', index)
 }
 
 // Set image from material library (called by parent)
-function setImageFromLibrary(index, imageData) {
+function setImageFromLibrary(index: number, imageData: Partial<UploadImageItem>) {
   if (index >= 0 && index < images.value.length) {
-    images.value[index] = { ...images.value[index], ...imageData }
+    images.value[index] = { ...images.value[index], ...imageData } as UploadImageItem
   } else if (images.value.length < props.maxCount) {
     images.value.push({
       id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       ...imageData,
       uploading: false,
       progress: 100,
-    })
+    } as UploadImageItem)
   }
 }
 
 // Drag and drop handlers
-function onDragOver(e) {
+function onDragOver(e: DragEvent) {
   e.preventDefault()
   isDragOver.value = true
 }
@@ -282,7 +303,7 @@ function onDragLeave() {
   isDragOver.value = false
 }
 
-function onDrop(e) {
+function onDrop(e: DragEvent) {
   e.preventDefault()
   isDragOver.value = false
 
@@ -305,8 +326,8 @@ function onDrop(e) {
 }
 
 // Image error handler
-function onImageError(e, image) {
-  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzIyMiIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5Zu+54mH5Yqg6L295aSx6LSlPC90ZXh0Pjwvc3ZnPg=='
+function onImageError(e: Event, image: UploadImageItem) {
+  ;(e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzIyMiIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+5Zu+54mH5Yqg6L295aSx6LSlPC90ZXh0Pjwvc3ZnPg=='
 }
 
 // Expose methods for parent

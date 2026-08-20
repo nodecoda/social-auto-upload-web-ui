@@ -73,12 +73,18 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, watch } from 'vue'
+<script setup lang="ts">
+import { ref, computed, watch, type PropType } from 'vue'
 import { ArrowLeft, ArrowRight, Picture } from '@element-plus/icons-vue'
 
+interface CarouselImage {
+  url: string
+  name?: string
+  id?: number | string
+}
+
 const props = defineProps({
-  images: { type: Array, default: () => [] },
+  images: { type: Array as PropType<CarouselImage[]>, default: () => [] },
   initialIndex: { type: Number, default: 0 },
 })
 
@@ -89,7 +95,7 @@ const previewVisible = ref(false)
 const previewImageUrl = ref('')
 
 // Computed
-const currentImage = computed(() => props.images[currentIndex.value] || {})
+const currentImage = computed<CarouselImage>(() => props.images[currentIndex.value] || ({} as CarouselImage))
 
 // Watch for external index changes
 watch(() => props.initialIndex, (val) => {
@@ -120,7 +126,7 @@ function next() {
   }
 }
 
-function goTo(index) {
+function goTo(index: number) {
   if (index >= 0 && index < props.images.length) {
     currentIndex.value = index
     emit('change', currentIndex.value)
@@ -136,12 +142,12 @@ function openPreview() {
 }
 
 // Error handlers
-function onImageError(e) {
-  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzIyMiIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYfliqDovb3lpLHotJU8L3RleHQ+PC9zdmc+'
+function onImageError(e: Event) {
+  ;(e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzIyMiIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYfliqDovb3lpLHotJU8L3RleHQ+PC9zdmc+'
 }
 
-function onPreviewImageError(e) {
-  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzIyMiIvPjx0ZXh0IHg9IjIwMCIgeT0iMTUwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYfliqDovb3lpLHotJU8L3RleHQ+PC9zdmc+'
+function onPreviewImageError(e: Event) {
+  ;(e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzIyMiIvPjx0ZXh0IHg9IjIwMCIgeT0iMTUwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYfliqDovb3lpLHotJU8L3RleHQ+PC9zdmc+'
 }
 
 // Expose methods for parent

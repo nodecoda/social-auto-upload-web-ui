@@ -43,16 +43,22 @@
   </el-popover>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script setup lang="ts">
+import { ref, computed, type PropType } from 'vue'
 import { Check, Plus } from '@element-plus/icons-vue'
 import { accountApi } from '@/api/account'
 import { useAccountStore } from '@/stores/account'
 
+interface TagItem {
+  id: number | string
+  name: string
+  color?: string
+}
+
 const props = defineProps({
   visible: { type: Boolean, default: false },
   accountId: { type: Number, required: true },
-  selectedTags: { type: Array, default: () => [] }
+  selectedTags: { type: Array as PropType<TagItem[]>, default: () => [] }
 })
 
 const emit = defineEmits(['update:visible', 'changed'])
@@ -62,26 +68,29 @@ const keyword = ref('')
 // IME 组合输入中（如中文选词期间）。为 true 时屏蔽 popover 的关闭，避免候选词点击误触发 update:visible(false)
 const composing = ref(false)
 
-function onVisibleUpdate(val) {
+function onVisibleUpdate(val: boolean) {
   if (!val && composing.value) return
   emit('update:visible', val)
 }
 
+// store 的 allTags 来自后端接口, 尚未有精确类型; 这里按 TagItem 结构使用
+const allTags = computed<TagItem[]>(() => (accountStore.allTags as unknown as TagItem[]) || [])
+
 const filteredTags = computed(() => {
-  if (!keyword.value) return accountStore.allTags
+  if (!keyword.value) return allTags.value
   const kw = keyword.value.toLowerCase()
-  return accountStore.allTags.filter(t => t.name.toLowerCase().includes(kw))
+  return allTags.value.filter(t => t.name.toLowerCase().includes(kw))
 })
 
 const exactMatch = computed(() =>
-  accountStore.allTags.some(t => t.name.toLowerCase() === keyword.value.toLowerCase())
+  allTags.value.some(t => t.name.toLowerCase() === keyword.value.toLowerCase())
 )
 
 const selectedIds = computed(() => new Set(props.selectedTags.map(t => t.id)))
 
-const isSelected = (tag) => selectedIds.value.has(tag.id)
+const isSelected = (tag: TagItem) => selectedIds.value.has(tag.id)
 
-async function toggleTag(tag) {
+async function toggleTag(tag: TagItem) {
   const ids = [...selectedIds.value]
   const idx = ids.indexOf(tag.id)
   if (idx >= 0) ids.splice(idx, 1)
@@ -94,7 +103,8 @@ async function handleCreate() {
   const name = keyword.value.trim()
   if (!name) return
   try {
-    const res = await accountApi.createTag({ name })
+    // createTag 的 api 层返回类型未精确标注, 此处按响应结构做最小标注
+    const res = (await accountApi.createTag({ name })) as { code?: number; data?: TagItem }
     if (res.code === 200) {
       await accountStore.loadTags()
       const newTag = res.data

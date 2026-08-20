@@ -129,18 +129,40 @@
   </el-dialog>
 </template>
 
-<script setup>
-import { ref, computed, watch } from 'vue'
+<script setup lang="ts">
+import { ref, computed, watch, type PropType } from 'vue'
 import { Check } from '@element-plus/icons-vue'
 import { useAccountStore } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
 import { accountApi } from '@/api/account'
 import { getDefaultAvatar, proxyAvatar } from '@/utils/avatar'
 
+interface AccountSelectPlatform {
+  key: string
+  name: string
+  letter?: string
+  logo?: string
+}
+
+interface AccountTag {
+  id: number | string
+  name: string
+  color?: string
+}
+
+interface SelectableAccount {
+  id: number | string
+  name: string
+  platform: string
+  status: string
+  avatar?: string
+  tags?: AccountTag[]
+}
+
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
-  platforms: { type: Array, required: true },
-  publishAccountIds: { type: Set, required: true },
+  platforms: { type: Array as PropType<AccountSelectPlatform[]>, required: true },
+  publishAccountIds: { type: Set as PropType<Set<number | string>>, required: true },
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm'])
@@ -148,15 +170,16 @@ const emit = defineEmits(['update:modelValue', 'confirm'])
 const accountStore = useAccountStore()
 const appStore = useAppStore()
 
-const selectedPlatformNames = ref(new Set())
-const selectedTagIds = ref(new Set())
-const tempSelectedAccounts = ref([])
+const selectedPlatformNames = ref(new Set<string>())
+const selectedTagIds = ref(new Set<number | string>())
+const tempSelectedAccounts = ref<Array<number | string>>([])
 const tagKeyword = ref('')
 
-const isPlatformKeyDisabled = (key) => appStore.isPlatformDisabled(key)
+const isPlatformKeyDisabled = (key: string) => appStore.isPlatformDisabled(key)
 
-const filteredAccounts = computed(() => {
-  let list = accountStore.accounts
+// store 的 accounts/allTags 类型未精确标注 (ref([])), 按实际结构使用
+const filteredAccounts = computed<SelectableAccount[]>(() => {
+  let list = (accountStore.accounts as unknown as SelectableAccount[]) || []
   // 只显示 props.platforms 里有的渠道账号（图集发布只显示支持的渠道）
   const allowedPlatformNames = new Set(props.platforms.map(p => p.name))
   list = list.filter(a => allowedPlatformNames.has(a.platform))
@@ -174,8 +197,8 @@ const validFilteredAccounts = computed(() =>
   filteredAccounts.value.filter(a => a.status === '正常')
 )
 
-const filteredTags = computed(() => {
-  const all = accountStore.allTags
+const filteredTags = computed<AccountTag[]>(() => {
+  const all = (accountStore.allTags as unknown as AccountTag[]) || []
   if (!tagKeyword.value.trim()) return all
   const kw = tagKeyword.value.trim().toLowerCase()
   return all.filter(t => t.name.toLowerCase().includes(kw))
@@ -187,19 +210,19 @@ const isAllSelected = computed(() => {
   return ids.every(id => tempSelectedAccounts.value.includes(id))
 })
 
-function platformKeyOf(account) {
+function platformKeyOf(account: SelectableAccount) {
   const entry = props.platforms.find(p => p.name === account.platform)
   return entry?.key || ''
 }
 
-function togglePlatform(name) {
+function togglePlatform(name: string) {
   const next = new Set(selectedPlatformNames.value)
   if (next.has(name)) next.delete(name)
   else next.add(name)
   selectedPlatformNames.value = next
 }
 
-function toggleAccount(id) {
+function toggleAccount(id: number | string) {
   if (tempSelectedAccounts.value.includes(id)) {
     tempSelectedAccounts.value = tempSelectedAccounts.value.filter(x => x !== id)
   } else {
@@ -218,7 +241,7 @@ function toggleSelectAll() {
   }
 }
 
-function toggleTag(tagId) {
+function toggleTag(tagId: number | string) {
   const next = new Set(selectedTagIds.value)
   if (next.has(tagId)) next.delete(tagId)
   else next.add(tagId)
@@ -242,7 +265,7 @@ watch(() => props.modelValue, async (visible) => {
     tagKeyword.value = ''
     if (accountStore.accounts.length === 0) {
       try {
-        const res = await accountApi.getAccounts()
+        const res = (await accountApi.getAccounts()) as { code?: number; data?: unknown }
         if (res.code === 200 && res.data) {
           accountStore.setAccounts(res.data)
         }

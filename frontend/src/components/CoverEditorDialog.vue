@@ -88,8 +88,8 @@
   </el-dialog>
 </template>
 
-<script setup>
-import { ref, reactive, computed, nextTick } from 'vue'
+<script setup lang="ts">
+import { ref, reactive, computed, nextTick, type PropType } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Upload, Picture, PictureFilled, Check } from '@element-plus/icons-vue'
 import { materialsApi } from '@/api/materials'
@@ -98,15 +98,54 @@ import { frameApi } from '@/api/frame'
 import VideoTimeline from './VideoTimeline.vue'
 import MaterialSelectDialog from './MaterialSelectDialog.vue'
 
+interface VideoMaterialData {
+  id?: number | string
+}
+
+interface CoverImageData {
+  url?: string
+  _fromFrame?: number
+}
+
+interface TimelineFrame {
+  seconds: number
+  url: string
+}
+
+interface PanelState {
+  imageSrc: string
+  img: HTMLImageElement | null
+  zoom: number
+  offset: { x: number; y: number }
+  displayScale: number
+  cropRect: { x: number; y: number; w: number; h: number }
+}
+
+interface DragState {
+  startX: number
+  startY: number
+  origX: number
+  origY: number
+  pointerId: number
+}
+
+interface CropCoverData {
+  name: string
+  url: string
+  stored_path: string
+  size: number
+  type: string
+}
+
 const props = defineProps({
-  videoLandscape: { type: Object, default: null },
-  videoPortrait: { type: Object, default: null },
+  videoLandscape: { type: Object as PropType<VideoMaterialData | null>, default: null },
+  videoPortrait: { type: Object as PropType<VideoMaterialData | null>, default: null },
   // 当前弹窗方向：'landscape'（横版）或 'portrait'（竖版）
   orientation: { type: String, default: 'landscape' },
   // 主尺寸封面（横版=4:3，竖版=3:4）
-  coverPrimary: { type: Object, default: null },
+  coverPrimary: { type: Object as PropType<CoverImageData | null>, default: null },
   // 次尺寸封面（横版=16:9，竖版=9:16）
-  coverSecondary: { type: Object, default: null },
+  coverSecondary: { type: Object as PropType<CoverImageData | null>, default: null },
 })
 
 const emit = defineEmits(['coverSaved'])
@@ -123,21 +162,21 @@ const ratioTabs = computed(() =>
 const primaryRatio = computed(() => ratioTabs.value[0])
 const secondaryRatio = computed(() => ratioTabs.value[1])
 
-const frames = ref([])
+const frames = ref<TimelineFrame[]>([])
 const videoDuration = ref(0)
 const selectedSecond = ref(0)
 const extracting = ref(false)
-let pollingTimer = null
+let pollingTimer: ReturnType<typeof setInterval> | null = null
 
-const cropCanvasRef = ref(null)
-const canvasWrapRef = ref(null)
-const fileInputRef = ref(null)
-const materialSelectRef = ref(null)
-const dragState = ref(null)
+const cropCanvasRef = ref<HTMLCanvasElement | null>(null)
+const canvasWrapRef = ref<HTMLElement | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+const materialSelectRef = ref<InstanceType<typeof MaterialSelectDialog> | null>(null)
+const dragState = ref<DragState | null>(null)
 
 // 每个 ratio 一个独立的裁剪面板状态（图片源、缩放、偏移各自隔离）
 // panels: { '4:3': { imageSrc, img, zoom, offset, displayScale, cropRect }, ... }
-const panels = reactive({})
+const panels = reactive<Record<string, PanelState>>({})
 const activeTab = ref('4:3')
 
 // 当前激活面板（便捷访问）
@@ -178,7 +217,7 @@ const canvasStyle = computed(() => {
   }
 })
 
-function open(orientation) {
+function open(orientation?: string) {
   activeOrientation.value = orientation || 'landscape'
   // 重置：每个 ratio 一个独立面板
   Object.keys(panels).forEach((k) => delete panels[k])
@@ -202,7 +241,8 @@ async function loadFrames() {
   stopPolling()
   try {
     extracting.value = true
-    const resp = await frameApi.extractFrames(materialId)
+    const resp = (await frameApi.extractFrames(materialId)) as
+      { data?: { frames?: TimelineFrame[]; duration?: number; status?: string } }
     if (resp.data) {
       frames.value = resp.data.frames || []
       videoDuration.value = resp.data.duration || 0
@@ -217,10 +257,11 @@ async function loadFrames() {
   }
 }
 
-function startPolling(materialId) {
+function startPolling(materialId: number | string) {
   pollingTimer = setInterval(async () => {
     try {
-      const resp = await frameApi.getFrames(materialId)
+      const resp = (await frameApi.getFrames(materialId)) as
+        { data?: { frames?: TimelineFrame[]; duration?: number; status?: string } }
       if (resp.data) {
         frames.value = resp.data.frames || []
         videoDuration.value = resp.data.duration || 0
@@ -244,12 +285,12 @@ function stopPolling() {
 }
 
 // 当前 ratio 对应的封面 prop（用于打开时回填已有封面）
-function coverForTab(ratio) {
+function coverForTab(ratio: string) {
   return ratio === secondaryRatio.value ? props.coverSecondary : props.coverPrimary
 }
 
 // 若该面板还没有图、但已有 cover，则加载 cover 图
-function maybeLoadPanelCover(ratio) {
+function maybeLoadPanelCover(ratio: string) {
   const p = panels[ratio]
   if (!p || p.imageSrc) return
   const cover = coverForTab(ratio)
@@ -264,14 +305,14 @@ function maybeLoadPanelCover(ratio) {
 }
 
 // 切换 tab：直接切 activeTab，把该面板的图重画到 canvas
-function switchTab(tab) {
+function switchTab(tab: string) {
   if (tab === activeTab.value) return
   activeTab.value = tab
   nextTick(() => redrawActivePanel())
 }
 
 // 为某面板加载图片
-function loadImageToPanel(ratio, src) {
+function loadImageToPanel(ratio: string, src: string) {
   const p = panels[ratio]
   if (!p) return
   p.imageSrc = src
@@ -286,7 +327,7 @@ function loadImageToPanel(ratio, src) {
 }
 
 // 计算某面板的裁剪框（居中、撑满最大、锁定该 ratio）
-function initPanelCropRect(ratio, img) {
+function initPanelCropRect(ratio: string, img: HTMLImageElement) {
   const p = panels[ratio]
   if (!p) return
   const [w, h] = ratio.split(':').map(Number)
@@ -319,29 +360,29 @@ function redrawActivePanel() {
   clampPanelOffset(p)
 }
 
-function onTimelineSelect(seconds) {
+function onTimelineSelect(seconds: number) {
   const materialId = currentVideoMaterialId()
   const url = frameApi.getFrameImageUrl(materialId, seconds, false)
   loadImageToPanel(activeTab.value, url)
 }
 
-function onMaterialSelect(material) {
+function onMaterialSelect(material: { url?: string; stored_path?: string }) {
   const url = material.url || getFileUrl(material.stored_path)
   loadImageToPanel(activeTab.value, url)
 }
 
 function triggerLocalUpload() { fileInputRef.value?.click() }
 
-function onLocalFileSelected(e) {
-  const file = e.target.files?.[0]
+function onLocalFileSelected(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
   const url = URL.createObjectURL(file)
   loadImageToPanel(activeTab.value, url)
-  e.target.value = ''
+  ;(e.target as HTMLInputElement).value = ''
 }
 
 // 滚轮缩放图片：以鼠标位置为锚点
-function onWheel(e) {
+function onWheel(e: WheelEvent) {
   const p = activePanel.value
   if (!p || !p.img) return
   const oldZoom = p.zoom
@@ -359,11 +400,11 @@ function onWheel(e) {
 }
 
 // 拖动平移图片
-function onPointerDown(e) {
+function onPointerDown(e: PointerEvent) {
   const p = activePanel.value
   if (!p || !p.img) return
   e.preventDefault()
-  try { e.target.setPointerCapture(e.pointerId) } catch {}
+  try { (e.target as Element).setPointerCapture(e.pointerId) } catch {}
   dragState.value = {
     startX: e.clientX, startY: e.clientY,
     origX: p.offset.x, origY: p.offset.y,
@@ -388,7 +429,7 @@ function onPointerDown(e) {
 }
 
 // 约束：图片覆盖裁剪框四边（不露白）
-function clampPanelOffset(p) {
+function clampPanelOffset(p: PanelState) {
   const canvas = cropCanvasRef.value
   if (!canvas || !p) return
   const selW = p.cropRect.w * p.displayScale
@@ -406,7 +447,7 @@ function clampPanelOffset(p) {
 }
 
 // 裁剪单个面板并上传，返回 coverData
-async function cropAndUploadPanel(ratio) {
+async function cropAndUploadPanel(ratio: string): Promise<CropCoverData | null> {
   const p = panels[ratio]
   if (!p || !p.img) return null
   const [rw, rh] = ratio.split(':').map(Number)
@@ -434,13 +475,14 @@ async function cropAndUploadPanel(ratio) {
   offscreen.width = targetW
   offscreen.height = targetH
   offscreen.getContext('2d').drawImage(p.img, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH)
-  const blob = await new Promise(resolve => offscreen.toBlob(resolve, 'image/jpeg', 0.92))
+  const blob = await new Promise<Blob | null>(resolve => offscreen.toBlob(resolve, 'image/jpeg', 0.92))
   if (!blob) return null
   const formData = new FormData()
   formData.append('file', blob, `cover_${activeOrientation.value}_${ratio.replace(':', 'x')}_${Date.now()}.jpg`)
-  const resp = await materialsApi.coversUpload(formData)
+  const resp = (await materialsApi.coversUpload(formData, undefined)) as
+    { code?: number; data?: { original_filename: string; stored_path: string; file_size: number; mime_type: string } }
   if (resp.code !== 200) return null
-  const d = resp.data
+  const d = resp.data as { original_filename: string; stored_path: string; file_size: number; mime_type: string }
   return { name: d.original_filename, url: getFileUrl(d.stored_path), stored_path: d.stored_path, size: d.file_size, type: d.mime_type }
 }
 

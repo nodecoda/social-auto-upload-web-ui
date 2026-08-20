@@ -120,17 +120,50 @@
   </el-dialog>
 </template>
 
-<script setup>
-import { ref, watch, computed } from 'vue'
+<script setup lang="ts">
+import { ref, watch, type PropType } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Check } from '@element-plus/icons-vue'
 import { guangheApi } from '@/api/taobaoGuanghe'
+
+interface GuangheTrace {
+  tab: string
+  keyword: string
+  rule: string
+  category: string
+}
+
+interface GuangheItem {
+  id: string
+  title: string
+  image: string
+  price?: string
+  shop_name?: string
+  sold?: string
+  buy_count?: string
+  disabled?: boolean
+  trace?: GuangheTrace
+}
+
+interface GuangheFilters {
+  rules?: string[]
+  categories?: string[]
+}
+
+interface GuangheResponse {
+  data?: {
+    session_id?: string
+    items?: GuangheItem[]
+    has_more?: boolean
+    filters?: GuangheFilters
+  }
+}
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   accountId: { type: String, required: true },
   mode: { type: String, default: 'product' }, // 'product' | 'shop'
-  initSelected: { type: Array, default: () => [] },
+  initSelected: { type: Array as PropType<Array<GuangheItem | string>>, default: () => [] },
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm'])
@@ -138,15 +171,15 @@ const emit = defineEmits(['update:modelValue', 'confirm'])
 const MAX_SELECTED = 6
 
 // 筛选选项从面板 DOM 动态抓取(后端返回),不再硬编码
-const rules = ref([])
-const categories = ref([])
+const rules = ref<string[]>([])
+const categories = ref<string[]>([])
 
 const sessionId = ref('')
 const loading = ref(false)
 const loadingMore = ref(false)
-const items = ref([])
+const items = ref<GuangheItem[]>([])
 const hasMore = ref(false)
-const selectedItems = ref([])
+const selectedItems = ref<GuangheItem[]>([])
 
 const activeRule = ref('')
 const activeCategory = ref('')
@@ -157,7 +190,7 @@ const searchKeyword = ref('')
 const pendingOpId = ref(0)
 
 // 应用后端返回的 filters,默认选第一个选项(通常是"全部")
-function applyFilters(filters) {
+function applyFilters(filters?: GuangheFilters) {
   if (!filters) return
   if (Array.isArray(filters.rules) && filters.rules.length) {
     rules.value = filters.rules
@@ -184,7 +217,7 @@ watch(() => props.mode, async (newMode, oldMode) => {
   if (!props.modelValue || newMode === oldMode || !sessionId.value) return
   loading.value = true
   try {
-    const res = await guangheApi.pickerSwitchType(sessionId.value, newMode)
+    const res = (await guangheApi.pickerSwitchType(sessionId.value, newMode)) as GuangheResponse
     items.value = res.data?.items || []
     hasMore.value = !!res.data?.has_more
     if (newMode === 'product') {
@@ -221,7 +254,7 @@ async function openPanel() {
   searchKeyword.value = ''
   loading.value = true
   try {
-    const res = await guangheApi.pickerOpen(props.accountId, props.mode)
+    const res = (await guangheApi.pickerOpen(props.accountId, props.mode)) as GuangheResponse
     sessionId.value = res.data?.session_id || ''
     items.value = res.data?.items || []
     hasMore.value = !!res.data?.has_more
@@ -236,13 +269,13 @@ async function openPanel() {
   }
 }
 
-async function onRuleChange(rule) {
+async function onRuleChange(rule: string) {
   if (rule === activeRule.value || loading.value) return
   activeRule.value = rule
   await refreshList(async (sid) => guangheApi.pickerFilter(sid, { rule }))
 }
 
-async function onCategoryChange(category) {
+async function onCategoryChange(category: string) {
   if (category === activeCategory.value || loading.value) return
   activeCategory.value = category
   await refreshList(async (sid) => guangheApi.pickerFilter(sid, { category }))
@@ -257,7 +290,7 @@ async function onLoadMore() {
   if (loadingMore.value || loading.value) return
   loadingMore.value = true
   try {
-    const res = await guangheApi.pickerLoadMore(sessionId.value)
+    const res = (await guangheApi.pickerLoadMore(sessionId.value)) as GuangheResponse
     // load_more 返回的是当前页所有 items(含已加载的),直接替换
     items.value = res.data?.items || []
     hasMore.value = !!res.data?.has_more
@@ -268,7 +301,7 @@ async function onLoadMore() {
   }
 }
 
-async function refreshList(fn) {
+async function refreshList(fn: (sid: string) => Promise<GuangheResponse>) {
   if (!sessionId.value) return
   loading.value = true
   const opId = ++pendingOpId.value
@@ -294,7 +327,7 @@ async function refreshList(fn) {
 }
 
 // 兼容 props.initSelected 旧字符串数组格式 → 统一为 [{title, image, id, trace}]
-function normalizeSelected(arr) {
+function normalizeSelected(arr: Array<GuangheItem | string>): GuangheItem[] {
   if (!Array.isArray(arr)) return []
   return arr
     .map(item => {
@@ -310,13 +343,13 @@ function normalizeSelected(arr) {
     .slice(0, MAX_SELECTED)
 }
 
-function isSelected(item) {
+function isSelected(item: GuangheItem) {
   return selectedItems.value.some(s =>
     (s.id && s.id === item.id) || s.title === item.title
   )
 }
 
-function onCardClick(item) {
+function onCardClick(item: GuangheItem) {
   if (item.disabled) return
   if (isSelected(item)) {
     selectedItems.value = selectedItems.value.filter(s => !(
@@ -343,7 +376,7 @@ function onCardClick(item) {
   }
 }
 
-function removeSelected(item) {
+function removeSelected(item: GuangheItem | string) {
   const key = typeof item === 'string' ? item : (item.id || item.title)
   selectedItems.value = selectedItems.value.filter(s =>
     (s.id !== key) && (s.title !== key)

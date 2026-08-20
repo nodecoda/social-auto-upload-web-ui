@@ -14,11 +14,19 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import { type PropType } from 'vue'
 import { Check } from '@element-plus/icons-vue'
 
+interface JdProductItem {
+  image?: string
+  title: string
+  price?: string
+  shop_name?: string
+}
+
 defineProps({
-  item: { type: Object, required: true },
+  item: { type: Object as PropType<JdProductItem>, required: true },
   selected: Boolean,
 })
 

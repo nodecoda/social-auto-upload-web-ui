@@ -30,15 +30,26 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script setup lang="ts">
+import { ref, computed, type PropType } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
 
 const THUMB_WIDTH = 80
 const MARKER_INTERVAL = 10
 
+interface TimelineFrame {
+  seconds: number
+  url: string
+}
+
+interface TimeMarker {
+  seconds: number
+  label: string
+  position: number
+}
+
 const props = defineProps({
-  frames: { type: Array, default: () => [] },
+  frames: { type: Array as PropType<TimelineFrame[]>, default: () => [] },
   duration: { type: Number, default: 0 },
   modelValue: { type: Number, default: 0 },
   extracting: { type: Boolean, default: false },
@@ -46,13 +57,13 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const trackRef = ref(null)
+const trackRef = ref<HTMLElement | null>(null)
 const thumbWidth = THUMB_WIDTH
 
 const sliderLeft = computed(() => props.modelValue * THUMB_WIDTH)
 
 const timeMarkers = computed(() => {
-  const markers = []
+  const markers: TimeMarker[] = []
   for (let s = 0; s <= props.duration; s += MARKER_INTERVAL) {
     markers.push({
       seconds: s,
@@ -63,25 +74,25 @@ const timeMarkers = computed(() => {
   return markers
 })
 
-function formatTime(secs) {
+function formatTime(secs: number) {
   const m = Math.floor(secs / 60)
   const s = secs % 60
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-function onWheel(e) {
+function onWheel(e: WheelEvent) {
   e.preventDefault()
   const track = trackRef.value
   if (!track) return
   track.scrollLeft += e.deltaY
 }
 
-function onTrackMouseDown(e) {
+function onTrackMouseDown(e: MouseEvent) {
   e.preventDefault()
   const track = trackRef.value
   if (!track) return
 
-  const updatePosition = (clientX) => {
+  const updatePosition = (clientX: number) => {
     const rect = track.getBoundingClientRect()
     const scrollLeft = track.scrollLeft || 0
     const x = clientX - rect.left + scrollLeft
@@ -92,7 +103,7 @@ function onTrackMouseDown(e) {
 
   updatePosition(e.clientX)
 
-  const onMove = (ev) => updatePosition(ev.clientX)
+  const onMove = (ev: MouseEvent) => updatePosition(ev.clientX)
   const onUp = () => {
     window.removeEventListener('mousemove', onMove)
     window.removeEventListener('mouseup', onUp)

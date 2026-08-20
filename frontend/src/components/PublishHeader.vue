@@ -27,7 +27,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { Document, MagicStick, Setting, Promotion } from '@element-plus/icons-vue'
 
 defineProps({
