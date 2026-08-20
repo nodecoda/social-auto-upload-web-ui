@@ -133,6 +133,7 @@ import { UploadFilled, VideoCamera, Picture, CircleCheckFilled, CircleCloseFille
 import { ElMessage } from 'element-plus'
 import type { UploadFile, UploadInstance } from 'element-plus'
 import { materialsApi } from '@/api/materials'
+import { getErrorMessage } from '@/utils/error'
 import { uploadApi } from '@/api/upload'
 
 type UploadItemStatus = 'pending' | 'uploading' | 'success' | 'failed'
@@ -329,7 +330,7 @@ async function uploadSimple(item: UploadFileItem) {
     }
   } catch (err) {
     item.status = 'failed'
-    item.error = (err as Error).message || '网络错误'
+    item.error = getErrorMessage(err) || '网络错误'
     emit('error', err)
   }
 }
@@ -428,7 +429,7 @@ async function uploadByChunks(item: UploadFileItem) {
       return
     }
     item.status = 'failed'
-    item.error = (err as Error).message || '网络错误'
+    item.error = getErrorMessage(err) || '网络错误'
     emit('error', err)
   }
 }
