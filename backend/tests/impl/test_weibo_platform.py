@@ -5,7 +5,7 @@ from pathlib import Path
 # 把 backend 目录加进 sys.path（与项目其他测试一致）
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from app import PLATFORM_ID_TO_KEY, PLATFORM_MAP
+from conf import PLATFORM_ID_TO_KEY, PLATFORM_MAP
 from impl.registry import get_platform, is_supported
 
 

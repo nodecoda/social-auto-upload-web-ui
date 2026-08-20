@@ -5,12 +5,10 @@ import json
 import os
 import sqlite3
 import sys
-import threading
 import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from queue import Queue
 from zoneinfo import ZoneInfo
 
 import requests as _requests
@@ -33,13 +31,13 @@ from conf import (
     FEEDBACK_API_TIMEOUT,
     FEEDBACK_APP_KEY,
     FEEDBACK_APP_SECRET,
+    PLATFORM_MAP,
 )
 from util._logger import get_channel_logger
 
 logger = get_channel_logger("backend")
 if not (FEEDBACK_APP_KEY and FEEDBACK_APP_SECRET):
     logger.warning("[Feedback] 未配置 FEEDBACK_APP_KEY / FEEDBACK_APP_SECRET，反馈系统将返回 503（可在环境变量配置）")
-
 
 def _ensure_materials_table():
     """服务启动时确保 materials 表存在"""
@@ -65,7 +63,6 @@ def _ensure_materials_table():
     conn.close()
     logger.info("[Startup] materials 表已就绪")
 
-
 _ensure_materials_table()
 
 logger.info(f"[Startup] Python {sys.version} starting...")
@@ -81,31 +78,6 @@ CORS(app)
 # 警告：当前 materials_bp.py:125 用 file.read() 一次性读入内存，超大文件会 OOM
 # 如未来需要处理 ≥10GB 文件，应改为流式写入（request.stream → storage.save_stream）
 app.config['MAX_CONTENT_LENGTH'] = None
-
-# SSE login status queues (keyed by account id)
-active_queues: dict[str, Queue] = {}
-
-
-def _is_terminal_login_sse_message(message: str) -> bool:
-    if message in {"200", "500"}:
-        return True
-    try:
-        payload = json.loads(message)
-    except (TypeError, json.JSONDecodeError):
-        return False
-    return str(payload.get("status", "")).lower() in {"200", "500", "0", "error"}
-
-
-def sse_stream(status_queue):
-    while True:
-        if not status_queue.empty():
-            msg = status_queue.get()
-            yield f"data: {msg}\n\n"
-            if _is_terminal_login_sse_message(msg):
-                break
-        else:
-            time.sleep(0.1)
-
 
 # 注册阶段二扩展 API Blueprint
 logger.info("[Startup] Importing ext_api...")
@@ -201,28 +173,23 @@ if not FRONTEND_DIR.exists():
     FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 logger.info(f"[Startup] Frontend dir: {FRONTEND_DIR} (exists={FRONTEND_DIR.exists()})")
 
-
 @app.route('/')
 def index():
     if FRONTEND_DIR.exists():
         return send_from_directory(str(FRONTEND_DIR), 'index.html')
     return jsonify({"code": 200, "msg": "API server running"}), 200
 
-
 @app.route('/assets/<path:filename>')
 def custom_static(filename):
     return send_from_directory(str(FRONTEND_DIR / 'assets'), filename)
-
 
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(str(FRONTEND_DIR), 'favicon.ico')
 
-
 @app.route('/vite.svg')
 def vite_svg():
     return send_from_directory(str(FRONTEND_DIR), 'vite.svg')
-
 
 @app.route('/changelog/<path:filename>')
 def serve_changelog(filename):
@@ -231,7 +198,6 @@ def serve_changelog(filename):
         changelog_dir = BASE_DIR / "changelog"
     return send_from_directory(str(changelog_dir), filename)
 
-
 # ── Helper ──────────────────────────────────────────────────
 
 def _get_db_path():
@@ -239,31 +205,12 @@ def _get_db_path():
         return Path(data_dir) / "db" / "database.db"
     return Path(__file__).parent.parent / "data" / "db" / "database.db"
 
-
 DB_PATH = _get_db_path()
-PLATFORM_MAP = {1: "小红书", 2: "视频号", 3: "抖音", 4: "快手", 5: "B站", 6: "百家号", 7: "TikTok", 8: "YouTube", 9: "腾讯视频", 10: "爱奇艺", 11: "微博", 12: "支付宝", 13: "今日头条", 14: "知乎", 15: "CSDN", 16: "VIVO", 17: "微信公众号", 18: "淘宝光合", 19: "京东京麦"}
-PLATFORM_ID_TO_KEY = {
-    1: 'xiaohongshu', 2: 'channels', 3: 'douyin', 4: 'kuaishou', 5: 'bilibili',
-    6: 'baijiahao', 7: 'tiktok', 8: 'youtube', 9: 'tencent_video', 10: 'iqiyi',
-    11: 'weibo', 12: 'alipay', 13: 'toutiao', 14: 'zhihu', 15: 'csdn', 16: 'vivo',
-    17: 'weixin_gzh', 18: 'taobao_guanghe', 19: 'jingmai', 20: 'jd',
-}
-
-
-def _get_account_record(account_id):
-    with sqlite3.connect(str(DB_PATH)) as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM user_info WHERE id = ?', (account_id,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
-
 
 def _resolve_material_path(path_or_stored_path):
     """兼容旧调用：转发到 storage.resolve_material_path"""
     from storage import resolve_material_path
     return resolve_material_path(path_or_stored_path)
-
 
 def _resolve_video_format_from_db(file_list_raw):
     """根据发布视频的 stored_path 查素材表 orientation,映射成 video_format。
@@ -297,82 +244,6 @@ def _resolve_video_format_from_db(file_list_raw):
         logger.info(f"查询素材 orientation 失败(降级忽略): {e}")
         return ''
 
-
-# ── Core platform routes (new engine) ───────────────────────
-
-@app.route('/checkAccount', methods=['GET'])
-def check_account():
-    account_id = request.args.get('id')
-    if not account_id or not account_id.isdigit():
-        return jsonify({"code": 400, "msg": "无效的账号ID"}), 400
-
-    record = _get_account_record(int(account_id))
-    if not record:
-        return jsonify({"code": 404, "msg": "账号不存在"}), 404
-
-    platform = get_platform(record['type'])
-    if not platform:
-        return jsonify({"code": 400, "msg": "不支持的平台类型"}), 400
-
-    valid = asyncio.run(platform.check_cookie(record['filePath']))
-    new_status = 1 if valid else 0
-    with sqlite3.connect(str(DB_PATH)) as conn:
-        conn.execute('UPDATE user_info SET status = ? WHERE id = ?', (new_status, record['id']))
-
-    msg = "Cookie 有效" if valid else "Cookie 已失效，请重新登录"
-    return jsonify({"code": 200, "msg": msg, "data": {"id": record['id'], "status": new_status, "valid": valid}})
-
-
-@app.route('/syncProfile', methods=['POST'])
-def sync_profile():
-    account_id = request.json.get('id')
-    if not account_id:
-        return jsonify({"code": 400, "msg": "缺少账号ID", "data": None}), 400
-
-    record = _get_account_record(account_id)
-    if not record:
-        return jsonify({"code": 404, "msg": "账号不存在", "data": None}), 404
-
-    platform = get_platform(record['type'])
-    if not platform:
-        return jsonify({"code": 400, "msg": "不支持的平台类型", "data": None}), 400
-
-    # sync_profile 新约定:返回 dict{name, avatar, stats}
-    # 兼容旧实现:返回 2 元组 (name, avatar) 时 stats 为 []
-    result = asyncio.run(platform.sync_profile(record['filePath']))
-    if isinstance(result, dict):
-        name = result.get('name', '') or ''
-        avatar = result.get('avatar', '') or ''
-        stats = result.get('stats', []) or []
-        if not isinstance(stats, list):
-            stats = []
-    elif isinstance(result, tuple):
-        name = result[0] if len(result) > 0 else ''
-        avatar = result[1] if len(result) > 1 else ''
-        stats = []
-    else:
-        name, avatar, stats = '', '', []
-
-    if name or avatar:
-        stats_json = json.dumps(stats, ensure_ascii=False)
-        with sqlite3.connect(str(DB_PATH)) as conn:
-            if name:
-                conn.execute(
-                    'UPDATE user_info SET userName = ?, avatar = ?, stats = ? WHERE id = ?',
-                    (name, avatar, stats_json, account_id),
-                )
-            else:
-                conn.execute(
-                    'UPDATE user_info SET avatar = ?, stats = ? WHERE id = ?',
-                    (avatar, stats_json, account_id),
-                )
-
-    return jsonify({
-        "code": 200, "msg": "同步成功",
-        "data": {"name": name, "avatar": avatar, "stats": stats},
-    })
-
-
 @app.route('/api/image-proxy')
 def image_proxy():
     """头像代理：绕过 sinaimg.cn 防盗链。后端请求带 Referer=weibo.com。"""
@@ -395,207 +266,6 @@ def image_proxy():
     except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning(f"[image-proxy] fetch failed: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
-
-
-@app.route('/openCreatorCenter', methods=['POST'])
-def open_creator_center():
-    account_id = request.json.get('id')
-    if not account_id:
-        return jsonify({"code": 400, "msg": "缺少账号ID"}), 400
-
-    record = _get_account_record(account_id)
-    if not record:
-        return jsonify({"code": 404, "msg": "账号不存在"}), 404
-
-    platform = get_platform(record['type'])
-    if not platform:
-        return jsonify({"code": 400, "msg": "不支持的平台类型"}), 400
-
-    thread = threading.Thread(
-        target=lambda: asyncio.run(platform.open_creator_center(record['filePath'])),
-        daemon=True
-    )
-    thread.start()
-    return jsonify({"code": 200, "msg": "正在打开创作中心"})
-
-
-@app.route('/login')
-def login():
-    type_str = request.args.get('type')
-    id_str = request.args.get('id')
-    account_id = request.args.get('account_id')
-    if not type_str or not id_str:
-        return jsonify({"code": 400, "msg": "缺少 type 或 id"}), 400
-
-    platform = get_platform(int(type_str))
-    if not platform:
-        return jsonify({"code": 400, "msg": "不支持的平台类型"}), 400
-
-    status_queue = Queue()
-    active_queues[id_str] = status_queue
-
-    def _cleanup():
-        active_queues.pop(id_str, None)
-
-    def _run_login():
-        try:
-            asyncio.run(platform.login(id_str, status_queue, account_id=account_id))
-        except asyncio.CancelledError:
-            logger.info(f"[login] 用户关闭了浏览器，{platform.platform_name} 登录取消")
-            status_queue.put(json.dumps({"status": "error", "msg": "用户关闭了浏览器"}))
-
-    thread = threading.Thread(
-        target=_run_login,
-        daemon=True
-    )
-    thread.start()
-
-    response = Response(sse_stream(status_queue), mimetype='text/event-stream')
-    response.headers['Cache-Control'] = 'no-cache'
-    response.headers['X-Accel-Buffering'] = 'no'
-    response.headers['Content-Type'] = 'text/event-stream'
-    response.call_on_close(_cleanup)
-    return response
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Cookie 导入账号
-# ─────────────────────────────────────────────────────────────────────────────
-
-# 导入任务的 task_id → status_queue；与 /login 共用 SSE 协议
-import_active_queues: dict[str, Queue] = {}
-
-
-@app.route('/platforms/import-supported', methods=['GET'])
-def platforms_import_supported():
-    """列出所有支持 cookie 字符串导入的平台。
-
-    返回精简字段，前端用来渲染「导入用户」弹窗的平台选择下拉。
-    """
-    from impl.registry import get_platform
-    out = []
-    for pid in sorted(PLATFORM_MAP.keys()):
-        p = get_platform(pid)
-        if p is None or not getattr(p, "supports_cookie_import", False):
-            continue
-        out.append({
-            "id": pid,
-            "key": p.platform_key,
-            "name": p.platform_name,
-            "letter": (p.platform_name[:1] if p.platform_name else ""),
-        })
-    return jsonify({"code": 200, "msg": "ok", "data": out}), 200
-
-
-@app.route('/importAccount', methods=['POST'])
-def import_account_start():
-    """启动一个 cookie 导入任务。
-
-    Request body (JSON):
-        type:        platform_id (int)
-        cookie_str:  浏览器导出的 'k=v; k=v' 字符串
-        account_id:  可选；已存在账号的 id（re-import 时更新 cookie 文件）
-
-    Response:
-        {"code": 200, "msg": "ok", "data": {"task_id": "..."}}
-
-    前端拿到 task_id 后再 EventSource('/importAccount/stream?task_id=...') 拉进度。
-    """
-    data = request.get_json(silent=True) or {}
-    type_raw = data.get('type')
-    cookie_str = (data.get('cookie_str') or '').strip()
-    account_id_raw = data.get('account_id')
-
-    if type_raw is None or not cookie_str:
-        return jsonify({
-            "code": 400, "msg": "缺少 type 或 cookie_str", "data": None,
-        }), 400
-
-    try:
-        type_int = int(type_raw)
-    except (TypeError, ValueError):
-        return jsonify({
-            "code": 400, "msg": "type 必须是整数", "data": None,
-        }), 400
-
-    platform = get_platform(type_int)
-    if platform is None:
-        return jsonify({
-            "code": 400, "msg": "不支持的平台", "data": None,
-        }), 400
-    if not getattr(platform, "supports_cookie_import", False):
-        return jsonify({
-            "code": 400, "msg": f"{platform.platform_name} 暂不支持 cookie 导入",
-            "data": None,
-        }), 400
-
-    account_id = None
-    if account_id_raw is not None and str(account_id_raw).strip():
-        try:
-            account_id = int(account_id_raw)
-        except (TypeError, ValueError):
-            return jsonify({
-                "code": 400, "msg": "account_id 必须是整数", "data": None,
-            }), 400
-
-    task_id = uuid.uuid4().hex
-    status_queue: Queue = Queue()
-    import_active_queues[task_id] = status_queue
-
-    def _cleanup():
-        import_active_queues.pop(task_id, None)
-
-    def _run_import():
-        try:
-            asyncio.run(platform.import_cookie(
-                cookie_str, status_queue, account_id=account_id,
-            ))
-        except asyncio.CancelledError:
-            status_queue.put(json.dumps({
-                "status": "error", "step": 0, "msg": "任务被取消",
-            }))
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-            # import_cookie 内部已经把 error 推过 queue 了；这里是兜底
-            logger.info(f"[importAccount] 未捕获异常: {e}")
-            try:
-                status_queue.put(json.dumps({
-                    "status": "error", "step": 0, "msg": str(e),
-                }))
-            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
-                pass
-
-    thread = threading.Thread(target=_run_import, daemon=True)
-    thread.start()
-
-    return jsonify({
-        "code": 200, "msg": "ok",
-        "data": {"task_id": task_id},
-    }), 200
-
-
-@app.route('/importAccount/stream', methods=['GET'])
-def import_account_stream():
-    """SSE 推送 cookie 导入进度。"""
-    task_id = request.args.get('task_id')
-    if not task_id or task_id not in import_active_queues:
-        return jsonify({
-            "code": 404, "msg": "task 不存在或已结束", "data": None,
-        }), 404
-
-    status_queue = import_active_queues[task_id]
-
-    def _cleanup():
-        import_active_queues.pop(task_id, None)
-
-    response = Response(
-        sse_stream(status_queue), mimetype='text/event-stream',
-    )
-    response.headers['Cache-Control'] = 'no-cache'
-    response.headers['X-Accel-Buffering'] = 'no'
-    response.headers['Content-Type'] = 'text/event-stream'
-    response.call_on_close(_cleanup)
-    return response
-
 
 def _validate_publish_video(type_id, file_list):
     """校验视频文件是否符合平台限制。
@@ -653,7 +323,6 @@ def _validate_publish_video(type_id, file_list):
 
     return validate_video_for_platform(platform_key, row["duration"], row["file_size"])
 
-
 def _enqueue_publish(platform, publish_kwargs, detail_id):
     """把发布任务丢进后台串行执行器，立即返回 task_id。
 
@@ -700,13 +369,11 @@ def _enqueue_publish(platform, publish_kwargs, detail_id):
 
     return _publish_exec.submit(_job)
 
-
 def _finish_publish_failed(task_id, detail_id, msg):
     """发布 job 失败收尾：更新任务状态 + 发布历史明细（先落库再标记终态）。"""
     if detail_id:
         _update_publish_result(detail_id, 'failed', datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), msg)
     _publish_exec.mark_finished(task_id, 'failed', msg)
-
 
 @app.route('/postVideo', methods=['POST'])
 def postVideo():
@@ -886,7 +553,6 @@ def postVideo():
     task_id = _enqueue_publish(platform, publish_kwargs, detail_id)
     return jsonify({"code": 200, "msg": "发布任务已提交", "data": {"taskId": task_id}}), 200
 
-
 @app.route('/postVideo/status/<task_id>', methods=['GET'])
 def postVideo_status(task_id):
     """查询异步发布任务状态（前端在发布期间轮询本接口）。
@@ -902,7 +568,6 @@ def postVideo_status(task_id):
             "data": None,
         }), 404
     return jsonify({"code": 200, "data": task}), 200
-
 
 @app.route('/postVideoBatch', methods=['POST'])
 def postVideoBatch():
@@ -1036,7 +701,6 @@ def postVideoBatch():
         return jsonify({"code": 500, "msg": f"{len(failures)} 个发布失败", "errors": failures}), 500
     return jsonify({"code": 200, "msg": None, "data": None}), 200
 
-
 # ── Publish history tracking ────────────────────────────────
 
 def _record_publish(batch_id, detail_id, platform, account_name, account_id,
@@ -1068,7 +732,6 @@ def _record_publish(batch_id, detail_id, platform, account_name, account_id,
             )
     except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[History] 记录发布失败: {e}")
-
 
 def _update_publish_result(detail_id, status, finished_at, error_message=""):
     """更新 1 行 publish_details + 聚合 publish_batches 状态"""
@@ -1113,7 +776,6 @@ def _update_publish_result(detail_id, status, finished_at, error_message=""):
     except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"[History] 更新发布结果失败: {e}")
 
-
 @app.before_request
 def _ensure_db():
     db_path = _get_db_path()
@@ -1135,7 +797,6 @@ def _ensure_db():
             logger.info(f"[DB] Initialized database at {db_path}")
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[DB] Failed to initialize database: {e}")
-
 
 @app.before_request
 def _before_publish():
@@ -1208,7 +869,6 @@ def _before_publish():
         g.publish_detail_id = detail_id
         g.publish_start_time = now
 
-
 @app.after_request
 def _after_publish(response):
     if request.path == '/postVideo' and hasattr(g, 'publish_detail_id'):
@@ -1234,7 +894,6 @@ def _after_publish(response):
             _update_publish_result(g.publish_detail_id, 'failed', now, error_msg)
     return response
 
-
 # ── Health / diagnostics ────────────────────────────────────
 
 @app.route("/api/health", methods=['GET'])
@@ -1259,14 +918,11 @@ def health_check():
         diag["db_error"] = str(e)
     return jsonify(diag)
 
-
 # ── 反馈系统代理（HMAC 签名由后端完成，前端永不接触 app_secret）──
-
 
 def _feedback_configured() -> bool:
     """反馈凭据是否已配置（环境变量 FEEDBACK_APP_KEY / FEEDBACK_APP_SECRET）。"""
     return bool(FEEDBACK_APP_KEY and FEEDBACK_APP_SECRET)
-
 
 def _feedback_sign(timestamp_ms: str, app_key: str = None, app_secret: str = None) -> str:
     if app_key is None:
@@ -1275,7 +931,6 @@ def _feedback_sign(timestamp_ms: str, app_key: str = None, app_secret: str = Non
         app_secret = FEEDBACK_APP_SECRET
     msg = f"{app_key}{timestamp_ms}{app_secret}".encode()
     return hmac.new(app_secret.encode('utf-8'), msg, hashlib.sha256).hexdigest()
-
 
 def _feedback_headers() -> dict:
     """生成带 HMAC 签名的反馈系统请求头。"""
@@ -1286,12 +941,10 @@ def _feedback_headers() -> dict:
         'X-Sign': _feedback_sign(ts),
     }
 
-
 def _get_feedback_email() -> str:
     """从 settings 表读 feedbackEmail（用户全局邮箱）。空字符串表示未配置。"""
     val = read_settings().get('feedbackEmail')
     return (val or '').strip() if isinstance(val, str) else ''
-
 
 @app.route('/api/feedback/list', methods=['GET'])
 def feedback_list():
@@ -1345,7 +998,6 @@ def feedback_list():
 
     return jsonify(data)
 
-
 @app.route('/api/feedback/submit', methods=['POST'])
 def feedback_submit():
     if not _feedback_configured():
@@ -1372,7 +1024,6 @@ def feedback_submit():
     except _requests.RequestException as e:
         return jsonify({'code': 502, 'message': f'反馈系统不可达: {e}', 'data': None}), 502
 
-
 @app.route('/api/feedback/vote', methods=['POST'])
 def feedback_vote():
     if not _feedback_configured():
@@ -1395,7 +1046,6 @@ def feedback_vote():
     except _requests.RequestException as e:
         return jsonify({'code': 502, 'message': f'反馈系统不可达: {e}', 'data': None}), 502
 
-
 # ── Server entry ────────────────────────────────────────────
 
 def find_available_port(start_port=5409, max_attempts=10):
@@ -1408,7 +1058,6 @@ def find_available_port(start_port=5409, max_attempts=10):
         except OSError:
             continue
     raise RuntimeError(f"Could not find available port in range {start_port}-{start_port + max_attempts}")
-
 
 if __name__ == "__main__":
     import socket
