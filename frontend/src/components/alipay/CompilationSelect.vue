@@ -90,7 +90,16 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
-const compilationList = ref<any[]>([])
+interface CompilationItem {
+  compilationId?: string | number
+  title: string
+  coverUrl?: string
+  category?: string
+  total?: number
+  [key: string]: unknown
+}
+
+const compilationList = ref<CompilationItem[]>([])
 const selectedCompilationId = ref(props.modelValue || '')
 const searchKeyword = ref('')
 
@@ -119,7 +128,7 @@ watch(() => props.modelValue, (val) => {
   selectedCompilationId.value = val || ''
   if (val && !compilationList.value.find(c => c.title === val)) {
     if (props.data && props.data.title === val) {
-      compilationList.value.unshift(props.data)
+      compilationList.value.unshift(props.data as CompilationItem)
     } else {
       compilationList.value.unshift({
         compilationId: '',
@@ -151,7 +160,7 @@ async function handleSearch() {
     const resp = (await api.searchCompilation(props.accountId, keyword)) as ApiResponse<{ list?: any[] }>
     console.log(`[${getPlatformName()}合集] 搜索结果:`, resp)
     if (resp.code === 200) {
-      compilationList.value = resp.data?.list || []
+      compilationList.value = (resp.data?.list || []) as CompilationItem[]
       console.log(`[${getPlatformName()}合集] 列表:`, compilationList.value)
     }
   } catch (e) {

@@ -113,7 +113,16 @@ const visible = ref(props.modelValue)
 const loading = ref(false)
 const errorMsg = ref('')
 // 全量音乐列表(queryAllMaterial.json 一次性返回全部)
-const allMusicList = ref<any[]>([])
+interface MusicItem {
+  musicId: string | number
+  title: string
+  coverUrl?: string
+  audioUrl?: string
+  duration?: number
+  [key: string]: unknown
+}
+
+const allMusicList = ref<MusicItem[]>([])
 const pageNum = ref(1)
 // 每页条数:贴近支付宝原生音乐弹窗(实测每页 5 条)
 const PAGE_SIZE = 5
@@ -125,7 +134,7 @@ const pagedMusicList = computed(() => {
 })
 
 // hover 状态用 id 而非 idx(因为列表是切片,idx 会跨页复用)
-const hoverId = ref('')
+const hoverId = ref<string | number>('')
 
 // 试听状态(单例播放)
 const audioRef = ref<HTMLAudioElement | null>(null)
@@ -159,7 +168,7 @@ async function fetchMusicList() {
   try {
     const resp = (await alipayApi.musicList(props.accountId)) as ApiResponse<{ list?: any[] }>
     if (resp.code === 200) {
-      allMusicList.value = resp.data?.list || []
+      allMusicList.value = (resp.data?.list || []) as MusicItem[]
       if (allMusicList.value.length === 0) {
         errorMsg.value = '未获取到音乐数据(接口返回空列表)'
       }
@@ -230,7 +239,7 @@ function handleClose() {
   visible.value = false
 }
 
-function formatDuration(duration: string | number) {
+function formatDuration(duration?: string | number) {
   // 支付宝返回的 duration 是 audioTime 秒数(整数)
   if (!duration && duration !== 0) return '00:00'
   const sec = parseInt(duration as string, 10)

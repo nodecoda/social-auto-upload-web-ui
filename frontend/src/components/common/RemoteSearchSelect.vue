@@ -170,7 +170,7 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
-const list = ref<any[]>([])
+const list = ref<RemoteItem[]>([])
 const selectedValue = ref(props.modelValue)
 const searchKeyword = ref('')
 const searchFocused = ref(false)
