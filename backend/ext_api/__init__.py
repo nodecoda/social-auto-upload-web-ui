@@ -25,7 +25,7 @@ from services.draft_merge import (
 )
 
 from ._personalized import compute_personalized
-from .task_queue import PublishTask, TaskStatus, get_task_queue
+from .task_queue import PublishTask, get_task_queue
 
 ext_api = Blueprint('ext_api', __name__, url_prefix='/api/v2')
 
@@ -1074,7 +1074,6 @@ def _extract_video_file_size(draft_data):
 @ext_api.route('/changelog', methods=['GET'])
 def get_changelog():
     """获取更新日志列表（按文件名倒序）"""
-    import os
     changelog_dir = Path(__file__).parent.parent.parent / "changelog"
     if not changelog_dir.exists():
         changelog_dir = BASE_DIR / "changelog"

@@ -7,7 +7,6 @@
     python scripts/download-cloakbrowser-binary.py
 """
 import shutil
-import sys
 from pathlib import Path
 
 from cloakbrowser import ensure_binary
