@@ -73,7 +73,16 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
-const musicList = ref<any[]>([])
+interface MusicItem {
+  musicId: string | number
+  title: string
+  author?: string
+  cover?: string
+  duration?: number
+  [key: string]: unknown
+}
+
+const musicList = ref<MusicItem[]>([])
 const selectedMusicId = ref(props.modelValue || '')
 const searchKeyword = ref('')
 
@@ -81,7 +90,7 @@ watch(() => props.modelValue, (val) => {
   selectedMusicId.value = val || ''
   if (val && !musicList.value.find(m => m.musicId === val)) {
     if (props.data && props.data.musicId === val) {
-      musicList.value.unshift(props.data)
+      musicList.value.unshift(props.data as MusicItem)
     } else {
       musicList.value.unshift({ musicId: val, title: val, author: '', duration: 0, cover: '' })
     }
@@ -95,7 +104,7 @@ async function handleSearch() {
   try {
     const resp = (await kuaishouImageApi.searchMusic(props.accountId || '', keyword, 0, 50)) as ApiResponse<{ musicList?: any[] }>
     if (resp.code === 200) {
-      musicList.value = resp.data?.musicList || []
+      musicList.value = (resp.data?.musicList || []) as MusicItem[]
     }
   } catch (e) {
     console.error('搜索音乐失败:', e)
@@ -120,7 +129,7 @@ function handleChange(val: string) {
   }
 }
 
-function formatDuration(seconds: number) {
+function formatDuration(seconds?: number) {
   if (!seconds) return '00:00'
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)

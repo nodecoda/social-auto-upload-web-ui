@@ -75,7 +75,13 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
-const positionList = ref<any[]>([])
+interface PositionItem {
+  name: string
+  address?: string
+  [key: string]: unknown
+}
+
+const positionList = ref<PositionItem[]>([])
 const selectedName = ref(props.modelValue)
 const searchKeyword = ref('')
 
@@ -89,7 +95,7 @@ watch(() => props.accountId, () => {
 watch(() => props.modelValue, (val) => {
   selectedName.value = val
   if (val && props.data && !positionList.value.find(p => p.name === val)) {
-    positionList.value.unshift(props.data)
+    positionList.value.unshift(props.data as PositionItem)
   }
 }, { immediate: true })
 
@@ -109,7 +115,7 @@ async function handleSearch() {
   try {
     const resp = (await vivoApi.searchPosition(props.accountId, kw)) as ApiResponse<{ position_list?: any[] }>
     if (resp.code === 200) {
-      positionList.value = resp.data?.position_list || []
+      positionList.value = (resp.data?.position_list || []) as PositionItem[]
       console.log('[VIVO位置] 列表:', positionList.value.length, '条')
     }
   } catch (e) {

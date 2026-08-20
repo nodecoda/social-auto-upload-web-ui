@@ -72,7 +72,13 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
-const locationList = ref<any[]>([])
+interface LocationItem {
+  name: string
+  desc?: string
+  [key: string]: unknown
+}
+
+const locationList = ref<LocationItem[]>([])
 const selectedName = ref(props.modelValue)
 const searchKeyword = ref('')
 
@@ -86,7 +92,7 @@ watch(() => props.accountId, () => {
 watch(() => props.modelValue, (val) => {
   selectedName.value = val
   if (val && props.data && !locationList.value.find(c => c.name === val)) {
-    locationList.value.unshift(props.data)
+    locationList.value.unshift(props.data as LocationItem)
   }
 }, { immediate: true })
 
@@ -107,7 +113,7 @@ async function handleSearch() {
     // 与合集不同:位置搜索必须把关键字传到后端,后端用 CloakBrowser 真实搜索
     const resp = (await channelsApi.getLocations(props.accountId, kw)) as ApiResponse<{ list?: any[] }>
     if (resp.code === 200) {
-      locationList.value = resp.data?.list || []
+      locationList.value = (resp.data?.list || []) as LocationItem[]
       console.log('[视频号位置] 列表:', locationList.value.length, '条')
     }
   } catch (e) {

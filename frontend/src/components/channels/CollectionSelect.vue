@@ -71,10 +71,16 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref(false)
-const collectionList = ref<any[]>([])
+interface CollectionItem {
+  id?: string | number
+  name: string
+  [key: string]: unknown
+}
+
+const collectionList = ref<CollectionItem[]>([])
 const selectedName = ref(props.modelValue)
 const searchKeyword = ref('')
-const allCollections = ref<any[]>([])
+const allCollections = ref<CollectionItem[]>([])
 
 watch(() => props.accountId, () => {
   collectionList.value = []
@@ -85,7 +91,7 @@ watch(() => props.accountId, () => {
 watch(() => props.modelValue, (val) => {
   selectedName.value = val
   if (val && props.data && !collectionList.value.find(c => c.name === val)) {
-    collectionList.value.unshift(props.data)
+    collectionList.value.unshift(props.data as CollectionItem)
   }
 }, { immediate: true })
 
@@ -100,7 +106,7 @@ async function handleSearch() {
   try {
     const resp = (await channelsApi.getCollections(props.accountId)) as ApiResponse<{ list?: any[] }>
     if (resp.code === 200) {
-      allCollections.value = resp.data?.list || []
+      allCollections.value = (resp.data?.list || []) as CollectionItem[]
       const kw = searchKeyword.value?.trim().toLowerCase()
       collectionList.value = kw
         ? allCollections.value.filter(c => c.name?.toLowerCase().includes(kw))
