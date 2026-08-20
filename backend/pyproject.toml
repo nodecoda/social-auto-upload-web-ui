@@ -1,0 +1,35 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+exclude = [".venv", "__pycache__"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "G", "DTZ", "PLW", "PIE", "BLE", "S110", "S112"]
+# 存量违规分批治理中(见 docs/backend-coding-standards.md §10 治理清单)。
+# 每完成一批,从 ignore 移除对应规则,让 ruff 重新生效监督回归。
+ignore = [
+    # 中文注释/字符串被误判为歧义 unicode(仓库全中文注释,整组豁免)
+    "RUF001", "RUF002", "RUF003",
+    # 日志 f-string 写法(仓库既有惯例,621 处;性能影响可忽略,改造成本高,按惯例豁免)
+    "G004",
+    # 盲 except 与吞异常 —— 治理批 B2/B4
+    "BLE001",   # 881 处盲 except —— 治理批 B4
+    "S110",     # 278 处吞异常 —— 治理批 B2
+    "S112",     #  33 处 except-continue —— 治理批 B2
+    # 时区 —— 治理批 B3
+    "DTZ005",   #  36 处 datetime.now 无时区
+    "DTZ007",   #   7 处 strptime 无时区
+    "DTZ011",   #   5 处 date.today
+    # 风格类零散项(低优先,随治理顺手修)
+    "E501",     # 159 处超行宽(存量,不阻断)
+    "SIM105",   # 178 处可用 contextlib.suppress(风格)
+    "TRY002",   #   5 处
+    "TRY003",   # 109 处
+    "TRY300",   #  57 处
+    "TRY301",   #  20 处
+    "TRY400",   #  54 处
+    "PLW1510",  #   5 处 subprocess 未 check
+    "PLW2901",  #  21 处循环变量重定义
+    "G201",     #  28 处 logging exc_info 写法 —— 随 B2/B4
+    "PIE810",   #   3 处
+]
