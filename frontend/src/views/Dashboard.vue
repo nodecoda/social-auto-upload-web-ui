@@ -82,8 +82,8 @@ import RecentMaterialsTable, { type MaterialItem } from '@/components/RecentMate
 import { ElMessage } from 'element-plus'
 import { accountApi } from '@/api/account'
 import { materialsApi } from '@/api/materials'
-import { useAccountStore } from '@/stores/account'
-import { useAppStore } from '@/stores/app'
+import { useAccountStore, type AccountRow } from '@/stores/account'
+import { useAppStore, type MaterialItem as AppMaterialItem } from '@/stores/app'
 import {
   platformList, platformNameToKey, getPlatformByKey,
 } from '@/config/platforms'
@@ -132,7 +132,7 @@ const handleBatchCheck = async () => {
   if (isChecking.value) return
   isChecking.value = true
   try {
-    const res = (await accountApi.getValidAccounts()) as ApiResponse<AccountItem[]>
+    const res = (await accountApi.getValidAccounts()) as ApiResponse<AccountRow[]>
     if (res.code === 200 && res.data) {
       accountStore.setAccounts(res.data)
       ElMessage.success('账号检查完成')
@@ -253,7 +253,7 @@ const fetchDashboardData = async () => {
   try {
     // 并行获取账号和素材数据
     const [accountRes, materialRes] = await Promise.allSettled([
-      accountApi.getAccounts() as Promise<ApiResponse<AccountItem[]>>,
+      accountApi.getAccounts() as Promise<ApiResponse<AccountRow[]>>,
       materialsApi.list({ page_size: 200 }) as Promise<ApiResponse<MaterialListResponse>>
     ])
 
@@ -261,7 +261,7 @@ const fetchDashboardData = async () => {
       accountStore.setAccounts(accountRes.value.data ?? [])
     }
     if (materialRes.status === 'fulfilled' && materialRes.value.code === 200) {
-      appStore.setMaterials(materialRes.value.data?.items || [])
+      appStore.setMaterials((materialRes.value.data?.items || []) as unknown as AppMaterialItem[])
     }
   } catch (error) {
     console.error('获取仪表盘数据失败:', error)

@@ -139,7 +139,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, WarningFilled, DocumentRemove, CircleCloseFilled, Picture } from '@element-plus/icons-vue'
-import { useAccountStore } from '@/stores/account'
+import { useAccountStore, type AccountRow } from '@/stores/account'
 import { accountApi } from '@/api/account'
 import { historyApi } from '@/api/v2'
 import { getErrorMessage } from '@/utils/error'
@@ -314,7 +314,7 @@ onMounted(async () => {
   // 串行：先加载账号 store，再拉详情
   try {
     if (accountStore.accounts.length === 0) {
-      const res = (await accountApi.getAccounts()) as ApiResponse<PlatformAccount[]>
+      const res = (await accountApi.getAccounts()) as ApiResponse<AccountRow[]>
       accountStore.setAccounts(res.data || [])
     }
   } catch (e) {

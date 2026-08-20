@@ -3,19 +3,63 @@ import { ref } from 'vue'
 import { platformIdToName } from '@/config/platforms'
 import { accountApi } from '@/api/account'
 
+/** 账号 stats 条目（后端 stats JSON 数组元素） */
+export interface StatItem {
+  ICON?: string
+  COUNT?: number | string
+  NAME?: string
+  SORT?: number | string
+}
+
+export interface AccountItem {
+  id: number | string
+  type: number | string
+  filePath: string
+  name: string
+  status: string
+  platform: string
+  avatar: string
+  fans: number | string
+  likes: number | string
+  follows: number | string
+  stats: StatItem[]
+  tags: TagItem[]
+}
+
+// 后端 /api/account/list 返回的原始行(列序固定:id/type/filePath/userName/status/avatar/fans/likes/follows/stats/tags)
+export type AccountRow = [
+  id: number | string,
+  type: number | string,
+  filePath: string,
+  userName: string,
+  status: number,
+  avatar: string,
+  fans: number | string,
+  likes: number | string,
+  follows: number | string,
+  stats?: unknown,
+  tags?: string[],
+]
+
+export interface TagItem {
+  id: number | string
+  name: string
+  color?: string
+}
+
 export const useAccountStore = defineStore('account', () => {
   // 存储所有账号信息
-  const accounts = ref<any[]>([])
+  const accounts = ref<AccountItem[]>([])
   
   // 设置账号列表
-  const setAccounts = (accountsData: any[]) => {
+  const setAccounts = (accountsData: AccountRow[]) => {
     // 后端 SELECT * 列顺序:id/type/filePath/userName/status/avatar/fans/likes/follows/stats,
     // 然后 row.append(tags) → tags 为最后一列。stats 是 JSON 字符串,需要解析。
-    accounts.value = accountsData.map((item: any) => {
-      let stats = []
+    accounts.value = accountsData.map((item: AccountRow): AccountItem => {
+      let stats: StatItem[] = []
       const rawStats = item[9]
       if (typeof rawStats === 'string' && rawStats) {
-        try { stats = JSON.parse(rawStats) } catch { stats = [] }
+        try { stats = JSON.parse(rawStats) as StatItem[] } catch { stats = [] }
       } else if (Array.isArray(rawStats)) {
         stats = rawStats
       }
@@ -31,18 +75,18 @@ export const useAccountStore = defineStore('account', () => {
         likes: item[7] || 0,
         follows: item[8] || 0,
         stats,
-        tags: item[10] || item[item.length - 1] || []
+        tags: (item[10] || item[item.length - 1] || []) as TagItem[]
       }
     })
   }
   
   // 添加账号
-  const addAccount = (account: any) => {
+  const addAccount = (account: AccountItem) => {
     accounts.value.push(account)
   }
   
   // 更新账号
-  const updateAccount = (id: number | string, updatedAccount: any) => {
+  const updateAccount = (id: number | string, updatedAccount: Partial<AccountItem>) => {
     const index = accounts.value.findIndex(acc => acc.id === id)
     if (index !== -1) {
       accounts.value[index] = { ...accounts.value[index], ...updatedAccount }
@@ -59,13 +103,13 @@ export const useAccountStore = defineStore('account', () => {
     return accounts.value.filter(acc => acc.platform === platform)
   }
 
-  const allTags = ref<any[]>([])
+  const allTags = ref<TagItem[]>([])
 
   const loadTags = async () => {
     try {
       const res = await accountApi.getTags()
       if (res.code === 200 && res.data) {
-        allTags.value = res.data as any[]
+        allTags.value = res.data as TagItem[]
       }
     } catch (e) {
       console.error('加载标签失败:', e)

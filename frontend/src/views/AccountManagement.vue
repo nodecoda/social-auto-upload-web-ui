@@ -483,7 +483,7 @@ import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick, h
 import { Refresh, Loading, Link, Plus, Edit, Delete, Check, Folder, Key, CollectionTag, Close, Upload, SuccessFilled, CircleCheckFilled, CircleCloseFilled, Position, InfoFilled, Select, Search, Clock } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { accountApi } from '@/api/account'
-import { useAccountStore } from '@/stores/account'
+import { useAccountStore, type AccountRow } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
 import { http, type ApiResponse } from '@/utils/request'
 import { platformList, platformNameToId, platformNameToKey, platformCssMap, getPlatformByName } from '@/config/platforms'
@@ -681,7 +681,7 @@ const filterOptions = computed<FilterOption[]>(() => {
 
 const fetchAccountsQuick = async () => {
   try {
-    const res = (await accountApi.getAccounts()) as ApiResponse<AccountItem[]>
+    const res = (await accountApi.getAccounts()) as ApiResponse<AccountRow[]>
     if (res.code === 200 && res.data) {
       accountStore.setAccounts(res.data)
     }

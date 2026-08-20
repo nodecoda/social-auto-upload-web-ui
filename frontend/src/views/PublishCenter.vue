@@ -635,8 +635,8 @@
 import { ref, reactive, computed, nextTick, watch, onMounted } from 'vue'
 import { VideoCameraFilled, WarningFilled, UserFilled, Close, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
-import { useAccountStore } from '@/stores/account'
-import { useAppStore } from '@/stores/app'
+import { useAccountStore, type AccountRow } from '@/stores/account'
+import { useAppStore, type MaterialItem } from '@/stores/app'
 import { materialsApi } from '@/api/materials'
 import { getFileUrl } from '@/utils/storage'
 import { http, type ApiResponse } from '@/utils/request'
@@ -705,9 +705,9 @@ interface AccountItem {
   platform: string
   status: string
   avatar?: string
-  fans?: number
-  likes?: number
-  follows?: number
+  fans?: number | string
+  likes?: number | string
+  follows?: number | string
   stats?: unknown[]
   tags?: unknown[]
   [key: string]: unknown
@@ -2270,7 +2270,7 @@ async function selectFromLibrary(mode: 'video' | 'cover' = 'video', videoOrCover
     materialLibraryCoverTarget.value = videoOrCoverTarget
   }
   materialsApi.list({ page_size: 200 }).then((response) => {
-    const res = response as ApiResponse<{ items?: unknown[] }>
+    const res = response as ApiResponse<{ items?: MaterialItem[] }>
     if (res.code === 200) {
       appStore.setMaterials(res.data?.items || [])
     }
@@ -2540,7 +2540,7 @@ async function restoreDraft(draftId: number | string) {
 onMounted(async () => {
   // 加载账号列表
   try {
-    const res = (await accountApi.getAccounts()) as ApiResponse<unknown[]>
+    const res = (await accountApi.getAccounts()) as ApiResponse<AccountRow[]>
     accountStore.setAccounts(res.data ?? [])
   } catch (e) {
     console.error('加载账号列表失败:', e)

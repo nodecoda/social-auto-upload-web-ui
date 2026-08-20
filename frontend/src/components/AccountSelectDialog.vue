@@ -99,7 +99,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, type PropType } from 'vue'
 import { Check } from '@element-plus/icons-vue'
-import { useAccountStore } from '@/stores/account'
+import { useAccountStore, type AccountRow } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
 import { accountApi } from '@/api/account'
 import { getDefaultAvatar, proxyAvatar } from '@/utils/avatar'
@@ -231,7 +231,7 @@ watch(() => props.modelValue, async (visible) => {
       try {
         const res = (await accountApi.getAccounts()) as { code?: number; data?: unknown }
         if (res.code === 200 && res.data) {
-          accountStore.setAccounts(res.data as any[])
+          accountStore.setAccounts(res.data as AccountRow[])
         }
       } catch (e) {
         console.error('加载账号失败:', e)

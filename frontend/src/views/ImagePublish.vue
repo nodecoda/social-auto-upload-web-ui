@@ -240,7 +240,7 @@
 import { ref, reactive, computed, watch, nextTick, onMounted, type Ref } from 'vue'
 import { PictureFilled, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useAccountStore } from '@/stores/account'
+import { useAccountStore, type AccountRow } from '@/stores/account'
 import { useAppStore } from '@/stores/app'
 import { accountApi } from '@/api/account'
 import { imagePublishApi } from '@/api/imagePublish'
@@ -364,11 +364,11 @@ interface AccountItem {
   platform: string
   status: string
   avatar?: string
-  type?: string
+  type?: number | string
   filePath?: string
-  fans?: number
-  likes?: number
-  follows?: number
+  fans?: number | string
+  likes?: number | string
+  follows?: number | string
   stats?: unknown[]
   tags?: unknown[]
 }
@@ -1284,7 +1284,7 @@ onMounted(async () => {
 
   if (accountStore.accounts.length === 0) {
     try {
-      const res = (await accountApi.getAccounts()) as ApiResponse<AccountItem[]>
+      const res = (await accountApi.getAccounts()) as ApiResponse<AccountRow[]>
       if (res.code === 200 && res.data) {
         accountStore.setAccounts(res.data)
       }
