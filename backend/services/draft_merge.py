@@ -194,7 +194,7 @@ def validate_draft_for_publish(draft: dict[str, Any]) -> list[str]:
         platform_default = platform_configs.get(platform) or {}
         account_ov = account_overrides.get(str(account_id)) or {}
 
-        merged = merge_config(common, platform_default, platform_overrides.get(platform), account_ov)
+        merged = merge_config(common, platform_default, platform_overrides.get(platform) or {}, account_ov)
 
         # 标题
         if not merged.get('title') or not str(merged['title']).strip():
@@ -209,8 +209,9 @@ def validate_draft_for_publish(draft: dict[str, Any]) -> list[str]:
                 if missing:
                     errors.append(f'账号 {account_id}({platform}) 缺 {"+".join(missing)}')
             else:
-                if not merged.get(decl_field):
-                    errors.append(f'账号 {account_id}({platform}) 缺 {decl_field}')
+                field = str(decl_field)
+                if not merged.get(field):
+                    errors.append(f'账号 {account_id}({platform}) 缺 {field}')
 
         # 抖音话题总数 ≤ 5(描述 #xxx + 官方活动 + 标签)
         # 与 douyin/platform.py 的 _validate_publish_params、前端 PublishCenter 同语义

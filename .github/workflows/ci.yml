@@ -90,9 +90,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r requirements.lock pytest pytest-cov ruff==0.16.3 pip-audit
+      - run: pip install -r requirements.lock pytest pytest-cov ruff==0.16.3 pip-audit mypy
       # 静态检查硬门槛：ruff 全绿（选集中规则见 backend/pyproject.toml [tool.ruff.lint]）
       - run: ruff check .
+      # 类型检查硬门槛：mypy 核心域(services/ext_api) 0 错（配置见 pyproject.toml [tool.mypy]）
+      - run: mypy
       # 依赖漏洞审计硬门槛：锁定版本 + 官方漏洞库，0 已知漏洞
       - run: pip-audit -r requirements.lock --no-deps
       # 覆盖率硬门槛（防回退）：2026-08-21 T38 后实测 91%（CI 报告 88%）, 门槛 80% 留 8-11pp 裕量
