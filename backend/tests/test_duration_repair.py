@@ -1,200 +1,266 @@
-"""services/duration_repair.py 测试。
+"""duration_repair 服务测试：并发锁 / 单条 probe / 批量补全 / 提交兜底。
 
-覆盖：
-- 启动批量补全：duration=0 的视频被识别并写库
-- 启动批量补全：已有正常时长的视频不重复处理
-- 启动批量补全：非视频素材（图片）被跳过
-- 启动批量补全：识别失败（时长仍为 0）不影响整体流程
-- 提交兜底：ensure_duration_or_probe 在时长缺失时识别补全
-- 提交兜底：已有正常时长时直接返回，不触发识别
+DB 访问全部用 _FakeConn 隔离(不碰真实测试库);文件识别依赖
+resolve_material_path / get_video_duration_safe 等全部 mock。
 """
-import os
-import sqlite3
-import sys
-import tempfile
-import unittest
-from pathlib import Path
 from unittest.mock import patch
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import pytest
 
-# duration_repair 内部用函数内 `from conf import BASE_DIR` 读 DB 路径，
-# 因此测试通过 patch `conf.BASE_DIR` 指向独立临时目录，实现彻底 DB 隔离，
-# 不依赖全局环境变量 / import 顺序，绝不污染真实库。
-import conf
-
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS materials (
-    id TEXT PRIMARY KEY,
-    original_filename TEXT NOT NULL,
-    stored_path TEXT NOT NULL,
-    file_type TEXT NOT NULL,
-    mime_type TEXT,
-    file_size INTEGER DEFAULT 0,
-    storage_type TEXT NOT NULL DEFAULT 'local',
-    width INTEGER DEFAULT 0,
-    height INTEGER DEFAULT 0,
-    duration REAL DEFAULT 0,
-    thumbnail_path TEXT DEFAULT '',
-    upload_time DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-"""
+from services import duration_repair as dr
 
 
-def _make_db():
-    """创建独立临时 DB，返回 (tmp_dir, db_path)。"""
-    tmp_dir = Path(tempfile.mkdtemp(prefix="duration_repair_test_"))
-    db_path = tmp_dir / "db" / "database.db"
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path))
-    conn.executescript(_SCHEMA)
-    conn.commit()
-    conn.close()
-    return tmp_dir, db_path
+class _FakeConn:
+    """最小 sqlite3.Connection 替身:记录 execute/commit,返回预设 rows/row。"""
+
+    def __init__(self, rows=None, row=None):
+        self.rows = rows or []
+        self.row = row
+        self.executed = []
+        self.row_factory = None
+        self.commit_count = 0
+
+    def execute(self, sql, params=None):
+        self.executed.append((sql, params))
+        return self
+
+    def fetchall(self):
+        return self.rows
+
+    def fetchone(self):
+        return self.row
+
+    def commit(self):
+        self.commit_count += 1
+
+    def close(self):
+        pass
 
 
-def _insert(db_path, mid, file_type="video", duration=0, stored_path="fake.mp4", name="test.mp4"):
-    conn = sqlite3.connect(str(db_path))
-    conn.execute(
-        """INSERT INTO materials (id, original_filename, stored_path, file_type, duration)
-           VALUES (?, ?, ?, ?, ?)""",
-        (mid, name, stored_path, file_type, duration),
-    )
-    conn.commit()
-    conn.close()
+@pytest.fixture(autouse=True)
+def _clean_inflight():
+    """每个测试后清空全局 inflight 集合。"""
+    yield
+    dr._inflight_ids.clear()
 
 
-def _get_duration(db_path, mid):
-    conn = sqlite3.connect(str(db_path))
-    row = conn.execute("SELECT duration FROM materials WHERE id = ?", (mid,)).fetchone()
-    conn.close()
-    return row[0] if row else None
+# ── 并发锁 ────────────────────────────────────────────────────────────────────
+
+class TestInflight:
+    def test_acquire_release_cycle(self):
+        assert dr._acquire('m1') is True
+        assert dr._acquire('m1') is False  # 重复 acquire 拒绝
+        dr._release('m1')
+        assert dr._acquire('m1') is True
+        dr._release('m1')
+
+    def test_independent_ids(self):
+        assert dr._acquire('a') is True
+        assert dr._acquire('b') is True
+        dr._release('a')
+        dr._release('b')
 
 
-class _BaseDBTest(unittest.TestCase):
-    """每个子类/每次运行都用独立临时 DB，patch conf.BASE_DIR。"""
+# ── 单条识别 ──────────────────────────────────────────────────────────────────
 
-    db_path = None
-    tmp_dir = None
+class TestProbeOne:
+    def test_file_missing(self):
+        with patch('storage.resolve_material_path', return_value=None):
+            assert dr._probe_one(_FakeConn(), 'm1', 'x.mp4') == 0.0
 
-    @classmethod
-    def setUpClass(cls):
-        cls.tmp_dir, cls.db_path = _make_db()
-        cls._patcher = patch.object(conf, "BASE_DIR", cls.tmp_dir)
-        cls._patcher.start()
+    def test_local_not_file(self, tmp_path):
+        with patch('storage.resolve_material_path', return_value=str(tmp_path)):
+            assert dr._probe_one(_FakeConn(), 'm1', 'x.mp4') == 0.0
 
-    @classmethod
-    def tearDownClass(cls):
-        cls._patcher.stop()
+    def test_success_writes_db(self, tmp_path):
+        f = tmp_path / 'v.mp4'
+        f.write_bytes(b'x')
+        conn = _FakeConn()
+        with patch('storage.resolve_material_path', return_value=str(f)), \
+             patch('services.duration_repair.get_video_duration_safe', return_value=5.5):
+            assert dr._probe_one(conn, 'm1', 'v.mp4') == 5.5
+        assert conn.commit_count == 1
+        assert conn.executed[0][0].startswith('UPDATE materials SET duration')
+        assert conn.executed[0][1] == (5.5, 'm1')
 
-    def setUp(self):
-        conn = sqlite3.connect(str(self.db_path))
-        conn.execute("DELETE FROM materials")
-        conn.commit()
-        conn.close()
-        # 清空 inflight 集合，避免跨用例污染
-        from services import duration_repair
-        duration_repair._inflight_ids.clear()
-
-    def _insert(self, mid, **kw):
-        _insert(self.db_path, mid, **kw)
-
-    def _get(self, mid):
-        return _get_duration(self.db_path, mid)
-
-
-class TestRepairZeroDurations(_BaseDBTest):
-    def test_repairs_zero_duration_video(self):
-        """duration=0 的视频应被识别写库"""
-        from services import duration_repair
-        self._insert("vid-1", duration=0, stored_path="a.mp4")
-        with patch("storage.resolve_material_path", return_value="/tmp/a.mp4"), \
-             patch("services.duration_repair.get_video_duration_safe",
-                   return_value=88.5), \
-             patch("time.sleep"), \
-             patch.object(Path, "is_file", return_value=True):
-            duration_repair.repair_zero_durations()
-        assert self._get("vid-1") == 88.5
-
-    def test_skips_nonzero_duration(self):
-        """已有正常时长的视频不在查询范围内（SQL 已过滤）"""
-        from services import duration_repair
-        self._insert("vid-ok", duration=120.0, stored_path="b.mp4")
-        with patch("services.duration_repair.get_video_duration_safe",
-                   return_value=999.0) as mock_probe, \
-             patch("time.sleep"):
-            duration_repair.repair_zero_durations()
-        # 不会被覆盖：SQL 只查 duration<=0 的
-        assert self._get("vid-ok") == 120.0
-        assert not mock_probe.called
-
-    def test_skips_images(self):
-        """图片素材不被处理"""
-        from services import duration_repair
-        self._insert("img-1", file_type="image", duration=0, stored_path="c.jpg")
-        with patch("services.duration_repair.get_video_duration_safe",
-                   return_value=999.0) as mock_probe, \
-             patch("time.sleep"):
-            duration_repair.repair_zero_durations()
-        assert not mock_probe.called
-        # 图片 duration 保持 0（未被改写）
-        assert self._get("img-1") == 0
-
-    def test_probe_failure_does_not_crash(self):
-        """单条识别失败（时长仍为 0）不影响整体流程"""
-        from services import duration_repair
-        self._insert("vid-bad", duration=0, stored_path="d.mp4")
-        with patch("storage.resolve_material_path", return_value="/tmp/d.mp4"), \
-             patch("services.duration_repair.get_video_duration_safe",
-                   return_value=0.0), \
-             patch("time.sleep"), \
-             patch.object(Path, "is_file", return_value=True):
-            # 不应抛异常
-            duration_repair.repair_zero_durations()
-        # 失败的条目 duration 仍为 0，但流程正常结束
-        assert self._get("vid-bad") == 0
+    def test_zero_duration_no_write(self, tmp_path):
+        f = tmp_path / 'v.mp4'
+        f.write_bytes(b'x')
+        conn = _FakeConn()
+        with patch('storage.resolve_material_path', return_value=str(f)), \
+             patch('services.duration_repair.get_video_duration_safe', return_value=0.0):
+            assert dr._probe_one(conn, 'm1', 'v.mp4') == 0.0
+        assert conn.commit_count == 0
 
 
-class TestEnsureDurationOrProbe(_BaseDBTest):
-    def test_returns_existing_duration_without_probe(self):
-        """已有正常时长直接返回，不触发识别"""
-        from services import duration_repair
-        self._insert("vid-e", duration=60.0, stored_path="e.mp4")
-        with patch("services.duration_repair.get_video_duration_safe",
-                   return_value=999.0) as mock_probe:
-            result = duration_repair.ensure_duration_or_probe("e.mp4", 60.0)
-        assert result == 60.0
-        assert not mock_probe.called
+# ── 提交发布同步兜底 ──────────────────────────────────────────────────────────
 
-    def test_probes_when_missing(self):
-        """duration 缺失时同步识别并写库"""
-        from services import duration_repair
-        self._insert("vid-m", duration=0, stored_path="m.mp4")
-        with patch("storage.resolve_material_path", return_value="/tmp/m.mp4"), \
-             patch("services.duration_repair.get_video_duration_safe",
-                   return_value=77.0), \
-             patch.object(Path, "is_file", return_value=True):
-            result = duration_repair.ensure_duration_or_probe("m.mp4", 0.0)
-        assert result == 77.0
-        assert self._get("vid-m") == 77.0
+class TestEnsureDurationOrProbe:
+    def test_already_valid_returns_as_is(self):
+        assert dr.ensure_duration_or_probe('x.mp4', 3.0) == 3.0
 
-    def test_returns_db_duration_on_second_call(self):
-        """已被后台补全时，第二次调用直接读 DB 返回，不再 probe"""
-        from services import duration_repair
-        self._insert("vid-d", duration=0, stored_path="d2.mp4")
-        # 第一次：补全到 DB
-        with patch("storage.resolve_material_path", return_value="/tmp/d2.mp4"), \
-             patch("services.duration_repair.get_video_duration_safe",
-                   return_value=55.0), \
-             patch.object(Path, "is_file", return_value=True):
-            duration_repair.ensure_duration_or_probe("d2.mp4", 0.0)
-        # 第二次：传入 0，但 DB 已有值，应直接返回 DB 值，不 probe
-        with patch("services.duration_repair.get_video_duration_safe",
-                   return_value=999.0) as mock_probe:
-            result = duration_repair.ensure_duration_or_probe("d2.mp4", 0.0)
-        assert result == 55.0
-        assert not mock_probe.called
+    def test_empty_path_returns_zero(self):
+        assert dr.ensure_duration_or_probe('', 0) == 0.0
+
+    def test_no_matching_row(self):
+        conn = _FakeConn(row=None)
+        with patch('services.duration_repair.sqlite3.connect', return_value=conn):
+            assert dr.ensure_duration_or_probe('missing.mp4', 0) == 0.0
+        assert 'WHERE stored_path = ?' in conn.executed[0][0]
+
+    def test_db_duration_used(self):
+        conn = _FakeConn(row={'id': 'm1', 'duration': 7.0})
+        with patch('services.duration_repair.sqlite3.connect', return_value=conn):
+            assert dr.ensure_duration_or_probe('v.mp4', 0) == 7.0
+        # 已有时长:不触发 probe
+        assert len(conn.executed) == 1
+
+    def test_inflight_returns_zero(self):
+        dr._acquire('m1')
+        conn = _FakeConn(row={'id': 'm1', 'duration': 0})
+        with patch('services.duration_repair.sqlite3.connect', return_value=conn), \
+             patch('services.duration_repair._probe_one', return_value=3.3) as probe:
+            assert dr.ensure_duration_or_probe('v.mp4', 0) == 0.0
+        probe.assert_not_called()
+
+    def test_probe_flow(self, tmp_path):
+        f = tmp_path / 'v.mp4'
+        f.write_bytes(b'x')
+        conn = _FakeConn(row={'id': 'm1', 'duration': 0})
+        with patch('services.duration_repair.sqlite3.connect', return_value=conn), \
+             patch('storage.resolve_material_path', return_value=str(f)), \
+             patch('services.duration_repair.get_video_duration_safe', return_value=4.2):
+            assert dr.ensure_duration_or_probe('v.mp4', 0) == 4.2
+        assert conn.commit_count == 1
+
+    def test_exception_returns_zero(self):
+        conn = _FakeConn(row={'id': 'm1', 'duration': 0})
+        with patch('services.duration_repair.sqlite3.connect', return_value=conn), \
+             patch('services.duration_repair._probe_one', side_effect=RuntimeError('boom')):
+            assert dr.ensure_duration_or_probe('v.mp4', 0) == 0.0
+
+    def test_invalid_current_duration_zero_float(self):
+        """0.0 视为无效,走 probe 路径。"""
+        conn = _FakeConn(row={'id': 'm1', 'duration': 0})
+        with patch('services.duration_repair.sqlite3.connect', return_value=conn), \
+             patch('services.duration_repair._probe_one', return_value=1.1):
+            assert dr.ensure_duration_or_probe('v.mp4', 0.0) == 1.1
 
 
-if __name__ == "__main__":
-    unittest.main()
+# ── 批量补全 ──────────────────────────────────────────────────────────────────
+
+class TestRepairZeroDurations:
+    def test_no_rows(self):
+        conn = _FakeConn()
+        with patch('time.sleep'), \
+             patch('services.duration_repair.sqlite3.connect', return_value=conn):
+            dr.repair_zero_durations()  # 不抛异常即通过
+        assert len(conn.executed) >= 1  # 执行了扫描查询
+
+    def test_batch_flow_counts(self):
+        rows = [{'id': 'ok1', 'stored_path': 'a.mp4', 'original_filename': 'A'},
+                {'id': 'bad1', 'stored_path': 'b.mp4', 'original_filename': 'B'},
+                {'id': 'skip1', 'stored_path': 'c.mp4', 'original_filename': 'C'}]
+        conn = _FakeConn(rows=rows)
+        logs = []
+
+        def _fake_probe(conn_, material_id, stored_path):
+            if material_id == 'ok1':
+                return 5.0
+            return 0.0
+
+        dr._acquire('skip1')  # 预占 → 走 skip 分支
+        try:
+            with patch('time.sleep'), \
+                 patch('services.duration_repair.sqlite3.connect', return_value=conn), \
+                 patch('services.duration_repair._probe_one', side_effect=_fake_probe), \
+                 patch('services.duration_repair.logger.info', side_effect=lambda *a, **k: logs.append((a[0], a[1:]))):
+                dr.repair_zero_durations()
+        finally:
+            dr._release('skip1')
+        assert ('[DurationRepair] 补全完成: 共 %d 个，成功 %d，失败 %d，跳过 %d', (3, 1, 1, 1)) in logs
+
+    def test_probe_exception_counts_as_fail(self):
+        rows = [{'id': 'ex1', 'stored_path': 'a.mp4', 'original_filename': 'A'}]
+        conn = _FakeConn(rows=rows)
+        logs = []
+        with patch('time.sleep'), \
+             patch('services.duration_repair.sqlite3.connect', return_value=conn), \
+             patch('services.duration_repair._probe_one', side_effect=RuntimeError('boom')), \
+             patch('services.duration_repair.logger.info', side_effect=lambda *a, **k: logs.append((a[0], a[1:]))):
+            dr.repair_zero_durations()
+        assert ('[DurationRepair] 补全完成: 共 %d 个，成功 %d，失败 %d，跳过 %d', (1, 0, 1, 0)) in logs
+
+    def test_db_missing_skips(self, tmp_path):
+        with patch('time.sleep'), \
+             patch('conf.BASE_DIR', tmp_path):
+            dr.repair_zero_durations()  # 不抛异常
+
+
+# ── orientation 补全 ──────────────────────────────────────────────────────────
+
+class TestProbeOrientationOne:
+    def test_file_missing(self):
+        with patch('storage.resolve_material_path', return_value=None):
+            assert dr._probe_orientation_one(_FakeConn(), 'm1', 'x.mp4', 'video') == (False, '', 0, 0)
+
+    def test_video_zero_dims(self, tmp_path):
+        f = tmp_path / 'v.mp4'
+        f.write_bytes(b'x')
+        with patch('storage.resolve_material_path', return_value=str(f)), \
+             patch('services.duration_repair.get_video_dimensions_safe', return_value=(0, 0)):
+            assert dr._probe_orientation_one(_FakeConn(), 'm1', 'v.mp4', 'video') == (False, '', 0, 0)
+
+    def test_video_success(self, tmp_path):
+        f = tmp_path / 'v.mp4'
+        f.write_bytes(b'x')
+        conn = _FakeConn()
+        with patch('storage.resolve_material_path', return_value=str(f)), \
+             patch('services.duration_repair.get_video_dimensions_safe', return_value=(1920, 1080)):
+            ok, orientation, w, h = dr._probe_orientation_one(conn, 'm1', 'v.mp4', 'video')
+        assert (ok, orientation, w, h) == (True, 'horizontal', 1920, 1080)
+        assert conn.commit_count == 1
+        assert conn.executed[0][1] == (1920, 1080, 'horizontal', 'm1')
+
+    def test_image_success(self, tmp_path):
+        f = tmp_path / 'i.png'
+        f.write_bytes(b'x')
+        conn = _FakeConn()
+        with patch('storage.resolve_material_path', return_value=str(f)), \
+             patch('services.image_service.get_image_dimensions', return_value=(800, 1200)):
+            ok, orientation, w, h = dr._probe_orientation_one(conn, 'm1', 'i.png', 'image')
+        assert (ok, orientation, w, h) == (True, 'vertical', 800, 1200)
+
+
+class TestRepairMissingOrientation:
+    def test_batch_flow(self):
+        rows = [{'id': 'o1', 'stored_path': 'a.mp4', 'original_filename': 'A', 'file_type': 'video'}]
+        conn = _FakeConn(rows=rows)
+        logs = []
+        with patch('time.sleep'), \
+             patch('services.duration_repair.sqlite3.connect', return_value=conn), \
+             patch('services.duration_repair._probe_orientation_one',
+                   return_value=(True, 'horizontal', 1920, 1080)), \
+             patch('services.duration_repair.logger.info', side_effect=lambda *a, **k: logs.append((a[0], a[1:]))):
+            dr.repair_missing_orientation()
+        assert ('[OrientationRepair] 补全完成: 共 %d 个，成功 %d，失败 %d，跳过 %d', (1, 1, 0, 0)) in logs
+
+
+# ── 后台启动 ──────────────────────────────────────────────────────────────────
+
+class TestStartRepairInBackground:
+    def test_starts_two_daemon_threads(self):
+        started = []
+
+        class _FakeThread:
+            def __init__(self, target=None, daemon=None, name=None):
+                self.target = target
+                self.name = name
+
+            def start(self):
+                started.append(self.name)
+
+        with patch('services.duration_repair.threading.Thread', _FakeThread):
+            threads = dr.start_repair_in_background()
+        assert len(threads) == 2
+        assert started == ['duration-repair', 'orientation-repair']
