@@ -18,6 +18,9 @@ from conf import BASE_DIR
 from storage import resolve_material_path
 from util._logger import get_channel_logger
 
+# R7: 状态枚举共享真源（util/status.py）
+from util.status import TaskStatus
+
 
 def _derived_platform_map():
     """中文名/英文 key → platform_id 双向兜底映射（registry 派生，R4）。
@@ -133,29 +136,28 @@ def publish_images():
     excluded = {'landscapeCoverMaterialId', 'portraitCoverMaterialId', 'filePath'}
     account_configs = {k: v for k, v in config.items() if k not in excluded}
 
+    # R7: 落库统一走 services.publish_history._record_publish（唯一 writer），
+    # 消灭路由内行内 INSERT；detail 初始状态用共享 TaskStatus 枚举。
     try:
-        conn = _get_db()
-        conn.execute(
-            """INSERT OR IGNORE INTO publish_batches
-               (id, type, title, description, image_material_ids,
-                landscape_cover_material_id, portrait_cover_material_id,
-                account_count, status, created_at, updated_at)
-               VALUES (?, 'image', ?, ?, ?, ?, ?, 0, 'pending', ?, ?)""",
-            (batch_id, title, description, json.dumps(image_ids, ensure_ascii=False),
-             data.get('landscapeCoverMaterialId', ''),
-             data.get('portraitCoverMaterialId', ''),
-             now, now)
+        from services.publish_history import _record_publish
+        _record_publish(
+            batch_id=batch_id,
+            detail_id=detail_id,
+            platform=platform,
+            account_id=account_id,
+            account_name=account_name,
+            video_path='',
+            title=title,
+            description=description,
+            tags=[],
+            status=TaskStatus.RUNNING,
+            started_at=now,
+            account_configs=account_configs,
+            landscape_cover_material_id=data.get('landscapeCoverMaterialId', ''),
+            portrait_cover_material_id=data.get('portraitCoverMaterialId', ''),
+            content_type='image',
+            image_material_ids=json.dumps(image_ids, ensure_ascii=False),
         )
-        conn.execute(
-            """INSERT INTO publish_details
-               (id, batch_id, account_id, account_name, platform, account_configs,
-                status, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, 'running', ?)""",
-            (detail_id, batch_id, account_id, account_name, platform,
-             json.dumps(account_configs, ensure_ascii=False), now)
-        )
-        conn.commit()
-        conn.close()
     except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": f"写入失败: {e}"}), 500
 
@@ -190,7 +192,7 @@ def publish_images():
             # 没有图片或缺配置：不调用平台（保留成功占位以便 batch 不卡 pending）
             err = "无图片或缺平台/cookie 配置，跳过实际发布"
             logger.info(f"[image_publish] {err}")
-            _update_image_publish_detail(detail_id, 'success', error_message=err)
+            _update_image_publish_detail(detail_id, TaskStatus.SUCCESS, error_message=err)
             return jsonify({"code": 200, "msg": "发布成功", "data": {"batch_id": batch_id, "detail_id": detail_id}})
 
         # 平台类型映射（中文名/英文key → id）：由 registry 类属性派生（R4），
@@ -269,7 +271,7 @@ def publish_images():
     except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"发布失败: {e}")
         err = str(e)
-        _update_image_publish_detail(detail_id, 'failed', error_message=err)
+        _update_image_publish_detail(detail_id, TaskStatus.FAILED, error_message=err)
         return jsonify({"code": 500, "msg": f"发布失败: {err}"}), 500
 
 
@@ -490,29 +492,27 @@ def execute_publish():
     excluded = {'landscapeCoverMaterialId', 'portraitCoverMaterialId'}
     account_configs = {k: v for k, v in data.items() if k not in excluded}
 
+    # R7: 落库统一走 services.publish_history._record_publish（唯一 writer）
     try:
-        conn = _get_db()
-        conn.execute(
-            """INSERT OR IGNORE INTO publish_batches
-               (id, type, title, description, image_material_ids,
-                landscape_cover_material_id, portrait_cover_material_id,
-                account_count, status, created_at, updated_at)
-               VALUES (?, 'image', ?, ?, ?, ?, ?, 0, 'pending', ?, ?)""",
-            (batch_id, title, description, json.dumps(image_ids, ensure_ascii=False),
-             data.get('landscapeCoverMaterialId', ''),
-             data.get('portraitCoverMaterialId', ''),
-             now, now)
+        from services.publish_history import _record_publish
+        _record_publish(
+            batch_id=batch_id,
+            detail_id=detail_id,
+            platform=platform_label,
+            account_id=account_id,
+            account_name=account_name,
+            video_path='',
+            title=title,
+            description=description,
+            tags=[],
+            status=TaskStatus.RUNNING,
+            started_at=now,
+            account_configs=account_configs,
+            landscape_cover_material_id=data.get('landscapeCoverMaterialId', ''),
+            portrait_cover_material_id=data.get('portraitCoverMaterialId', ''),
+            content_type='image',
+            image_material_ids=json.dumps(image_ids, ensure_ascii=False),
         )
-        conn.execute(
-            """INSERT INTO publish_details
-               (id, batch_id, account_id, account_name, platform, account_configs,
-                status, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, 'running', ?)""",
-            (detail_id, batch_id, account_id, account_name, platform_label,
-             json.dumps(account_configs, ensure_ascii=False), now)
-        )
-        conn.commit()
-        conn.close()
     except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": f"写入失败: {e}"}), 500
 
@@ -586,7 +586,7 @@ def execute_publish():
     except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"执行发布失败: {e}")
         err = str(e)
-        _update_image_publish_detail(detail_id, 'failed', error_message=err)
+        _update_image_publish_detail(detail_id, TaskStatus.FAILED, error_message=err)
         return jsonify({"code": 500, "msg": f"发布失败: {err}"}), 500
 
 

@@ -16,7 +16,7 @@ import sqlite3
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -96,7 +96,8 @@ def test_execute_sync_truthy_result_success():
     from ext_api import task_queue as tq
 
     fake_platform = MagicMock()
-    fake_platform.publish_video = MagicMock(return_value=True)
+    # R5: publish_video 契约已统一为 async
+    fake_platform.publish_video = AsyncMock(return_value=True)
     t = PublishTask(platform_type=3, payload={'title': 'X', 'files': ['/a.mp4']})
     with patch.object(tq, 'get_platform', return_value=fake_platform):
         result = asyncio.run(_make_queue()._execute(t))
@@ -109,7 +110,8 @@ def test_execute_sync_falsy_result_raises_page_not_submitted():
     from ext_api import task_queue as tq
 
     fake_platform = MagicMock()
-    fake_platform.publish_video = MagicMock(return_value=False)
+    # R5: publish_video 契约已统一为 async，必须用 AsyncMock
+    fake_platform.publish_video = AsyncMock(return_value=False)
     t = PublishTask(platform_type=3, payload={'title': 'X'})
     with patch.object(tq, 'get_platform', return_value=fake_platform):
         try:

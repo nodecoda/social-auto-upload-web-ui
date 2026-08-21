@@ -11,7 +11,6 @@ import threading
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from enum import StrEnum
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -20,39 +19,13 @@ from conf import BASE_DIR
 from impl.registry import get_platform
 from util._logger import get_channel_logger
 
+# R7: 状态枚举 + 聚合逻辑的唯一真源（原本地定义迁移到 util/status.py，
+# 此处 re-export 保持外部 from ext_api.task_queue import TaskStatus 兼容）
+from util.status import TaskStatus, aggregate_batch_status
+
 logger = get_channel_logger("task_queue")
 
 DB_PATH = BASE_DIR / "db" / "database.db"
-
-
-class TaskStatus(StrEnum):
-    PENDING = "pending"
-    QUEUED = "queued"
-    RUNNING = "running"
-    SUCCESS = "success"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-
-
-def aggregate_batch_status(*, succ: int, fail: int, in_flight: int, total: int) -> str:
-    """根据 detail 状态聚合 batch 状态。
-
-    优先级：
-      1. total == 0            -> 'pending'    （无 detail，理论不该发生）
-      2. in_flight > 0         -> 'running'    （仍有 queued/running detail 未结束）
-      3. fail == 0             -> 'success'    （全部成功）
-      4. succ == 0             -> 'failed'     （全部失败）
-      5. 其余                  -> 'partial'    （混合成功+失败）
-    """
-    if total == 0:
-        return 'pending'
-    if in_flight > 0:
-        return 'running'
-    if fail == 0:
-        return 'success'
-    if succ == 0:
-        return 'failed'
-    return 'partial'
 
 
 @dataclass

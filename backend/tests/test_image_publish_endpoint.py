@@ -86,6 +86,8 @@ class TestImagePublishEndpoint(unittest.TestCase):
         self._patches = [
             patch("impl.registry.get_platform", return_value=self._fake_platform),
             patch("blueprints.image_publish_bp.DB_PATH", DB_PATH),
+            # R7: 落库统一走 publish_history._record_publish，DB 路径一并指向测试库
+            patch("services.publish_history.DB_PATH", DB_PATH),
             patch("blueprints.image_publish_bp.resolve_material_path",
                   side_effect=lambda p: p or "/tmp/fake.jpg"),
         ]
