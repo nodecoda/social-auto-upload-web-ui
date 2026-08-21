@@ -84,7 +84,7 @@ def test_validate_fail_above_max_size():
 
 def test_validate_baijiahao_unlimited_max_duration():
     """百家号：超过任何时长都不应超时长限制（但会超大文件限制）"""
-    ok, msg = validate_video_for_platform("baijiahao", 3600 * 24, 1 * 1024**3)
+    ok, _ = validate_video_for_platform("baijiahao", 3600 * 24, 1 * 1024**3)
     assert ok is True
 
 
@@ -160,7 +160,7 @@ def test_validate_title_xiaohongshu_over_20():
 
 
 def test_validate_title_xiaohongshu_empty():
-    ok, msg = validate_title_for_platform("xiaohongshu", "")
+    ok, _ = validate_title_for_platform("xiaohongshu", "")
     assert ok is True
 
 
@@ -208,7 +208,7 @@ def test_validate_title_mixed_ascii_emoji():
 def test_validate_title_emoji_exactly_at_limit():
     """6 个 ASCII + 4 个 emoji = 6 + 12 = 18 字,应通过"""
     title = "a" * 6 + "🎉" * 4  # 18 字
-    ok, msg = validate_title_for_platform("xiaohongshu", title)
+    ok, _ = validate_title_for_platform("xiaohongshu", title)
     assert ok is True
 
 
@@ -223,5 +223,5 @@ def test_validate_title_tencent_emoji_count():
 def test_validate_title_tencent_emoji_ok():
     """腾讯视频:80 字限制,74 个 ASCII + 2 个 emoji = 74+6=80,刚好通过"""
     title = "a" * 74 + "🎉" * 2  # 80 字
-    ok, msg = validate_title_for_platform("tencent_video", title)
+    ok, _ = validate_title_for_platform("tencent_video", title)
     assert ok is True

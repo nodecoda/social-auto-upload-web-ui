@@ -36,5 +36,5 @@ def test_scraper_extracts_sinaimg_avatar():
         "avatar": "https://tvax2.sinaimg.cn/crop.0.0.512.512.180/abc123.jpg",
         "debug": [],
     })
-    name, avatar = asyncio.run(scrape_weibo_profile(page))
+    _, avatar = asyncio.run(scrape_weibo_profile(page))
     assert avatar == "https://tvax2.sinaimg.cn/crop.0.0.512.512.180/abc123.jpg"

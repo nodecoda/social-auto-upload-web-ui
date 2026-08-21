@@ -330,7 +330,7 @@ def _extract_image_draft_title(draft_data):
     """从图集草稿数据中提取标题"""
     # 优先从 accountOverrides 中获取第一个非空标题（账号级配置）
     account_overrides = draft_data.get('accountOverrides', {})
-    for account_id, override in account_overrides.items():
+    for _account_id, override in account_overrides.items():
         title = override.get('title', '')
         if title and title.strip():
             return title.strip()[:100]

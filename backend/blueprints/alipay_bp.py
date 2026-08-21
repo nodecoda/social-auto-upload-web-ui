@@ -210,7 +210,7 @@ async def _search_compilation_via_browser(cookie_file: str, keyword: str) -> dic
             await compilation_input.fill(keyword)
 
             # 7. 轮询等响应(最长 15s)
-            for i in range(150):
+            for _ in range(150):
                 if captured_response is not None:
                     break
                 await asyncio.sleep(0.1)
