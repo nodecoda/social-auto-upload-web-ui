@@ -99,5 +99,6 @@
 - T5 图片发布域业务路由契约（PR #101，26 用例）：image_publish_bp 44%→74%（纯函数 helper + save/delete draft + execute-publish 校验）；钉扎 ipb.DB_PATH 到 conftest 会话库，屏蔽收集顺序污染；全量 596 passed
 - T6 残余契约收尾（PR #102，32 用例）：image_proxy_bp 47%→100%、uploads_bp 85%→94%、publish_bp 55%→65%（含 _enqueue_publish job 全路径）；全量 628 passed
 - CI 门槛锁定（PR #103）：cov-fail-under 19%→22%，锁住 T1-T6 测试批次成果
-- 后端测试通道收敛：低覆盖 bp 余量为浏览器 scrape helper（alipay/xiaohongshu/channels/kuaishou 等），
-  需 Playwright 级 mock 才能继续拉高（ROI #2 试点中）
+- T7 浏览器 helper 深度测试（PR #104，13 用例）：fake Playwright page 驱动 douyin/kuaishou 音乐搜索
+  全流程，kuaishou_image_bp 20%→82%、douyin_image_bp 49%→76%；全量 641 passed；方案已验证可行，
+  可扩展到 alipay/xiaohongshu/channels 等同构 helper（ROI #2 下一批）
