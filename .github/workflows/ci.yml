@@ -89,9 +89,9 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt pytest pytest-cov
-      # 覆盖率硬门槛（防回退）：T1-T9 浏览器 helper 契约测试后总覆盖率 29%（2026-08-21 实测 713 passed）
+      # 覆盖率硬门槛（防回退）：T1-T17 平台发布编排批次后总覆盖率 34%（2026-08-21 实测 1029 passed）
       # 覆盖率报告见 Actions artifact；本地复现: python -m pytest --cov=. --cov-config=.coveragerc
-      - run: python -m pytest -q --cov=. --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=24
+      - run: python -m pytest -q --cov=. --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=26
       - uses: actions/upload-artifact@v4
         if: always()
         with:
