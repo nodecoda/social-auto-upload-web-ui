@@ -102,3 +102,9 @@
 - T7 浏览器 helper 深度测试（PR #104，13 用例）：fake Playwright page 驱动 douyin/kuaishou 音乐搜索
   全流程，kuaishou_image_bp 20%→82%、douyin_image_bp 49%→76%；全量 641 passed；方案已验证可行，
   可扩展到 alipay/xiaohongshu/channels 等同构 helper（ROI #2 下一批）
+- T8a 渠道类合集/POI 浏览器 helper（PR #105，19 用例）：channels _fetch_collections 4 用例 + xiaohongshu
+  _fetch_collections 8 用例 + _fetch_poi 7 用例；xiaohongshu_bp 23%→83%、channels_bp 24%→40%；全量 660 passed
+- T8b 渠道搜索/支付宝音乐浏览器 helper（PR #106，24 用例）：channels _fetch_activities/_fetch_locations
+  10 用例（点卡片→搜索框→等下拉>1→跳 index 0）+ alipay _search_compilation/_fetch_music_list 14 用例
+  （空视频/测试图触发表单渲染→拦截 queryCompilationsByPublicId/queryAllMaterial→解析标准化）；
+  channels_bp 40%→~75%、alipay_bp 22%→~70%；全量 684 passed、总覆盖率 26%→27%（CI 门槛 22%）
