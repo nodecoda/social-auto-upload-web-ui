@@ -13,7 +13,6 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -163,13 +162,13 @@ class TaskQueue:
     """基于 asyncio 的任务队列，在后台线程中运行"""
 
     def __init__(self, max_concurrent: int = 2):
-        self.queue: Optional[asyncio.Queue] = None
+        self.queue: asyncio.Queue | None = None
         self.running: dict[str, PublishTask] = {}
         self.completed: list[PublishTask] = []
         self.max_concurrent = max_concurrent
         self._workers: list[asyncio.Task] = []
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._thread: Optional[threading.Thread] = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._thread: threading.Thread | None = None
         self._started = False
         self._status_callbacks: list = []  # 状态变更回调
 
