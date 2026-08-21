@@ -219,57 +219,129 @@ def init_database():
 
 
 def migrate_database():
-    """增量迁移 — 添加新列（幂等）"""
-    conn = sqlite3.connect(str(DB_PATH))
-    cursor = conn.cursor()
+    """增量迁移 — 版本化 + 事务化（幂等）。
 
-    # user_info 添加 avatar 列
+    每个迁移在独立事务中执行并记录到 schema_migrations；已应用版本跳过。
+    存量库（无版本记录）首次运行时按序执行全部迁移——各迁移自身幂等
+    （已存在列/索引自动跳过），完成后写入版本记录，无缝升级。
+    新增迁移只允许向 MIGRATIONS 追加（禁止修改/删除历史迁移）。
+    """
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.isolation_level = None  # autocommit，由本函数手动控制事务边界
     try:
-        cursor.execute('ALTER TABLE user_info ADD COLUMN avatar TEXT DEFAULT ""')
+        _ensure_migrations_table(conn)
+        applied = {r[0] for r in conn.execute("SELECT version FROM schema_migrations")}
+        for version, name, fn in MIGRATIONS:
+            if version in applied:
+                continue
+            conn.execute("BEGIN")
+            try:
+                fn(conn)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name) VALUES (?, ?)",
+                    (version, name),
+                )
+                conn.execute("COMMIT")
+                logger.info("[migrate] 已应用迁移 v%d: %s", version, name)
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# 版本化迁移注册表（顺序 = 定义顺序，只允许追加）
+# ---------------------------------------------------------------------------
+
+#: (version, name, fn(conn)) 迁移列表，version 递增且唯一
+MIGRATIONS: list[tuple[int, str, object]] = []
+
+
+def _migration(version: int, name: str):
+    """装饰器：把迁移函数注册进 MIGRATIONS（保持定义顺序）。"""
+
+    def deco(fn):
+        MIGRATIONS.append((version, name, fn))
+        return fn
+
+    return deco
+
+
+def _ensure_migrations_table(conn) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            version INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+
+@_migration(1, "user_info.avatar")
+def _m1_user_info_avatar(conn):
+    """user_info 添加 avatar 列"""
+    try:
+        conn.execute('ALTER TABLE user_info ADD COLUMN avatar TEXT DEFAULT ""')
         logger.info("已添加 avatar 列")
     except sqlite3.OperationalError:
         pass  # 列已存在
 
-    # image_drafts 添加 draft_data 列（支持完整状态存储）
+
+@_migration(2, "image_drafts.draft_data")
+def _m2_image_drafts_draft_data(conn):
+    """image_drafts 添加 draft_data 列（支持完整状态存储）"""
     try:
-        cursor.execute('ALTER TABLE image_drafts ADD COLUMN draft_data TEXT DEFAULT "{}"')
+        conn.execute('ALTER TABLE image_drafts ADD COLUMN draft_data TEXT DEFAULT "{}"')
         logger.info("已添加 image_drafts.draft_data 列")
     except sqlite3.OperationalError:
         pass  # 列已存在
 
-    # materials 添加 thumbnail_path 列
+
+@_migration(3, "materials.thumbnail_path")
+def _m3_materials_thumbnail_path(conn):
+    """materials 添加 thumbnail_path 列"""
     try:
-        cursor.execute('ALTER TABLE materials ADD COLUMN thumbnail_path TEXT DEFAULT ""')
+        conn.execute('ALTER TABLE materials ADD COLUMN thumbnail_path TEXT DEFAULT ""')
         logger.info("已添加 materials.thumbnail_path 列")
     except sqlite3.OperationalError:
         pass  # 列已存在
 
-    # materials 添加 orientation 列（横竖版标识：horizontal/vertical/square）
+
+@_migration(4, "materials.orientation")
+def _m4_materials_orientation(conn):
+    """materials 添加 orientation 列（横竖版标识：horizontal/vertical/square）"""
     try:
-        cursor.execute("ALTER TABLE materials ADD COLUMN orientation TEXT DEFAULT ''")
+        conn.execute("ALTER TABLE materials ADD COLUMN orientation TEXT DEFAULT ''")
         logger.info("已添加 materials.orientation 列")
     except sqlite3.OperationalError:
         pass  # 列已存在
 
-    # 草稿批量发布用：溯源到草稿
+
+@_migration(5, "publish_batches.source/draft_id + idx")
+def _m5_publish_batches_source_draft_id(conn):
+    """草稿批量发布用：publish_batches 溯源到草稿"""
     try:
-        cursor.execute("ALTER TABLE publish_batches ADD COLUMN source TEXT NOT NULL DEFAULT ''")
+        conn.execute("ALTER TABLE publish_batches ADD COLUMN source TEXT NOT NULL DEFAULT ''")
         logger.info("已添加 publish_batches.source 列")
     except sqlite3.OperationalError:
         pass  # 列已存在
     try:
-        cursor.execute("ALTER TABLE publish_batches ADD COLUMN draft_id INTEGER NOT NULL DEFAULT 0")
+        conn.execute("ALTER TABLE publish_batches ADD COLUMN draft_id INTEGER NOT NULL DEFAULT 0")
         logger.info("已添加 publish_batches.draft_id 列")
     except sqlite3.OperationalError:
         pass  # 列已存在
     try:
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_publish_batches_draft ON publish_batches(source, draft_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_publish_batches_draft ON publish_batches(source, draft_id)")
         logger.info("已创建 idx_publish_batches_draft 索引")
     except sqlite3.OperationalError:
         pass  # 索引已存在
 
-    # 确保 tags 表存在（幂等）
-    cursor.execute("""
+
+@_migration(6, "tags/account_tags 表")
+def _m6_tags_account_tags(conn):
+    """确保 tags / account_tags 表存在（与 init_database 幂等一致）"""
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS tags (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -277,7 +349,7 @@ def migrate_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    cursor.execute("""
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS account_tags (
             account_id INTEGER NOT NULL,
             tag_id INTEGER NOT NULL,
@@ -287,41 +359,49 @@ def migrate_database():
         )
     """)
 
-    # user_info 扩展账号运营数据字段：粉丝数 / 获赞数 / 关注数
-    # 存量平台暂不同步(保持默认 0),后续版本按平台逐步同步进来
+
+@_migration(7, "user_info.fans/likes/follows")
+def _m7_user_info_ops_stats(conn):
+    """user_info 扩展账号运营数据字段：粉丝数 / 获赞数 / 关注数
+
+    存量平台暂不同步(保持默认 0),后续版本按平台逐步同步进来。
+    """
     for col in ("fans", "likes", "follows"):
         try:
-            cursor.execute(f'ALTER TABLE user_info ADD COLUMN {col} INTEGER DEFAULT 0')
+            conn.execute(f'ALTER TABLE user_info ADD COLUMN {col} INTEGER DEFAULT 0')
             logger.info(f"已添加 user_info.{col} 列")
         except sqlite3.OperationalError:
             pass  # 列已存在
 
-    # user_info 升级:新增 stats JSON 列(账号运营数据列表,每条 {ICON, COUNT, NAME, SORT})
-    # 首次添加时,把 fans/likes/follows 非零的历史数据迁移进 stats
-    cursor.execute("PRAGMA table_info(user_info)")
-    user_info_cols = [row[1] for row in cursor.fetchall()]
-    if 'stats' not in user_info_cols:
-        cursor.execute('ALTER TABLE user_info ADD COLUMN stats TEXT DEFAULT "[]"')
-        logger.info('已添加 user_info.stats 列')
-        # 一次性数据迁移:把非零的 fans/likes/follows 写入 stats JSON
-        try:
-            cursor.execute('SELECT id, fans, likes, follows FROM user_info')
-            for row in cursor.fetchall():
-                acc_id, f, lk, fo = row[0], row[1] or 0, row[2] or 0, row[3] or 0
-                if f == 0 and lk == 0 and fo == 0:
-                    continue
-                stats_json = json.dumps([
-                    {"ICON": "user",   "COUNT": f,  "NAME": "粉丝", "SORT": 1},
-                    {"ICON": "like",   "COUNT": lk, "NAME": "获赞", "SORT": 2},
-                    {"ICON": "follow", "COUNT": fo, "NAME": "关注", "SORT": 3},
-                ], ensure_ascii=False)
-                cursor.execute('UPDATE user_info SET stats = ? WHERE id = ?', (stats_json, acc_id))
-                logger.info(f'[migrate] 账号 {acc_id} 的 fans/likes/follows 已迁移至 stats')
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.warning(f'[migrate] fans/likes/follows → stats 数据迁移失败(可忽略): {e}')
 
-    conn.commit()
-    conn.close()
+@_migration(8, "user_info.stats + 历史数据迁移")
+def _m8_user_info_stats(conn):
+    """user_info 升级:新增 stats JSON 列(账号运营数据列表,每条 {ICON, COUNT, NAME, SORT})
+
+    首次添加时,把 fans/likes/follows 非零的历史数据迁移进 stats。
+    """
+    cursor = conn.execute("PRAGMA table_info(user_info)")
+    user_info_cols = [row[1] for row in cursor.fetchall()]
+    if 'stats' in user_info_cols:
+        return
+    conn.execute('ALTER TABLE user_info ADD COLUMN stats TEXT DEFAULT "[]"')
+    logger.info('已添加 user_info.stats 列')
+    # 一次性数据迁移:把非零的 fans/likes/follows 写入 stats JSON
+    try:
+        rows = conn.execute('SELECT id, fans, likes, follows FROM user_info').fetchall()
+        for row in rows:
+            acc_id, f, lk, fo = row[0], row[1] or 0, row[2] or 0, row[3] or 0
+            if f == 0 and lk == 0 and fo == 0:
+                continue
+            stats_json = json.dumps([
+                {"ICON": "user",   "COUNT": f,  "NAME": "粉丝", "SORT": 1},
+                {"ICON": "like",   "COUNT": lk, "NAME": "获赞", "SORT": 2},
+                {"ICON": "follow", "COUNT": fo, "NAME": "关注", "SORT": 3},
+            ], ensure_ascii=False)
+            conn.execute('UPDATE user_info SET stats = ? WHERE id = ?', (stats_json, acc_id))
+            logger.info(f'[migrate] 账号 {acc_id} 的 fans/likes/follows 已迁移至 stats')
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
+        logger.warning(f'[migrate] fans/likes/follows → stats 数据迁移失败(可忽略): {e}')
 
 
 if __name__ == "__main__":
