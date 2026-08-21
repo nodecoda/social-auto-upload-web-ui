@@ -7,7 +7,6 @@ describe('MCP Server', () => {
   it('应该创建MCP服务器实例', () => {
     const server = createMcpServer({
       backendUrl: 'http://localhost:5409',
-      dbPath: ':memory:',
     });
 
     expect(server).toBeDefined();
@@ -16,7 +15,6 @@ describe('MCP Server', () => {
   it('通过 in-memory 传输注册全部 27 个工具', async () => {
     const server = createMcpServer({
       backendUrl: 'http://localhost:5409',
-      dbPath: ':memory:',
     });
 
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

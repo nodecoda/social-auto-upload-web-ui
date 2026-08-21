@@ -1,6 +1,4 @@
 import { http } from '@/utils/request'
-import request from '@/utils/request'
-
 // 任务管理
 export const taskApi = {
   getTasks(params?: Record<string, unknown>) {
@@ -37,9 +35,8 @@ export const historyApi = {
   deleteBatch(batchId: string | number) {
     return http.delete(`/api/v2/history/${batchId}`)
   },
-  // 批量删除发布历史 — 走 axios 实例,因为 http.delete 包装会把第二参序列化成 query
   batchDelete(batchIds: Array<string | number>) {
-    return request.delete('/api/v2/history/batch', { data: { batch_ids: batchIds } })
+    return http.delete('/api/v2/history/batch', undefined, { batch_ids: batchIds })
   },
 }
 

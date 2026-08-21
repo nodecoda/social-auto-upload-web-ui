@@ -11,7 +11,6 @@ import { registerChangelogTools } from './tools/changelog.js';
 
 export interface ServerConfig {
   backendUrl: string;
-  dbPath: string;
 }
 
 export function createMcpServer(config: ServerConfig): McpServer {
