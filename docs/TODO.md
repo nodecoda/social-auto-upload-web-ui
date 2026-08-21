@@ -56,13 +56,19 @@
 - PLATFORM_MAP / PLATFORM_ID_TO_KEY → `conf.py`（ext_api / draft_merge / tests 改从 conf 导入）
 - 验证：pytest 401 passed / 3 skipped；ruff 无新增（3 处 I001 顺带消除）；app.py 1520→1171 行
 
-### B2. 反馈 + image-proxy（PR-2，待做）
-- `blueprints/feedback_bp.py`：反馈 3 路由 + helper（`_feedback_configured` / `_feedback_headers` / `_get_feedback_email`）随迁；FEEDBACK_* 常量已在 conf
-- 画像：反馈 API 透传，无 DB
+### B2. 反馈 + image-proxy — ✅ done（2026-08-21，PR #91）
+- `blueprints/feedback_bp.py`：反馈 3 路由（list/submit/vote）+ 4 helper（`_feedback_configured` / `_feedback_sign` / `_feedback_headers` / `_get_feedback_email`）随迁；FEEDBACK_* 常量在 conf
+- `blueprints/image_proxy_bp.py`：/api/image-proxy（头像防盗链代理）
+- app.py 清理迁移死 import（time/_requests/Response/FEEDBACK_API_*/read_settings）
+- 验证：401 passed / 3 skipped；ruff 无净增（RUF013×2 随 _feedback_sign 平移）
 
-### B3. 发布域（PR-3，待做）
-- `blueprints/publish_bp.py`：postVideo / postVideo/status / postVideoBatch + `_validate_publish_video` / `_enqueue_publish` / `_finish_publish_failed`
-- 注意：`_resolve_material_path` / `_resolve_video_format_from_db` 仍在 app.py 被引用 → 共享放 util/；`_before_publish/_after_publish` 的 g.publish_detail_id 机制（conftest 钩子保留）
+### B3. 发布域 — ✅ done（2026-08-21，PR #92）
+- `blueprints/publish_bp.py`：postVideo / postVideo/status / postVideoBatch + `_validate_publish_video` / `_enqueue_publish` / `_finish_publish_failed` / `_resolve_material_path` / `_resolve_video_format_from_db`
+- `services/publish_history.py`：`_record_publish` / `_update_publish_result`（app.py 钩子与发布 job 共用，避免循环导入）
+- `_before_publish/_after_publish` 钩子与 g.publish_detail_id 机制保留在 app.py（conftest 钩子兼容）
+- 验证：401 passed / 3 skipped；ruff 无新增（app.py E402 存量 7→4）
 
-### B4. 静态页 / api/health / 启动段（PR-4，待做）
-- 建议保留在 app.py（装配层）：`_check_all_accounts` / threads=16 启动逻辑属于 app 装配
+### B4. 静态页 / api/health / 启动段 — ✅ done（2026-08-21，按计划保留装配层）
+- 静态页 / api/health / `_check_all_accounts` / threads=16 启动段按计划保留在 app.py
+- app.py 终态 470 行 = 纯装配层（注册 20 个蓝图 + 钩子 + 静态页 + health + 启动）
+- 全仓残留 `from app import` 仅 3 处 `_get_db_path`（合法保留）
