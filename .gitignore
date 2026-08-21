@@ -60,3 +60,8 @@ AGENTS.md
 # Python coverage data
 .coverage
 htmlcov/
+
+# Playwright 视觉基线
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
