@@ -148,9 +148,14 @@ class TestPostVideoPassthrough(unittest.TestCase):
         # 镜像 test_task_queue_writes.py:74-75 的模式,避免 test 间 DB_PATH 互扰
         from ext_api import task_queue as _tq_mod
         _tq_mod.DB_PATH = DB_PATH
-        # 同步 app.DB_PATH（app.py:154 顶层常量），让 _record_publish 写到 test DB
+        # 同步发布域 DB_PATH（app / services.publish_history / publish_bp），
+        # 让 _record_publish / _update_publish_result / 路由校验写到 test DB
         import app as _app_mod
         _app_mod.DB_PATH = DB_PATH
+        from blueprints import publish_bp as _pb_mod
+        from services import publish_history as _ph_mod
+        _ph_mod.DB_PATH = DB_PATH
+        _pb_mod.DB_PATH = DB_PATH
 
     def tearDown(self):
         # 清空 test DB 的 publish_batches/publish_details，避免跨测试污染
@@ -190,7 +195,7 @@ class TestPostVideoPassthrough(unittest.TestCase):
         # 屏蔽掉。_before_publish 真实跑，_after_publish 也真实跑（仅写 status）
         # 屏蔽 platform.publish_video（不需要真发）
         with patch('app._ensure_db'), \
-             patch('app.get_platform') as mock_get_platform:
+             patch('blueprints.publish_bp.get_platform') as mock_get_platform:
             mock_platform = MagicMock()
             mock_platform.publish_video.return_value = {"code": 200, "status": "success"}
             mock_get_platform.return_value = mock_platform

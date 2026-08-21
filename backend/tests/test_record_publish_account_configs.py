@@ -63,7 +63,7 @@ def test_record_publish_writes_account_configs():
     """_record_publish 接受 account_configs 形参并 JSON 序列化写入 publish_details.account_configs。"""
     import sqlite3
 
-    from app import _record_publish
+    from services.publish_history import _record_publish
 
     tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     tmp.close()
@@ -71,7 +71,7 @@ def test_record_publish_writes_account_configs():
     _make_db_with_new_schema(db_path)
 
     detail_id = "uuid-1"
-    with patch("app.DB_PATH", db_path):
+    with patch("services.publish_history.DB_PATH", db_path):
         _record_publish(
             "uuid-1",
             detail_id,
@@ -100,7 +100,7 @@ def test_record_publish_default_account_configs():
     """不传 account_configs 时默认写 '{}'。"""
     import sqlite3
 
-    from app import _record_publish
+    from services.publish_history import _record_publish
 
     tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     tmp.close()
@@ -108,7 +108,7 @@ def test_record_publish_default_account_configs():
     _make_db_with_new_schema(db_path)
 
     detail_id = "uuid-2"
-    with patch("app.DB_PATH", db_path):
+    with patch("services.publish_history.DB_PATH", db_path):
         _record_publish(
             "uuid-2",
             detail_id,
