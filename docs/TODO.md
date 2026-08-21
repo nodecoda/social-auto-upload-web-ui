@@ -125,3 +125,4 @@
 - T17b 平台发布编排层（PR #117，30 用例）：iqiyi 14 用例（封面优先级 竖版>legacy>横版+cover_path or None 归一化、overall_success 返回值聚合 任一失败→False、enableTimer 原样透传、risk_warning/enable_cash_activity 透传）→ 21%；tencent_video 16 用例（方向感知封面 portrait: 916>竖版 / landscape: 169>横版 + 互补封面规则、creation_declaration 解析、空串透传锁定 仅 primary 做 or None）→ 22%；全量 1029 passed + 12 skipped（破千）、总覆盖率 33%→34%（CI 门槛 24%，裕度 10pp）
 - T18 CI 覆盖率门槛 24%→26%（PR #118）：T1-T17 批次后总覆盖率 34%（1029 passed），硬门槛收紧锁住成果防回退，裕度 10pp→8pp
 - T19 平台发布编排层（PR #119，25 用例）：youtube 10 用例（_upload_one 方法名契约、排期 list/标量兜底、audience 默认 not_kids/altered_content 默认 False）→ 11%→20%；xiaohongshu 15 用例（话题总数≤10 前置校验 描述 #xxx+标签合并 边界 10 ok、方向感知封面 horizontal→横版/其他→竖版优先、XHS compat 无定时→publish_date=0 且 enableTimer 无时间保持列表、模块级 _publish_single_video+create_browser_fn 注入、xhs_* 特有参数透传）→ 9%→15%；全量 1054 passed + 12 skipped、总覆盖率 34%（CI 门槛 26%，裕度 8pp）
+- T20 CI 覆盖率门槛 26%→28%（PR #120）：T1-T19 批次后总覆盖率 34.35%（1054 passed），硬门槛收紧锁住成果防回退，裕度 8pp→6pp
