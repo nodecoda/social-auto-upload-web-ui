@@ -1,3 +1,10 @@
+# 顶层依赖清单（意图声明，宽松范围）
+# 实际安装以 requirements.lock 为准（完整传递依赖 + 精确版本，可复现）。
+# 更新依赖后重新生成 lock（建议国内源）：
+#   export UV_DEFAULT_INDEX="https://pypi.tuna.tsinghua.edu.cn/simple"
+#   uv pip compile requirements.txt --python-version 3.12 --output-file requirements.lock --no-annotate
+# CI 与本地安装统一使用：pip install -r requirements.lock
+
 loguru==0.7.3
 opencv-python>=4.13.0.92
 qrcode==8.2
