@@ -108,3 +108,8 @@
   10 用例（点卡片→搜索框→等下拉>1→跳 index 0）+ alipay _search_compilation/_fetch_music_list 14 用例
   （空视频/测试图触发表单渲染→拦截 queryCompilationsByPublicId/queryAllMaterial→解析标准化）；
   channels_bp 40%→~75%、alipay_bp 22%→~70%；全量 684 passed、总覆盖率 26%→27%（CI 门槛 22%）
+- T9 五平台浏览器 helper 契约测试（PR #107，29 用例）：toutiao _search_compilation(evaluate 直调接口)
+  6 用例 → 36%→53%；weixin_gzh _fetch_collections(token 解析+tab+表格) 5 用例 → 27%→61%；
+  bilibili _fetch_collections(frame 探测+合集浮层) 5 用例 → 25%→64%；vivo _fetch_positions(上传轮询+位置下拉)
+  8 用例 → 26%→66%；weibo _fetch_collections(platform 上传补丁+合集开关+value 解析) 5 用例 → 26%→56%；
+  全量 713 passed、总覆盖率 27%→29%（CI 门槛 22%，裕度 7pp）
