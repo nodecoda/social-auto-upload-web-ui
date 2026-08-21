@@ -13,6 +13,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -162,15 +163,15 @@ class TaskQueue:
     """基于 asyncio 的任务队列，在后台线程中运行"""
 
     def __init__(self, max_concurrent: int = 2):
-        self.queue: asyncio.Queue = None
+        self.queue: Optional[asyncio.Queue] = None
         self.running: dict[str, PublishTask] = {}
         self.completed: list[PublishTask] = []
         self.max_concurrent = max_concurrent
         self._workers: list[asyncio.Task] = []
-        self._loop: asyncio.AbstractEventLoop = None
-        self._thread: threading.Thread = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._thread: Optional[threading.Thread] = None
         self._started = False
-        self._status_callbacks = []  # 状态变更回调
+        self._status_callbacks: list = []  # 状态变更回调
 
     def start(self):
         """在后台线程中启动事件循环"""
@@ -180,6 +181,7 @@ class TaskQueue:
         self._thread.start()
         self._started = True
         logger.info(f"[TaskQueue] 启动，并发数={self.max_concurrent}")
+        # 由 _run_loop 初始化;这里保持 None 语义,使用时断言
 
     def _run_loop(self):
         self._loop = asyncio.new_event_loop()
@@ -190,6 +192,7 @@ class TaskQueue:
         self._loop.run_forever()
 
     async def _worker(self, name: str):
+        assert self.queue is not None, "queue 未初始化(需先 start)"
         while True:
             task = await self.queue.get()
             task.status = TaskStatus.RUNNING
@@ -216,6 +219,7 @@ class TaskQueue:
                 self.completed.append(task)
                 self._update_db(task)
                 self._notify_status(task)
+                assert self.queue is not None
                 self.queue.task_done()
 
     async def _execute(self, task: PublishTask):
@@ -301,6 +305,7 @@ class TaskQueue:
             self.start()
         task.status = TaskStatus.QUEUED
         self._insert_db(task)
+        assert self.queue is not None and self._loop is not None, "队列未启动"
         asyncio.run_coroutine_threadsafe(self.queue.put(task), self._loop)
         logger.info(f"[TaskQueue] 任务已入队: {task.id} ({task.platform}/{task.account_name})")
 
@@ -313,6 +318,7 @@ class TaskQueue:
                 task.error_message = ""
                 task.status = TaskStatus.QUEUED
                 self.completed.remove(task)
+                assert self.queue is not None and self._loop is not None
                 asyncio.run_coroutine_threadsafe(self.queue.put(task), self._loop)
                 self._update_db(task)
                 return True
@@ -326,6 +332,7 @@ class TaskQueue:
                 task.error_message = ""
                 task.status = TaskStatus.QUEUED
                 self.completed.remove(task)
+                assert self.queue is not None and self._loop is not None
                 asyncio.run_coroutine_threadsafe(self.queue.put(task), self._loop)
                 self._update_db(task)
                 return True

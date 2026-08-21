@@ -60,10 +60,10 @@ def _find_binary(name: str) -> str:
     # 3. PyInstaller bundle
     meipass = getattr(sys, "_MEIPASS", None)
     if meipass:
-        candidate = os.path.join(meipass, "bin", name)
-        if os.path.isfile(candidate) and _validate_binary(candidate):
-            logger.debug("Found {} in PyInstaller bundle: {}", name, candidate)
-            return candidate
+        bundle_candidate = os.path.join(meipass, "bin", name)
+        if os.path.isfile(bundle_candidate) and _validate_binary(bundle_candidate):
+            logger.debug("Found {} in PyInstaller bundle: {}", name, bundle_candidate)
+            return bundle_candidate
 
     raise FileNotFoundError(
         f"{name} not found or not executable. "

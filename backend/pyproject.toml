@@ -33,3 +33,13 @@ ignore = [
 "impl/*/platform.py" = ["E402"]
 "impl/zhihu/platform.py" = ["E402"]
 
+
+[tool.mypy]
+# 渐进式类型检查: 先锁定核心域(services/ext_api), 随标注覆盖扩展
+python_version = "3.12"
+files = ["services", "ext_api"]
+follow_imports = "skip"          # 外部未标注模块跳过
+ignore_missing_imports = true    # 三方库无 stubs 不报错
+check_untyped_defs = false       # 未标注函数体暂不深查(随治理逐步收紧)
+warn_unused_ignores = true
+no_implicit_optional = true
