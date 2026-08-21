@@ -95,3 +95,4 @@
 - T3b 图片发布域代理契约（PR #99，39+2skip）：douyin_image_bp 0→49%、kuaishou_image_bp 0→20%
 - 关键契约沉淀：业务错误 = HTTP 4xx/5xx + body.code（部分域例外需实测）；统一路径 = cookie 404 → run_async 成功 200 / 失败 500
 - 全量：492→531 passed；总覆盖率 21.8%→23.0%（CI 门槛 19%）
+- T4 账号管理域业务路由契约（PR #100，39 用例）：account_bp 39%→87%；顺带修 conftest 缺 `migrate_database()`（测试库与生产启动对齐，stats 列）；全量 570 passed
