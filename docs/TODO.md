@@ -26,6 +26,13 @@
 - **回归测试**：✅ 已补齐（PR #86 纯函数 37 + PR #87 卡片组件 28 + PR #89 残余组件 24 用例 + El 交互 stubs），F2 全部拆分产物均有组件级用例锁定
 - **风险**：低 —— 仅剩视觉/截图回归无基线（playwright 未引入）；如后续引入可一并补
 
+### V1. Playwright 视觉基线（账号管理页闭环）— ✅ done（2026-08-21，PR #95）
+- @playwright/test + playwright.config.ts（vite dev server + route mock 后端数据 + 固定 viewport/禁用动画/1% 阈值）
+- e2e/visual/account-management.spec.ts：基线经人工审核入库（e2e/__snapshots__）
+- npm scripts：test:visual / test:visual:update；CI 新增 frontend-visual job（48s 通过，失败上传 diff artifact）
+- 检测能力实测：sidebar 突变触发失败；单行文案 <1% 阈值属预期
+- **V2 待做**：覆盖 F2 其余 5 视图（Feedback/PublishHistory/Sponsor/PublishHistoryDetail/Settings）；若 CI 字体差异误报则装字体或调阈值
+
 ### F3. 唯一 `any` 边界消除（SettingFieldControl `modelValue`）
 - **状态**：done（2026-08-21）
 - **处置**：PR #88 —— 新增 `src/types/settings-field.ts` 判别联合（10 种 type）+ `SettingsFieldValue` 多形态值；3 处重复接口收敛；platforms.ts 19 处 settingsFields 注解受检
@@ -72,3 +79,11 @@
 - 静态页 / api/health / `_check_all_accounts` / threads=16 启动段按计划保留在 app.py
 - app.py 终态 470 行 = 纯装配层（注册 20 个蓝图 + 钩子 + 静态页 + health + 启动）
 - 全仓残留 `from app import` 仅 3 处 `_get_db_path`（合法保留）
+
+### N1. blueprints 一致性 + lint 纯垃圾清理 — ✅ done（2026-08-21，PR #93）
+- jd_bp 导出名统一（bp → jd_bp）；B007×2 / RUF059×5 / E741×1 未用变量清零
+- 验证：401 passed / 3 skipped
+
+### N2. API 参考文档 — ✅ done（2026-08-21，PR #94）
+- `backend/scripts/gen_api_docs.py` 从 Flask 路由表自动生成 `docs/api-reference.md`（116 条路由、按域分组、标注前端 api 层）
+- 补齐 39 条路由 docstring，待补清单清零；路由变更后重跑脚本刷新
