@@ -133,6 +133,41 @@ def _get_db_path():
 
 DB_PATH = _get_db_path()
 
+# ── 可选访问令牌（Access Token）鉴权 ──────────────────────────────
+# 默认关闭：settings 无 access_token 时不拦截任何请求（行为与历史一致）。
+# 配置后保护全部 /api/*；豁免 health 诊断与 settings 管理入口（settings 是
+# token 的管理入口，避免「设置 token 需要 token」的鸡生蛋问题）。
+_AUTH_EXEMPT_PREFIXES = ("/api/health", "/api/v2/settings")
+
+
+def _load_access_token() -> str:
+    """读取当前 access_token（空串 = 未启用鉴权）。"""
+    try:
+        with sqlite3.connect(str(_get_db_path())) as _c:
+            _row = _c.execute("SELECT value FROM settings WHERE key='access_token'").fetchone()
+            return _row[0] if _row else ""
+    except Exception:  # noqa: BLE001 -- 探测性操作兜底,失败按未启用处理
+        return ""
+
+
+@app.before_request
+def _auth_guard():
+    """可选访问令牌校验：配置后 /api/* 需 Bearer token 或 ?token= 参数。"""
+    token = _load_access_token()
+    if not token:
+        return None
+    path = request.path
+    if not path.startswith("/api/"):
+        return None  # 静态资源/页面不拦截（无敏感数据）
+    if path.startswith(_AUTH_EXEMPT_PREFIXES):
+        return None
+    auth = request.headers.get("Authorization", "")
+    provided = auth[7:] if auth.startswith("Bearer ") else request.args.get("token", "")
+    if provided != token:
+        return jsonify({"code": 401, "msg": "未授权：访问令牌缺失或错误"}), 401
+    return None
+
+
 @app.before_request
 def _ensure_db():
     db_path = _get_db_path()

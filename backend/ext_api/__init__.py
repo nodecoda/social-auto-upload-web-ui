@@ -744,6 +744,9 @@ def get_settings():
         if 'proxyUrl' not in defaults:
             defaults['proxyUrl'] = ''
 
+        # access_token 是秘密：不返回明文，仅回传是否已设置（供前端展示状态）
+        defaults['access_token_set'] = bool(defaults.pop('access_token', ''))
+
         return jsonify({"code": 200, "data": defaults})
     except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": str(e)}), 500
