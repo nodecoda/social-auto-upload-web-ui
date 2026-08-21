@@ -7,17 +7,16 @@
 import asyncio
 import sqlite3
 import sys
-from datetime import datetime
+import uuid
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 from flask import Blueprint, g, jsonify, request
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from conf import BASE_DIR
+from conf import BASE_DIR, PLATFORM_MAP
+from ext_api import task_queue as _task_queue_mod
+from ext_api.task_queue import PublishTask
 from impl.registry import get_platform
-from services import publish_executor as _publish_exec
-from services.publish_history import _update_publish_result
 from util._logger import get_channel_logger
 
 logger = get_channel_logger("publish")
@@ -120,57 +119,47 @@ def _validate_publish_video(type_id, file_list):
 
     return validate_video_for_platform(platform_key, row["duration"], row["file_size"])
 
-def _enqueue_publish(platform, publish_kwargs, detail_id):
-    """把发布任务丢进后台串行执行器，立即返回 task_id。
+def _enqueue_publish(platform_type, platform_name, publish_kwargs, detail_id, batch_id=None):
+    """把发布任务丢进统一任务队列（ext_api.task_queue，单并发），立即返回 task_id。
 
-    发布（浏览器自动化）在 publish_executor 的单工作线程里执行：
-    - 任意时刻最多 1 个发布在跑，从根上杜绝并发开多个浏览器；
-    - HTTP 请求立即返回，前端轮询 /postVideo/status/<task_id> 拿结果，
-      大文件上传再久也不会出现「接口超时但后端还在发」。
-    发布结束后由 job 更新 publish_details / publish_batches。
+    队列统一（架构整改 #8）：/postVideo 与草稿批量发布共用同一执行链路
+    （ext_api.task_queue 全局单例 max_concurrent=1）：
+    - task.id == publish_details.id（app._before_publish 已预插入该行），
+      task_queue._insert_db 用 INSERT OR IGNORE 跳过已存在的行；
+    - payload 透传 platform.publish_video(**payload)，发布结果由 worker 的
+      _update_db 写回同一 detail 行并聚合 batch 状态（不再走 publish_executor
+      + publish_history._update_publish_result 双写路径）；
+    - 任意时刻最多 1 个发布在跑，从根上杜绝并发开多个浏览器（原
+      publish_executor 单工作线程的根治目标由 task_queue 单并发承接）。
     """
-    publish_fn = platform.publish_video
+    task = PublishTask(
+        id=detail_id or str(uuid.uuid4()),
+        batch_id=batch_id or detail_id or '',
+        platform=platform_name,
+        platform_type=platform_type,
+        account_name=_account_display_name(publish_kwargs.get('account_file') or []),
+        account_cookie_path=(publish_kwargs.get('account_file') or [''])[0],
+        video_path=(publish_kwargs.get('files') or [''])[0],
+        title=publish_kwargs.get('title') or '',
+        description=publish_kwargs.get('desc') or '',
+        thumbnail_path=publish_kwargs.get('thumbnail_path') or '',
+        tags=publish_kwargs.get('tags') or [],
+        payload=publish_kwargs,
+        # /postVideo 失败不自动重试（与草稿批量一致），避免同一任务反复开浏览器
+        max_retries=0,
+    )
+    _task_queue_mod.get_task_queue().add_task(task)
+    return task.id
 
-    def _job(task_id):
-        _publish_exec.mark_running(task_id)
-        try:
-            if asyncio.iscoroutinefunction(publish_fn):
-                result = asyncio.run(publish_fn(**publish_kwargs))
-            else:
-                result = publish_fn(**publish_kwargs)
-            now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
-            if result:
-                # 先落库再更新任务状态：前端轮询到终态时，发布历史一定已写入
-                if detail_id:
-                    _update_publish_result(detail_id, 'success', now)
-                _publish_exec.mark_finished(task_id, 'success', '发布成功')
-            else:
-                _finish_publish_failed(
-                    task_id, detail_id, '发布失败：页面未跳转，表单校验未通过')
-        except asyncio.CancelledError:
-            # 用户手动关闭了浏览器 → _browser 的 watchdog cancel 了发布 task
-            logger.info("发布视频被取消：用户关闭了浏览器")
-            _finish_publish_failed(task_id, detail_id, '用户关闭了浏览器，发布已取消')
-        except Exception as e:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
-            err_msg = str(e)
-            # 浏览器被用户关闭时, Playwright 操作会抛 "Target page, context or
-            # browser has been closed" / "Browser has been closed" 等。watchdog
-            # 0.5s 轮询可能慢于异常抛出, 此时异常先冒泡到这里, 转成友好提示。
-            if "has been closed" in err_msg or "Target page" in err_msg:
-                logger.info("发布视频被取消：用户关闭了浏览器")
-                msg = '用户关闭了浏览器，发布已取消'
-            else:
-                logger.info(f"发布视频时出错: {err_msg}")
-                msg = f'发布失败: {err_msg}'
-            _finish_publish_failed(task_id, detail_id, msg)
 
-    return _publish_exec.submit(_job)
-
-def _finish_publish_failed(task_id, detail_id, msg):
-    """发布 job 失败收尾：更新任务状态 + 发布历史明细（先落库再标记终态）。"""
-    if detail_id:
-        _update_publish_result(detail_id, 'failed', datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), msg)
-    _publish_exec.mark_finished(task_id, 'failed', msg)
+def _account_display_name(account_file):
+    """从 accountList[0] 推导展示用账号名（与 app._before_publish 的规则一致）。"""
+    if not account_file:
+        return ''
+    account_path = account_file[0]
+    if isinstance(account_path, str) and account_path:
+        return Path(account_path).stem or account_path
+    return ''
 
 
 @publish_bp.route('/postVideo', methods=['POST'])
@@ -345,11 +334,19 @@ def postVideo():
         logger.info(f"发布视频时出错: {e!s}")
         return jsonify({"code": 500, "msg": f"发布失败: {e!s}", "data": None}), 500
 
-    # 异步发布：入队后台串行执行器，立即返回 taskId。根治「大视频上传
-    # 期间 HTTP 长连接被传输层掐断 → 前端判失败继续发下一账号 → 多个
-    # 浏览器并发发布」的问题（详见 services/publish_executor.py）。
+    # 异步发布：入队统一任务队列（单并发），立即返回 taskId。根治「大视频
+    # 上传期间 HTTP 长连接被传输层掐断 → 前端判失败继续发下一账号 → 多个
+    # 浏览器并发发布」的问题（执行与落库统一在 ext_api.task_queue）。
+    platform_type = data.get('type')
     detail_id = getattr(g, 'publish_detail_id', None)
-    task_id = _enqueue_publish(platform, publish_kwargs, detail_id)
+    batch_id = getattr(g, 'publish_batch_id', None)
+    task_id = _enqueue_publish(
+        platform_type,
+        PLATFORM_MAP.get(platform_type, ''),
+        publish_kwargs,
+        detail_id,
+        batch_id,
+    )
     return jsonify({"code": 200, "msg": "发布任务已提交", "data": {"taskId": task_id}}), 200
 
 
@@ -357,17 +354,51 @@ def postVideo():
 def postVideo_status(task_id):
     """查询异步发布任务状态（前端在发布期间轮询本接口）。
 
+    队列统一后任务状态由 publish_details 持久化（worker 落库），不再依赖
+    内存态：后端重启后仍可查，404 = 任务不存在/从未入队。
+
     data.status: queued | running | success | failed。
-    404 = 任务不存在（后端重启导致内存态丢失），结果以发布历史为准。
     """
-    task = _publish_exec.get(task_id)
-    if task is None:
+    try:
+        conn = sqlite3.connect(str(DB_PATH))
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT status, error_message, created_at, started_at, finished_at "
+            "FROM publish_details WHERE id = ?",
+            (task_id,),
+        ).fetchone()
+        conn.close()
+    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
+        logger.info(f"查询发布任务状态失败: {e}")
+        row = None
+    if row is None:
         return jsonify({
             "code": 404,
-            "msg": "任务不存在或已过期（后端可能已重启），请在发布历史中确认结果",
+            "msg": "任务不存在或已过期，请在发布历史中确认结果",
             "data": None,
         }), 404
-    return jsonify({"code": 200, "data": task}), 200
+    status = row['status']
+    if status == 'success':
+        display, msg = 'success', '发布成功'
+    elif status == 'failed':
+        display, msg = 'failed', row['error_message'] or '发布失败'
+    elif status == 'cancelled':
+        display, msg = 'failed', row['error_message'] or '发布已取消'
+    elif status in ('queued', 'pending'):
+        display, msg = 'queued', ''
+    else:  # running 及未知状态一律视为进行中
+        display, msg = 'running', ''
+    return jsonify({
+        "code": 200,
+        "data": {
+            "taskId": task_id,
+            "status": display,
+            "msg": msg,
+            "submittedAt": row['created_at'],
+            "startedAt": row['started_at'],
+            "finishedAt": row['finished_at'],
+        },
+    }), 200
 
 
 @publish_bp.route('/postVideoBatch', methods=['POST'])

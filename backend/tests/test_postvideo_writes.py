@@ -9,6 +9,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from ext_api.task_queue import TaskQueue
+
 
 def _wait_publish_done(client, resp, timeout=10.0):
     """异步发布：轮询 /postVideo/status/<taskId> 直到终态，返回状态 dict。"""
@@ -101,6 +103,13 @@ class TestPostVideoWrites(unittest.TestCase):
             patch("app._get_db_path", return_value=DB_PATH),
             patch("services.publish_history.DB_PATH", DB_PATH),
             patch("blueprints.publish_bp._resolve_material_path", side_effect=lambda p: p or "/tmp/fake.mp4"),
+            # 队列统一（#8）：/postVideo 走 task_queue —— 隔离 DB 与队列实例，
+            # 避免 worker 写生产库 / 跨测试串任务
+            patch("ext_api.task_queue.DB_PATH", DB_PATH),
+            patch("ext_api.task_queue.get_task_queue", return_value=TaskQueue(max_concurrent=1)),
+            # worker 内 _execute 通过 ext_api.task_queue.get_platform 重新解析平台，
+            # 必须一并 mock（否则真实平台代码会在测试里跑浏览器自动化）
+            patch("ext_api.task_queue.get_platform", return_value=self._fake_platform),
         ]
         for p in self._patches:
             p.start()

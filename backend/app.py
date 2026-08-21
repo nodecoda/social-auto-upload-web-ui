@@ -260,6 +260,7 @@ def _before_publish():
             portrait_cover_material_id=data.get('portraitCoverMaterialId', ''),
         )
         g.publish_detail_id = detail_id
+        g.publish_batch_id = batch_id
         g.publish_start_time = now
 
 @app.after_request

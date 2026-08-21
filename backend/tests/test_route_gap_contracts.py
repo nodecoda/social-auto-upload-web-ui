@@ -11,7 +11,6 @@ uploads_bp 用 monkeypatch 钉 BASE_DIR/CHUNK_DIR/_get_db 到独立 tmp 目录�
 不受 test_image_publish_endpoint 的 SAU_DATA_DIR 覆盖影响。
 publish_bp 的 _enqueue_publish 用同步假执行器，job 同步跑完，无线程竞争。
 """
-import asyncio
 import sqlite3
 import sys
 from pathlib import Path
@@ -22,7 +21,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import blueprints.uploads_bp as ub
 from app import app
-from blueprints.publish_bp import _enqueue_publish
 from blueprints.uploads_bp import _guess_file_type, _list_uploaded_chunks
 
 
@@ -237,113 +235,114 @@ def test_postvideo_unsupported_platform_400(client):
 
 
 def test_postvideo_status_404(client):
+    """队列统一后状态查询读 publish_details：无该行 → 404。"""
     r = client.get('/postVideo/status/no-such-task')
     assert r.get_json()['code'] == 404
 
 
 def test_postvideo_status_200(client):
-    fake = _SyncExec()
-    fake.tasks['t6-task'] = {'taskId': 't6-task', 'status': 'success', 'msg': '发布成功'}
-    with patch('blueprints.publish_bp._publish_exec', fake):
+    """状态来自 DB 持久化行（不再依赖内存执行器）。"""
+    db_path = _status_db_path()
+    with patch('blueprints.publish_bp.DB_PATH', db_path):
         r = client.get('/postVideo/status/t6-task')
     body = r.get_json()
     assert body['code'] == 200
     assert body['data']['status'] == 'success'
+    assert body['data']['msg'] == '发布成功'
 
+
+def _status_db_path():
+    """建一个只含 publish_details 的临时 DB，预插一条 success 行。"""
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix='sau_status_')
+    db = Path(tmp) / 'database.db'
+    conn = sqlite3.connect(str(db))
+    conn.execute(SQL_DDL)
+    conn.execute(
+        "INSERT INTO publish_details (id, batch_id, status, created_at) "
+        "VALUES ('t6-task', 'b6', 'success', '2026-01-01T00:00:00')"
+    )
+    conn.commit()
+    conn.close()
+    return db
+
+
+SQL_DDL = """
+        CREATE TABLE publish_details (
+            id TEXT PRIMARY KEY,
+            batch_id TEXT NOT NULL DEFAULT '',
+            account_id INTEGER,
+            account_name TEXT NOT NULL DEFAULT '',
+            platform TEXT NOT NULL DEFAULT '',
+            account_configs TEXT NOT NULL DEFAULT '{}',
+            status TEXT NOT NULL DEFAULT 'pending',
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            max_retries INTEGER NOT NULL DEFAULT 3,
+            error_message TEXT NOT NULL DEFAULT '',
+            publish_url TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            started_at TIMESTAMP,
+            finished_at TIMESTAMP
+        )
+"""
 
 # ─────────────────────────── publish_bp _enqueue_publish ───────────────
 
-class _SyncExec:
-    """同步假执行器：submit 后立刻跑完 job，无线程。"""
+def _run_enqueue(platform_type=3, kwargs=None, detail_id='d1', batch_id='b1'):
+    """入队统一任务队列：断言 PublishTask 构造 + add_task 调用。
 
-    def __init__(self):
-        self.tasks = {}
-
-    def submit(self, job):
-        tid = f't6-{len(self.tasks) + 1}'
-        self.tasks[tid] = {'taskId': tid, 'status': 'queued', 'msg': ''}
-        job(tid)
-        return tid
-
-    def get(self, tid):
-        return dict(self.tasks[tid]) if tid in self.tasks else None
-
-    def mark_running(self, tid):
-        self.tasks[tid]['status'] = 'running'
-
-    def mark_finished(self, tid, status, msg=''):
-        self.tasks[tid].update(status=status, msg=msg)
+    执行/错误语义已收敛到 ext_api.task_queue（见 test_publish_queue_unified.py）。
+    """
+    from blueprints.publish_bp import _enqueue_publish
+    fake_tq = MagicMock()
+    with patch('ext_api.task_queue.get_task_queue', return_value=fake_tq):
+        tid = _enqueue_publish(platform_type, '抖音', kwargs or {'title': 't'}, detail_id, batch_id)
+    return tid, fake_tq.add_task.call_args[0][0]
 
 
-class _SyncPlatform:
-    def __init__(self, result=True, error=None):
-        self._result = result
-        self._error = error
-
-    def publish_video(self, **kwargs):
-        if self._error is not None:
-            raise self._error
-        return self._result
-
-
-class _AsyncPlatform:
-    async def publish_video(self, **kwargs):
-        return True
-
-
-def _run_enqueue(platform, detail_id='d1'):
-    fake = _SyncExec()
-    updater = MagicMock()
-    with patch('blueprints.publish_bp._publish_exec', fake), \
-         patch('blueprints.publish_bp._update_publish_result', updater):
-        _enqueue_publish(platform, {'title': 't'}, detail_id)
-    return fake, updater
-
-
-def test_enqueue_sync_success():
-    fake, updater = _run_enqueue(_SyncPlatform(result=True))
-    task = next(iter(fake.tasks.values()))
-    assert task['status'] == 'success'
-    updater.assert_called_once()
-    assert updater.call_args[0][1] == 'success'
+def test_enqueue_builds_task_with_payload():
+    """task.id == detail_id（对应 _before_publish 预插行），payload 全量透传。"""
+    kwargs = {
+        'title': 't', 'desc': 'd', 'tags': ['a'],
+        'account_file': ['/tmp/cookie.json'], 'files': ['/tmp/v.mp4'],
+        'thumbnail_path': '/th.jpg', 'ai_content': '内容由AI生成',
+    }
+    tid, task = _run_enqueue(kwargs=kwargs)
+    assert tid == 'd1'
+    assert task.id == 'd1'
+    assert task.batch_id == 'b1'
+    assert task.platform_type == 3
+    assert task.platform == '抖音'
+    assert task.account_name == 'cookie'  # account_file[0].stem
+    assert task.video_path == '/tmp/v.mp4'
+    assert task.account_cookie_path == '/tmp/cookie.json'
+    assert task.title == 't'
+    assert task.description == 'd'
+    assert task.tags == ['a']
+    assert task.thumbnail_path == '/th.jpg'
+    assert task.payload == kwargs
+    # /postVideo 失败不自动重试（避免同一任务反复开浏览器）
+    assert task.max_retries == 0
 
 
-def test_enqueue_sync_falsy_result_fails():
-    fake, updater = _run_enqueue(_SyncPlatform(result=False))
-    task = next(iter(fake.tasks.values()))
-    assert task['status'] == 'failed'
-    assert '页面未跳转' in task['msg']
-    assert updater.call_args[0][1] == 'failed'
+def test_enqueue_returns_task_id():
+    tid, task = _run_enqueue()
+    assert tid == task.id
+    assert isinstance(tid, str) and tid
 
 
-def test_enqueue_async_success():
-    fake, updater = _run_enqueue(_AsyncPlatform())
-    task = next(iter(fake.tasks.values()))
-    assert task['status'] == 'success'
-    assert updater.call_args[0][1] == 'success'
+def test_enqueue_no_detail_generates_task_id():
+    """detail_id 缺失（极端场景）时自动生成，仍可入队。"""
+    tid, task = _run_enqueue(detail_id=None, batch_id=None)
+    assert tid == task.id
+    # batch_id 为空时由 _insert_db 回退到 task.id，保持自洽
+    assert task.batch_id == ''
+    assert task.payload == {'title': 't'}
 
 
-def test_enqueue_no_detail_skips_history_update():
-    _fake, updater = _run_enqueue(_SyncPlatform(result=True), detail_id=None)
-    updater.assert_not_called()
-
-
-def test_enqueue_cancelled_error():
-    fake, _updater = _run_enqueue(_SyncPlatform(error=asyncio.CancelledError()))
-    task = next(iter(fake.tasks.values()))
-    assert task['status'] == 'failed'
-    assert '用户关闭了浏览器' in task['msg']
-
-
-def test_enqueue_browser_closed_exception():
-    fake, _updater = _run_enqueue(_SyncPlatform(error=RuntimeError('Browser has been closed')))
-    task = next(iter(fake.tasks.values()))
-    assert task['status'] == 'failed'
-    assert '用户关闭了浏览器' in task['msg']
-
-
-def test_enqueue_generic_exception():
-    fake, _updater = _run_enqueue(_SyncPlatform(error=RuntimeError('boom')))
-    task = next(iter(fake.tasks.values()))
-    assert task['status'] == 'failed'
-    assert task['msg'] == '发布失败: boom'
+def test_enqueue_add_task_called_once():
+    from blueprints.publish_bp import _enqueue_publish
+    fake_tq = MagicMock()
+    with patch('ext_api.task_queue.get_task_queue', return_value=fake_tq):
+        _enqueue_publish(3, '抖音', {'title': 't'}, 'd1', 'b1')
+    assert fake_tq.add_task.call_count == 1
