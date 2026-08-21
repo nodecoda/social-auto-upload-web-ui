@@ -134,7 +134,10 @@ except ApiTimeoutError as e:
 
 ## 10. 治理清单（ruff 基线 2026-08-20）
 
-`ruff check . --exclude .venv` 基线 **1623 个违规**。分批处置（当前已降为 **99**，剩余为风格/低优先项 E402/SIM117/TRY*/SIM105/E501 等，不阻断治理）：
+> **2026-08-21 更新：ruff 已入 CI 强制门槛**（PR #153，`ruff check .` 0 错才合并）。当前 **All checks passed = 0 违规**。
+> 依赖漏洞也已入 CI：后端 `pip-audit -r requirements.lock --no-deps`、前端 `npm audit --audit-level=high` 0 漏洞。
+
+`ruff check . --exclude .venv` 基线 **1623 个违规**。分批处置（当前已降为 **0**，All checks passed）：
 
 | 批 | 规则 | 数量 | 处置 | 状态 |
 |---|---|---|---|---|
@@ -150,6 +153,14 @@ except ApiTimeoutError as e:
 | C2 | B904 异常链 | 13 | 包装型 `from e` / 裸捕获 `from None`；顺带移除 9 处冗余 BLE001 noqa | ✅ 2026-08-21 |
 | C3 | PLW0603 global | 8 | 惰性单例/缓存逐组审查确认竞态安全 + noqa 注释 | ✅ 2026-08-21 |
 | C4 | F541/F401 | 17 | f-string 无占位符 safe-fix + 未用导入删除 | ✅ 2026-08-21 |
+| D1 | E701 单行多语句 | 10 | cookie 解析/空行守卫拆行（9 平台同模式） | ✅ 2026-08-21 |
+| D2 | UP031 % 格式化 | 8 | 列表推导 `%d` → f-string | ✅ 2026-08-21 |
+| D3 | SIM115 裸 open | 6 | `NamedTemporaryFile`/open 改 with 上下文 | ✅ 2026-08-21 |
+| D4 | SIM117 嵌套 with | 10 | 合并单 with 多上下文（feedback/templates 测试） | ✅ 2026-08-21 |
+| D5 | RUF012 可变类属性 | 4 | `ClassVar` 注解（csdn cookie 映射/alipay 声明映射） | ✅ 2026-08-21 |
+| D6 | RUF006 asyncio 弱引用 | 3 | 官方 set 持有模式（_browser watchdog/jd/taobao 关闭任务） | ✅ 2026-08-21 |
+| D7 | G003/B023/SIM102/B007 零散 | 6 | 日志拼接改 %s、循环变量绑定、合并 if、未用变量下划线 | ✅ 2026-08-21 |
+| D8 | RUF100 冗余 noqa | 24 | per-file-ignores 覆盖后自动清理（app.py E402 等） | ✅ 2026-08-21 |
 
 > 规则从 `pyproject.toml` ignore 列表移除 = 该批完成（ruff 重新报错即回归）。
 

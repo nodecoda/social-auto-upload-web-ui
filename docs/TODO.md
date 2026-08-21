@@ -49,6 +49,14 @@
 - ✅ 治理轮 G2：规范更新 + 治理报告
 - ✅ 验证基线：vue-tsc 0 错 / vitest 326 用例 / vite build
 - ✅ 回归测试基线（2026-08-21）：F2 拆分组件纯函数（PR #86，37）+ 组件级（PR #87，28 + PR #89，24），vitest 326 → 350 用例
+- ✅ P1 后端依赖锁定（2026-08-21，PR #152）：requirements.lock（uv compile 41 精确版本）+ refresh 脚本
+- ✅ P2 CI lint + 依赖审计（2026-08-21，PR #153）：
+  - ruff 存量 89 → 0（D1-D8 批，per-file-ignores 修复 E402 模式豁免）
+  - 后端漏洞修复：flask 3.1.1→3.1.3、requests 2.32.3→2.33.0（pip-audit 0 漏洞）
+  - 前端漏洞修复：vitest 2→4.1.11、vite 6.3.5→6.4.3、coverage-v8 配套（npm audit 12→0）
+  - CI 新增：backend `ruff check .` + `pip-audit`；frontend `npm audit --audit-level=high`
+  - frontend/coverage 误跟踪产物移出 git + gitignore
+- ✅ 包源规则固化（2026-08-21）：AGENTS.md §1 强制国内源（pip 清华 / uv tuna / npm npmmirror / playwright npmmirror CDN），npm audit/pip-audit 走官方源+代理的例外
 
 ---
 
