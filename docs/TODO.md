@@ -114,3 +114,4 @@
   8 用例 → 26%→66%；weibo _fetch_collections(platform 上传补丁+合集开关+value 解析) 5 用例 → 26%→56%；
   全量 713 passed、总覆盖率 27%→29%（CI 门槛 22%，裕度 7pp）
 - T10 CI 门槛锁定（PR #108）：cov-fail-under 22%→24%，锁住 T1-T9 测试批次成果
+- T11 服务层单元测试（PR #109，74 用例）：ffmpeg_service 50 用例（stderr 解析/二进制发现三优先序/元数据读取/帧提取全链路，subprocess 全 mock，模块级状态每测重置）31%→93%；duration_repair 24 用例（并发锁/probe 写库/批量补全 ok-fail-skip 计数/提交兜底，fake conn 隔离 DB + resolve mock）48%→90%；全量 780 passed、总覆盖率 29%→30%（CI 门槛 24%）
