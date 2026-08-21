@@ -31,26 +31,26 @@ ext_api = Blueprint('ext_api', __name__, url_prefix='/api/v2')
 
 DB_PATH = BASE_DIR / "db" / "database.db"
 
-# 平台 id → 中文名称(必须与 frontend config/platforms.js + impl/registry.py 一致)
-_PLATFORM_ID_TO_NAME = {
-    1: "小红书", 2: "视频号", 3: "抖音", 4: "快手", 5: "B站",
-    6: "百家号", 7: "TikTok", 8: "YouTube", 9: "腾讯视频",
-    10: "爱奇艺", 11: "微博", 12: "支付宝", 13: "今日头条", 14: "知乎",
-    15: "CSDN", 16: "VIVO", 17: "微信公众号", 18: "淘宝光合", 19: "京东京麦",
-}
+# 平台 id → 中文名称：registry 派生（R4，唯一真源=registry 类属性）。
+# 新增平台自动收录；若某平台名需特殊展示名，改 registry 类属性即可。
+def _derived_id_to_name():
+    from impl.registry import _registry
+    return {pid: cls.platform_name for pid, cls in _registry.items()}
+
+
+_PLATFORM_ID_TO_NAME = _derived_id_to_name()
 
 # 平台 key(拼音) → 中文名称。修复 publish_details.platform 历史脏数据:
 # 旧数据中有的存的是拼音 key(如 iqiyi / tencent_video),有的存的是中文名
-# 这里统一转中文名。key 必须与 frontend config/platforms.js 一致。
-_PLATFORM_KEY_TO_NAME = {
-    "xiaohongshu": "小红书", "channels": "视频号", "douyin": "抖音",
-    "kuaishou": "快手", "bilibili": "B站", "baijiahao": "百家号",
-    "tiktok": "TikTok", "youtube": "YouTube",
-    "tencent_video": "腾讯视频", "iqiyi": "爱奇艺",
-    "weibo": "微博", "alipay": "支付宝", "toutiao": "今日头条", "zhihu": "知乎",
-    "csdn": "CSDN", "vivo": "VIVO", "weixin_gzh": "微信公众号",
-    "taobao_guanghe": "淘宝光合", "jingmai": "京东京麦",
-}
+# 这里统一转中文名。key 必须与 frontend config/platforms.js 一致。# 平台 key(拼音) → 中文名称：registry 派生（R4）。修复 publish_details.platform
+# 历史脏数据（旧数据有拼音 key 也有中文名），统一转中文名。
+def _derived_key_to_name():
+    from impl.registry import _registry
+    return {cls.platform_key: cls.platform_name for cls in _registry.values()}
+
+
+_PLATFORM_KEY_TO_NAME = _derived_key_to_name()
+
 
 # SSE 订阅者
 _sse_subscribers: list[queue.Queue] = []
@@ -786,29 +786,15 @@ def update_settings():
 # ========== 草稿箱 ==========
 
 # 平台 ID → (key, 名称) 映射。key 必须与 frontend config/platforms.js 一致,
-# 否则草稿箱 getPlatformLogo() 匹配不到 logo。
-_PLATFORM_ID_MAP = {
-    1: ('xiaohongshu', '小红书'),
-    2: ('channels', '视频号'),
-    3: ('douyin', '抖音'),
-    4: ('kuaishou', '快手'),
-    5: ('bilibili', 'B站'),
-    6: ('baijiahao', '百家号'),
-    7: ('tiktok', 'TikTok'),
-    8: ('youtube', 'YouTube'),
-    9: ('tencent_video', '腾讯视频'),
-    10: ('iqiyi', '爱奇艺'),
-    11: ('weibo', '微博'),
-    12: ('alipay', '支付宝'),
-    13: ('toutiao', '今日头条'),
-    14: ('zhihu', '知乎'),
-    15: ('csdn', 'CSDN'),
-    16: ('vivo', 'VIVO'),
-    17: ('weixin_gzh', '微信公众号'),
-    18: ('taobao_guanghe', '淘宝光合'),
-    19: ('jingmai', '京东京麦'),
-    # 注: jd (id=20) 与 jingmai 是同一产品,不单独映射
-}
+# 否则草稿箱 getPlatformLogo() 匹配不到 logo。# 平台 ID → (key, 名称) 映射：registry 派生（R4）。key 必须与 frontend
+# config/platforms.js 一致,否则草稿箱 getPlatformLogo() 匹配不到 logo。
+def _derived_id_map():
+    from impl.registry import _registry
+    return {pid: (cls.platform_key, cls.platform_name) for pid, cls in _registry.items()}
+
+
+_PLATFORM_ID_MAP = _derived_id_map()
+
 
 
 def _extract_image_channels_from_draft(conn, draft_data):

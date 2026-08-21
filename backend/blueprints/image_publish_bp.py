@@ -18,6 +18,25 @@ from conf import BASE_DIR
 from storage import resolve_material_path
 from util._logger import get_channel_logger
 
+
+def _derived_platform_map():
+    """中文名/英文 key → platform_id 双向兜底映射（registry 派生，R4）。
+
+    返回 {platform_name: id, platform_key: id}，支持前端传中文名或 key。
+    """
+    from impl.registry import _registry
+    m = {}
+    for pid, cls in _registry.items():
+        m[cls.platform_name] = pid
+        m[cls.platform_key] = pid
+    return m
+
+
+def _derived_platform_triples():
+    """(platform_id, key, name) 三元组（registry 派生，R4）。"""
+    from impl.registry import _registry
+    return [(pid, cls.platform_key, cls.platform_name) for pid, cls in sorted(_registry.items())]
+
 logger = get_channel_logger("image_publish")
 
 image_publish_bp = Blueprint('image_publish', __name__, url_prefix='/api/image-publish')
@@ -167,19 +186,9 @@ def publish_images():
         cookie_file = config.get('filePath')
 
         if image_files and platform_type and cookie_file:
-            # 平台类型映射（支持中文名称和英文key）
-            platform_map = {
-                'douyin': 3,
-                '抖音': 3,
-                'xiaohongshu': 1,
-                '小红书': 1,
-                'kuaishou': 4,
-                '快手': 4,
-                'weibo': 11, '微博': 11,   # 新增
-                'alipay': 12, '支付宝': 12,  # 图集发布
-                'vivo': 16, 'VIVO': 16,
-                'weixin_gzh': 17, '微信公众号': 17,  # 公众号贴图
-            }
+            # 平台类型映射（中文名/英文key → id）：由 registry 类属性派生（R4），
+            # 新增平台自动收录，无需在此处维护
+            platform_map = _derived_platform_map()
             platform_id = platform_map.get(platform_type)
             if not platform_id:
                 raise ValueError(f"不支持的平台: {platform_type}")
@@ -380,19 +389,11 @@ def _extract_image_channels_summary(draft_data):
     if not publish_account_ids:
         return []
 
-    # 平台ID到名称和key的映射
+    # 平台ID到名称和key的映射：registry 派生（R4）
     # 注意: platform key 必须与 frontend config/platforms.js 的 key 一致,
     # 否则草稿箱 getPlatformLogo() 匹配不到 logo。
     platform_id_to_name = {
-        1: ('xiaohongshu', '小红书'),
-        2: ('channels', '视频号'),
-        3: ('douyin', '抖音'),
-        4: ('kuaishou', '快手'),
-        5: ('bilibili', 'B站'),
-        6: ('baijiahao', '百家号'),
-        11: ('weibo', '微博'),
-        12: ('alipay', '支付宝'),   # 图集发布
-        13: ('toutiao', '今日头条'),
+        pid: (key, name) for pid, key, name in _derived_platform_triples()
     }
 
     try:
@@ -468,11 +469,8 @@ def execute_publish():
         Path(account_file[0]).stem if account_file else ''
     )
 
-    # 平台名映射（与 /publish 一致，用于在 publish_details.platform 存可读名）
-    platform_name_map = {1: '小红书', 2: '视频号', 3: '抖音', 4: '快手', 5: 'B站',
-                         6: '百家号', 7: 'TikTok', 8: 'YouTube', 9: '腾讯视频', 10: '爱奇艺',
-                         11: '微博', 12: '支付宝', 13: '今日头条', 14: '知乎', 15: 'CSDN',
-                         16: 'VIVO', 17: '微信公众号'}
+    # 平台名映射（与 /publish 一致，用于在 publish_details.platform 存可读名）：registry 派生（R4）
+    platform_name_map = {pid: name for pid, key, name in _derived_platform_triples()}
     platform_label = platform_name_map.get(int(platform_type), str(platform_type))
 
     now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()

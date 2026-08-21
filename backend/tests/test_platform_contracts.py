@@ -129,3 +129,18 @@ def test_no_sync_publish_video_swallow_failure():
         f"sync publish_video 存在吞失败反模式（asyncio.run 异常未被捕获），"
         f"应在 run 外加 try/except 返回 False: {violations}"
     )
+
+
+def test_registry_derived_platform_map_consistent():
+    """R4: conf 的平台映射必须由 registry 派生且一致（唯一真源=类属性）。"""
+    from conf import PLATFORM_ID_TO_KEY, PLATFORM_MAP
+    from impl import registry as _reg
+
+    for pid, cls in _reg._registry.items():
+        assert PLATFORM_MAP[pid] == cls.platform_name, f"PLATFORM_MAP[{pid}] 与 registry 不一致"
+        assert PLATFORM_ID_TO_KEY[pid] == cls.platform_key, f"PLATFORM_ID_TO_KEY[{pid}] 与 registry 不一致"
+    # jd(20) 委托链：key 必须可查，名称缺省（不单独注册）
+    assert PLATFORM_ID_TO_KEY[20] == 'jd'
+    # 派生表不得含未注册 id（20 除外）
+    extra = set(PLATFORM_MAP) - set(_reg._registry)
+    assert not extra, f"PLATFORM_MAP 含未注册平台: {extra}"
