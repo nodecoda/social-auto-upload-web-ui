@@ -22,6 +22,24 @@
 
 ---
 
+## 1.5 执行进度（2026-08-22 更新）
+
+| 项 | 状态 | 提交/说明 |
+|---|---|---|
+| R1 契约测试 | ✅ done | `e454576`：test_platform_contracts.py 全量断言（结构/元数据/browser.close 直调/get_event_loop/吞失败），现 7 用例全绿 |
+| R2 吞失败修复 | ✅ done | `e454576`：12 个 sync 平台 publish_video 的 asyncio.run 加 try/except 返回 False（含 jd 补漏） |
+| R3 平台接入 checklist | ✅ done | `6edcc75`：backend-coding-standards.md 新增 7 项 checklist |
+| R4 元数据单源 | ✅ done | `c334f2f`：conf/ext_api/image_publish_bp 映射收敛 registry 派生（懒加载防循环依赖），image_publish_bp 补齐 19 平台 |
+| R5 publish_video 全 async | ⏳ 待做 | 需 14 平台方法体重写，全量验证依赖 CI（本机内存受限 OOM） |
+| R6 队列三合一 | ⏳ 待做 | 最大重构，依赖 R5 |
+| R7 历史唯一 writer | ⏳ 待做 | 依赖 R6 |
+| R8 浏览器生命周期 | ✅ done | `e454576`：impl 59 处 → self.close_browser、19 处 _launch → asyncio.run(close_browser)、blueprint 16 处 → close_browser、全仓 get_event_loop 清零 |
+| R9 样板上移 + _utils 拆分 | ⏳ 待做 | 依赖 R5 防返工 |
+
+> 验证限制：本机内存 3.7GB，重型 DOM 测试（20 个 `*_platform_dom.py`）多次 OOM 未跑全；
+> kuaishou/xiaohongshu/bilibili 三个代表性 DOM 已通过。全量验证在 CI 进行。
+> 未跑重型 DOM 测试为明确验证缺口，合并前需 CI 4 checks 全绿兜底。
+
 ## 1. 明细（按 ROI 降序）
 
 ### R1 🔥 注册表全量契约测试（0.5 人日 · ROI 最高）
