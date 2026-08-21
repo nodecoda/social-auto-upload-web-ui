@@ -827,10 +827,17 @@ class TestExtApiStatsDraftsMisc(unittest.TestCase):
         self.assertFalse(compute_personalized({}, {}))
 
     def test_history_time_range_today(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        # 与查询端一致（ext_api 用 Asia/Shanghai 计算 today/7days/30days 边界）：
+        # 用 SQLite datetime('now','localtime') 会跟随 runner 时区，CI(UTC) 深夜=上海凌晨时
+        # 插入日期落在上海「今天」边界外导致 flaky，改用上海时区当前时间写入。
+        now_sh = datetime.now(ZoneInfo("Asia/Shanghai")).strftime('%Y-%m-%d %H:%M:%S')
         with sqlite3.connect(str(DB_PATH)) as conn:
             conn.execute(
                 "INSERT INTO publish_batches (id, type, status, created_at) "
-                "VALUES ('b1', 'video', 'success', datetime('now', 'localtime'))")
+                "VALUES ('b1', 'video', 'success', ?)", (now_sh,))
             conn.execute(
                 "INSERT INTO publish_details (id, batch_id, account_name, platform, account_configs, status) "
                 "VALUES ('d1', 'b1', 'A', '抖音', "

@@ -1,3 +1,4 @@
+import importlib
 import json
 import os
 import sqlite3
@@ -31,31 +32,13 @@ logger = get_channel_logger("backend")
 if not (FEEDBACK_APP_KEY and FEEDBACK_APP_SECRET):
     logger.warning("[Feedback] 未配置 FEEDBACK_APP_KEY / FEEDBACK_APP_SECRET，反馈系统将返回 503（可在环境变量配置）")
 
-def _ensure_materials_table():
-    """服务启动时确保 materials 表存在"""
-    DB_PATH = BASE_DIR / "db" / "database.db"
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS materials (
-            id TEXT PRIMARY KEY,
-            original_filename TEXT NOT NULL,
-            stored_path TEXT NOT NULL,
-            file_type TEXT NOT NULL,
-            mime_type TEXT,
-            file_size INTEGER DEFAULT 0,
-            storage_type TEXT NOT NULL DEFAULT 'local',
-            width INTEGER DEFAULT 0,
-            height INTEGER DEFAULT 0,
-            duration REAL DEFAULT 0,
-            thumbnail_path TEXT DEFAULT '',
-            upload_time DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
-    logger.info("[Startup] materials 表已就绪")
+# 启动即初始化数据库完整 schema（幂等：CREATE IF NOT EXISTS + 增量迁移）。
+# 历史：materials 表曾在此单独建（_ensure_materials_table），与 init_db.py 重复定义
+# 且缺失 orientation 列（双源真相）——现已统一到 init_db.py 单一建表入口，删除本处重复。
+from init_db import init_database, migrate_database
 
-_ensure_materials_table()
+init_database()
+migrate_database()
 
 logger.info(f"[Startup] Python {sys.version} starting...")
 logger.info(f"[Startup] Script: {__file__}")
@@ -63,105 +46,48 @@ logger.info(f"[Startup] SAU_PORT={os.environ.get('SAU_PORT')}, SAU_DATA_DIR={os.
 
 app = Flask(__name__)
 CORS(app)
-# 视频/图片上传不限大小（用户 2026-06-10 明确要求）
-# 警告：当前 materials_bp.py:125 用 file.read() 一次性读入内存，超大文件会 OOM
-# 如未来需要处理 ≥10GB 文件，应改为流式写入（request.stream → storage.save_stream）
+# 视频/图片上传不限大小（用户 2026-06-10 明确要求）。
+# 上传链路已流式化：materials_bp 按 CHUNK_SIZE 分块读 file.stream → storage.save_stream，
+# 分片上传走 upload_sessions/upload_chunks 断点续传，均不会整文件读入内存。
 app.config['MAX_CONTENT_LENGTH'] = None
 
-# 注册阶段二扩展 API Blueprint
-logger.info("[Startup] Importing ext_api...")
-from ext_api import ext_api
+# 注册全部 Blueprint。顺序 = 历史注册顺序（Flask 按注册序匹配 URL 规则，须保持一致）。
+_BLUEPRINT_SPECS = [
+    # (模块路径, blueprint 变量名)
+    ("ext_api", "ext_api"),
+    ("routes.frames", "frames_bp"),
+    ("blueprints.account_bp", "account_bp"),
+    ("blueprints.feedback_bp", "feedback_bp"),
+    ("blueprints.image_proxy_bp", "image_proxy_bp"),
+    ("blueprints.image_publish_bp", "image_publish_bp"),
+    ("blueprints.publish_bp", "publish_bp"),
+    ("blueprints.douyin_image_bp", "douyin_image_bp"),
+    ("blueprints.alipay_bp", "alipay_bp"),
+    ("blueprints.toutiao_bp", "toutiao_bp"),
+    ("blueprints.vivo_bp", "vivo_bp"),
+    ("blueprints.xiaohongshu_bp", "xiaohongshu_bp"),
+    ("blueprints.bilibili_bp", "bilibili_bp"),
+    ("blueprints.weibo_bp", "weibo_bp"),
+    ("blueprints.channels_bp", "channels_bp"),
+    ("blueprints.weixin_gzh_bp", "weixin_gzh_bp"),
+    ("blueprints.materials_bp", "materials_bp"),
+    ("blueprints.kuaishou_image_bp", "kuaishou_image_bp"),
+    ("blueprints.uploads_bp", "uploads_bp"),
+    ("blueprints.taobao_guanghe_bp", "taobao_guanghe_bp"),
+    ("blueprints.jd_bp", "jd_bp"),
+]
 
-app.register_blueprint(ext_api)
-logger.info("[Startup] ext_api registered OK")
 
-from routes.frames import frames_bp
+def _register_blueprints(target_app) -> None:
+    """按清单导入并注册全部 Blueprint（显式顺序，避免逐个手写 import+register）。"""
+    for module_name, attr_name in _BLUEPRINT_SPECS:
+        module = importlib.import_module(module_name)
+        target_app.register_blueprint(getattr(module, attr_name))
+        logger.info("[Startup] %s registered OK", attr_name)
 
-app.register_blueprint(frames_bp)
-logger.info("[Startup] frames_bp registered OK")
 
-from blueprints.account_bp import account_bp
-from blueprints.feedback_bp import feedback_bp
-from blueprints.image_proxy_bp import image_proxy_bp
-from blueprints.image_publish_bp import image_publish_bp
-from blueprints.publish_bp import publish_bp
-
-app.register_blueprint(account_bp)
-app.register_blueprint(feedback_bp)
-app.register_blueprint(image_proxy_bp)
-app.register_blueprint(publish_bp)
-app.register_blueprint(image_publish_bp)
-logger.info("[Startup] image_publish_bp registered OK")
-
-from blueprints.douyin_image_bp import douyin_image_bp
-
-app.register_blueprint(douyin_image_bp)
-logger.info("[Startup] douyin_image_bp registered OK")
-
-from blueprints.alipay_bp import alipay_bp
-
-app.register_blueprint(alipay_bp)
-logger.info("[Startup] alipay_bp registered OK")
-
-from blueprints.toutiao_bp import toutiao_bp
-
-app.register_blueprint(toutiao_bp)
-logger.info("[Startup] toutiao_bp registered OK")
-
-from blueprints.vivo_bp import vivo_bp
-
-app.register_blueprint(vivo_bp)
-logger.info("[Startup] vivo_bp registered OK")
-
-from blueprints.xiaohongshu_bp import xiaohongshu_bp
-
-app.register_blueprint(xiaohongshu_bp)
-logger.info("[Startup] xiaohongshu_bp registered OK")
-
-from blueprints.bilibili_bp import bilibili_bp
-
-app.register_blueprint(bilibili_bp)
-logger.info("[Startup] bilibili_bp registered OK")
-
-from blueprints.weibo_bp import weibo_bp
-
-app.register_blueprint(weibo_bp)
-logger.info("[Startup] weibo_bp registered OK")
-
-from blueprints.channels_bp import channels_bp
-
-app.register_blueprint(channels_bp)
-logger.info("[Startup] channels_bp registered OK")
-
-from blueprints.weixin_gzh_bp import weixin_gzh_bp
-
-app.register_blueprint(weixin_gzh_bp)
-logger.info("[Startup] weixin_gzh_bp registered OK")
-
-from blueprints.materials_bp import materials_bp
-
-app.register_blueprint(materials_bp)
-logger.info("[Startup] materials_bp registered OK")
-
-from blueprints.kuaishou_image_bp import kuaishou_image_bp
-
-app.register_blueprint(kuaishou_image_bp)
-logger.info("[Startup] kuaishou_image_bp registered OK")
-
-from blueprints.uploads_bp import uploads_bp
-
-app.register_blueprint(uploads_bp)
-logger.info("[Startup] uploads_bp registered OK")
-
-from blueprints.taobao_guanghe_bp import taobao_guanghe_bp
-
-app.register_blueprint(taobao_guanghe_bp)
-logger.info("[Startup] taobao_guanghe_bp registered OK")
-
-from blueprints.jd_bp import jd_bp
-
-app.register_blueprint(jd_bp)
-logger.info("[Startup] jd_picker registered OK")
+logger.info("[Startup] Importing %d blueprints...", len(_BLUEPRINT_SPECS))
+_register_blueprints(app)
 
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend" / "dist"
 if not FRONTEND_DIR.exists():
@@ -369,12 +295,8 @@ def find_available_port(start_port=5409, max_attempts=10):
 if __name__ == "__main__":
     import socket
 
-    logger.info("[Startup] Initializing database...")
-    from init_db import init_database, migrate_database
-    init_database()
-    migrate_database()
-    logger.info("[Startup] Database initialized OK")
-
+    # DB 完整 schema 已在模块导入期初始化（init_database + migrate_database，幂等），
+    # 此处仅做启动期验证与后台任务装配。
     try:
         import sqlite3 as _sqlite
         _test_path = _get_db_path()
@@ -389,75 +311,12 @@ if __name__ == "__main__":
     # 启动后台任务：补全存量视频素材 duration=0 的数据，以及缺失 orientation 的数据
     # （草稿/历史恢复走 DB 直读，绕过了「素材库选中→probe」，
     #  导致历史 duration=0 的数据漏识别，发布校验被跳过）
-    try:
-        from services.duration_repair import start_repair_in_background
-        start_repair_in_background()
-    except Exception as _e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.warning("[Startup] 补全任务启动失败（不影响主服务）: %s", _e)
+    from services.startup import maybe_start_account_check, start_duration_repair
+
+    start_duration_repair()
 
     # 账号登录状态检查机制:如果设置为「启动时检测」,后台异步检测所有账号 cookie
-    try:
-        _check_mode = "pre-publish"
-        try:
-            with _sqlite.connect(str(_get_db_path())) as _c:
-                _row = _c.execute("SELECT value FROM settings WHERE key='accountCheckMode'").fetchone()
-                if _row:
-                    _check_mode = _row[0]
-        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
-            pass
-        if _check_mode == "startup":
-            logger.info("[Startup] 账号检查模式=启动时检测,开始后台异步检测所有账号...")
-            import threading as _threading
-
-            def _check_all_accounts():
-                import asyncio as _asyncio
-                import sqlite3 as _sqlite
-                try:
-                    db_path = _get_db_path()
-                    with _sqlite.connect(str(db_path)) as conn:
-                        rows = conn.execute(
-                            "SELECT id, type, filePath, userName FROM user_info"
-                        ).fetchall()
-                    logger.info(f"[Startup] 共 {len(rows)} 个账号待检测")
-                    from impl.registry import get_platform
-                    for row in rows:
-                        acc_id, acc_type, cookie_file, nick = row
-                        try:
-                            platform = get_platform(acc_type)
-                            if not platform:
-                                continue
-                            cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-                            if not Path(cookie_path).exists():
-                                with _sqlite.connect(str(db_path)) as conn:
-                                    conn.execute(
-                                        "UPDATE user_info SET status=0 WHERE id=?",
-                                        (acc_id,),
-                                    )
-                                    conn.commit()
-                                logger.info(f"[Startup] 账号 {nick}(id={acc_id}) cookie 文件不存在,标记无效")
-                                continue
-                            ok = _asyncio.run(platform.check_cookie(cookie_file))
-                            new_status = 1 if ok else 0
-                            with _sqlite.connect(str(db_path)) as conn:
-                                conn.execute(
-                                    "UPDATE user_info SET status=? WHERE id=?",
-                                    (new_status, acc_id),
-                                )
-                                conn.commit()
-                            logger.info(f"[Startup] 账号 {nick}(id={acc_id}) 检测完成: {'有效' if ok else '无效'}")
-                        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                            logger.info(f"[Startup] 账号 {nick}(id={acc_id}) 检测异常: {e}")
-                    logger.info("[Startup] 所有账号检测完成")
-                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                    logger.info(f"[Startup] 账号检测线程异常: {e}")
-
-            _t = _threading.Thread(target=_check_all_accounts, daemon=True)
-            _t.start()
-            logger.info("[Startup] 账号检测后台线程已启动")
-        else:
-            logger.info("[Startup] 账号检查模式=发布前检测,跳过启动时检测")
-    except Exception as _e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.warning("[Startup] 账号检查模式读取失败（不影响主服务）: %s", _e)
+    maybe_start_account_check(_get_db_path)
 
     port = int(os.environ.get("SAU_PORT", "5409"))
     if port == 5409:

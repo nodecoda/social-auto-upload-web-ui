@@ -78,13 +78,13 @@ class TestChunkUpload(unittest.TestCase):
         cls.app = app
 
     def setUp(self):
-        # patch 掉 _ensure_db / _ensure_materials_table 等 before_request，
-        # 防止它们跑 init_database 覆盖我们的测试 schema
+        # patch 掉 _ensure_db 等 before_request，防止它们跑 init_database 覆盖我们的测试 schema
+        # （_ensure_materials_table 已于 2026-08 移除：materials 表统一由 init_db.py 建表）
         from app import app as flask_app
         self._saved_hooks = list(flask_app.before_request_funcs.get(None, []))
         flask_app.before_request_funcs[None] = [
             fn for fn in self._saved_hooks
-            if getattr(fn, '__name__', None) not in ('_ensure_db', '_ensure_materials_table')
+            if getattr(fn, '__name__', None) != '_ensure_db'
         ]
         # patch DB_PATH 和 CHUNK_DIR 到测试目录
         self._patches = [
