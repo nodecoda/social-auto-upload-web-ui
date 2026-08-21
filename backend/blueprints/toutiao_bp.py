@@ -35,8 +35,9 @@ from flask import Blueprint, jsonify, request
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-from impl._browser import create_browser, create_context
+from impl._browser import close_browser, create_browser, create_context
 from util._logger import get_channel_logger
+from util.async_utils import run_async
 
 logger = get_channel_logger("toutiao")
 
@@ -200,30 +201,9 @@ async def _search_compilation_via_browser(cookie_file: str, keyword: str) -> dic
         finally:
             await context.close()
     finally:
-        await browser.close()
+        await close_browser(browser)
 
 
 # ======================================================================
 # run_async helper(与 alipay_bp 一致)
 # ======================================================================
-
-def run_async(coro):
-    """在新事件循环里跑协程(避免与 Flask 线程冲突)。"""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            import threading
-            result = {}
-            def _run():
-                new_loop = asyncio.new_event_loop()
-                try:
-                    result["v"] = new_loop.run_until_complete(coro)
-                finally:
-                    new_loop.close()
-            t = threading.Thread(target=_run)
-            t.start()
-            t.join()
-            return result.get("v")
-    except RuntimeError:
-        pass
-    return asyncio.run(coro)

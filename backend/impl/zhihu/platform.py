@@ -16,7 +16,7 @@ from queue import Queue
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     get_account_name_by_cookie_file,
     parse_schedule_time,
@@ -123,7 +123,7 @@ class ZhihuPlatform(BasePlatform):
                     pass
         finally:
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie
@@ -155,7 +155,7 @@ class ZhihuPlatform(BasePlatform):
                 await page.close()
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile
@@ -202,7 +202,7 @@ class ZhihuPlatform(BasePlatform):
                 await page.close()
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _scrape_zhihu_stats(self, page) -> list:
         """抓取知乎创作中心的 9 项运营数据,来自两个页面。
@@ -390,7 +390,7 @@ class ZhihuPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -532,7 +532,11 @@ class ZhihuPlatform(BasePlatform):
             logger.info("[发布视频] 视频发布流程完成!")
             logger.info("=" * 60)
 
-        asyncio.run(_run())
+        try:
+            asyncio.run(_run())
+        except Exception as e:
+            logger.exception("[发布失败] 知乎 publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------

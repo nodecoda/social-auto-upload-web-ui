@@ -14,7 +14,7 @@ from queue import Queue
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import clear_and_type, get_account_name_by_cookie_file, parse_schedule_time, save_login_result
 from ..base_platform import BasePlatform
 
@@ -162,7 +162,7 @@ class IqiyiPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie — verify stored cookie is still valid
@@ -191,7 +191,7 @@ class IqiyiPlatform(BasePlatform):
             logger.warning("check_cookie failed: %s", e)
             return False
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile — scrape user name and avatar
@@ -216,7 +216,7 @@ class IqiyiPlatform(BasePlatform):
             logger.warning("sync_profile failed: %s", e)
             return {"name": "", "avatar": "", "stats": []}
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _scrape_iqiyi_stats(self, page) -> list:
         """抓取爱奇艺创作者中心首页的 3 项运营数据(获赞/关注/粉丝)。
@@ -336,7 +336,7 @@ class IqiyiPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -1005,9 +1005,9 @@ class IqiyiPlatform(BasePlatform):
                     "[iqiyi] 检测到上传区域 .up-phone-card,等待其消失后再点发布"
                 )
                 # 轮询等待卡片消失(最长 30 分钟,大文件慢网络留余量)
-                deadline = asyncio.get_event_loop().time() + 1800
+                deadline = asyncio.get_running_loop().time() + 1800
                 last_percent = -1
-                while asyncio.get_event_loop().time() < deadline:
+                while asyncio.get_running_loop().time() < deadline:
                     try:
                         if await upload_card.count() == 0:
                             break

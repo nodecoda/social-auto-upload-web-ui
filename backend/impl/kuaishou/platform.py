@@ -16,7 +16,7 @@ from util._logger import bind_account_name, get_channel_logger
 
 logger = get_channel_logger("kuaishou")
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
@@ -159,7 +159,7 @@ class KuaishouPlatform(BasePlatform):
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
                 try:
-                    await browser.close()
+                    await self.close_browser(browser)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -200,7 +200,7 @@ class KuaishouPlatform(BasePlatform):
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
             try:
-                await browser.close()
+                await self.close_browser(browser)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
@@ -234,7 +234,7 @@ class KuaishouPlatform(BasePlatform):
                 await context.close()
         finally:
             try:
-                await browser.close()
+                await self.close_browser(browser)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
@@ -362,7 +362,7 @@ class KuaishouPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -618,7 +618,11 @@ class KuaishouPlatform(BasePlatform):
         """
         import asyncio as _aio
 
-        _aio.run(self._publish_video_async(**kwargs))
+        try:
+            _aio.run(self._publish_video_async(**kwargs))
+        except Exception as e:
+            logger.exception("[发布失败] 快手 publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------

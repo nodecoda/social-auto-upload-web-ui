@@ -17,7 +17,7 @@ from queue import Queue
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     get_account_name_by_cookie_file,
     parse_schedule_time,
@@ -355,7 +355,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                     pass
         finally:
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie
@@ -396,7 +396,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile
@@ -453,7 +453,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _login_stats_fn(self, page, account_id) -> list:
         """登录成功后的 stats 抓取入口（供 save_login_result 调用）。"""
@@ -689,7 +689,11 @@ class TaobaoGuanghePlatform(BasePlatform):
             logger.info("[发布视频] 视频发布流程完成!")
             logger.info("=" * 60)
 
-        asyncio.run(_run())
+        try:
+            asyncio.run(_run())
+        except Exception as e:
+            logger.exception("[发布失败] 淘宝光合 publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------
@@ -1029,8 +1033,8 @@ class TaobaoGuanghePlatform(BasePlatform):
         context.on("page", _on_new_page)
         target_page = page
         try:
-            deadline = asyncio.get_event_loop().time() + 20
-            while asyncio.get_event_loop().time() < deadline:
+            deadline = asyncio.get_running_loop().time() + 20
+            while asyncio.get_running_loop().time() < deadline:
                 # 检查新 tab
                 while new_pages:
                     np = new_pages.pop(0)
@@ -1073,8 +1077,8 @@ class TaobaoGuanghePlatform(BasePlatform):
         本方法遍历 page.frames，找到含「上传 input」或「.video-upload」的 frame。
         """
         # 等 iframe 出现并加载（最多 20s）
-        deadline = asyncio.get_event_loop().time() + 20
-        while asyncio.get_event_loop().time() < deadline:
+        deadline = asyncio.get_running_loop().time() + 20
+        while asyncio.get_running_loop().time() < deadline:
             for frame in page.frames:
                 if frame == page.main_frame:
                     continue
@@ -1715,7 +1719,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 

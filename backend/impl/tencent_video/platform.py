@@ -16,7 +16,7 @@ from queue import Queue
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import clear_and_type, get_account_name_by_cookie_file, parse_schedule_time, save_login_result
 from ..base_platform import BasePlatform
 
@@ -144,7 +144,7 @@ class TencentVideoPlatform(BasePlatform):
         finally:
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie — verify stored cookie is still valid
@@ -171,7 +171,7 @@ class TencentVideoPlatform(BasePlatform):
             logger.warning("check_cookie failed: %s", e)
             return False
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile — scrape user name and avatar
@@ -212,7 +212,7 @@ class TencentVideoPlatform(BasePlatform):
             logger.warning("sync_profile failed: %s", e)
             return {"name": "", "avatar": "", "stats": []}
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _scrape_tencent_video_stats(self, page) -> list:
         """抓取腾讯视频数据分析总览页的运营数据。
@@ -347,7 +347,7 @@ class TencentVideoPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 

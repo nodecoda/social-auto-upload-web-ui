@@ -1272,7 +1272,7 @@ async def save_login_result(
     user_name, avatar_url = profile[0], profile[1]
     # 新平台同步账号运营数据;旧平台 scrape_fn 不返回,fans/likes/follows 默认 0
     if not user_name:
-        user_name = f"{platform_name}用户{int(asyncio.get_event_loop().time())}"
+        user_name = f"{platform_name}用户{int(asyncio.get_running_loop().time())}"
 
     cookies_dir = Path(BASE_DIR / "cookiesFile")
     cookies_dir.mkdir(exist_ok=True)

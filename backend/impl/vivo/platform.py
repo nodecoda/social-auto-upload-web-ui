@@ -21,7 +21,7 @@ from queue import Queue
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     get_account_name_by_cookie_file,
     parse_schedule_time,
@@ -84,9 +84,9 @@ class VivoPlatform(BasePlatform):
                 # (VIVO 用 hash 路由,登录后会渲染 home 页资料卡)
                 max_wait = 300  # 5 分钟
                 poll_interval = 3
-                start_time = asyncio.get_event_loop().time()
+                start_time = asyncio.get_running_loop().time()
                 logged_in = False
-                while (asyncio.get_event_loop().time() - start_time) < max_wait:
+                while (asyncio.get_running_loop().time() - start_time) < max_wait:
                     try:
                         if await page.locator(".user-info-area").count() > 0:
                             logger.info("[登录] 检测到用户资料卡,登录成功! URL: %s", page.url)
@@ -138,7 +138,7 @@ class VivoPlatform(BasePlatform):
             # 成功才关浏览器(失败/超时保留让用户看现场,与 channels 一致)
             if success:
                 try:
-                    await browser.close()
+                    await self.close_browser(browser)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -171,7 +171,7 @@ class VivoPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile — refresh user name / avatar / fans / likes / follows
@@ -217,7 +217,7 @@ class VivoPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _login_stats_fn(self, page, account_id) -> list:
         """登录成功后的 stats 抓取入口(供 save_login_result 调用)。
@@ -263,7 +263,7 @@ class VivoPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -430,10 +430,10 @@ class VivoPlatform(BasePlatform):
                 # 2. 等待上传完成:轮询 .upload-progress + .success-text
                 # 文档:只有视频上传完成了才可以进行后续的设置,等待 4 小时
                 max_wait = _UPLOAD_MAX_WAIT
-                start_time = asyncio.get_event_loop().time()
+                start_time = asyncio.get_running_loop().time()
                 upload_complete = False
                 last_progress = ""
-                while (asyncio.get_event_loop().time() - start_time) < max_wait:
+                while (asyncio.get_running_loop().time() - start_time) < max_wait:
                     try:
                         success_text = page.locator('.success-text:has-text("上传成功")')
                         if await success_text.count():
@@ -562,8 +562,8 @@ class VivoPlatform(BasePlatform):
                 # 11. 等待跳转(成功判断:URL 离开 uploads 页)
                 logger.info("[提交] 等待页面跳转判断发布结果...")
                 success = False
-                wait_start = asyncio.get_event_loop().time()
-                while (asyncio.get_event_loop().time() - wait_start) < 60:
+                wait_start = asyncio.get_running_loop().time()
+                while (asyncio.get_running_loop().time() - wait_start) < 60:
                     current_url = page.url
                     if "content/uploads" not in current_url and "#/uploads" not in current_url:
                         success = True

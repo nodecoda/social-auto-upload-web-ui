@@ -256,7 +256,7 @@ class TaskQueue:
                 inner = asyncio.create_task(publish_fn(**task.payload))
                 result = await inner
             else:
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 result = await loop.run_in_executor(
                     None, lambda: publish_fn(**task.payload)
                 )
@@ -282,7 +282,7 @@ class TaskQueue:
         desc = task.description
 
         # 在 executor 中运行同步的上传函数
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         match task.platform_type:
             case 1:
                 await loop.run_in_executor(

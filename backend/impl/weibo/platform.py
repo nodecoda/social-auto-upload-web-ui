@@ -138,7 +138,7 @@ class WeiboPlatform(BasePlatform):
                 await context.close()
         finally:
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie()
@@ -177,7 +177,7 @@ class WeiboPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # open_creator_center()
@@ -188,7 +188,7 @@ class WeiboPlatform(BasePlatform):
         cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
         url = _WEIBO_CREATOR_URL
 
-        from .._browser import create_browser_sync, create_context_sync
+        from .._browser import close_browser, create_browser_sync, create_context_sync
 
         def _launch():
             browser = create_browser_sync(headless=False)
@@ -202,7 +202,7 @@ class WeiboPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -315,7 +315,7 @@ class WeiboPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _login_stats_fn(self, page, account_id) -> list:
         """登录成功后的 stats 抓取入口(供 save_login_result 调用)。
@@ -382,7 +382,11 @@ class WeiboPlatform(BasePlatform):
 
         V1 暂不支持定时发布;``schedule_time_str`` 等参数被忽略。
         """
-        asyncio.run(self._upload_all(**kwargs))
+        try:
+            asyncio.run(self._upload_all(**kwargs))
+        except Exception as e:
+            logger.exception("[发布失败] 微博 publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------
@@ -693,9 +697,9 @@ class WeiboPlatform(BasePlatform):
                     "input[type='file'][data-weibo-img-upload='1'],"
                     "input[type='file'][data-weibo-img-new='1']"
                 )
-                deadline = asyncio.get_event_loop().time() + 30
+                deadline = asyncio.get_running_loop().time() + 30
                 found = None
-                while asyncio.get_event_loop().time() < deadline:
+                while asyncio.get_running_loop().time() < deadline:
                     count = await page.locator(marked_sel).count()
                     if count > 0:
                         found = page.locator(marked_sel).first
@@ -711,8 +715,8 @@ class WeiboPlatform(BasePlatform):
 
         # 4. 等待上传完成 — 轮询「发送」按钮 enabled(最稳判定)
         send_btn = page.get_by_role("button", name="发送", exact=True).first
-        deadline = asyncio.get_event_loop().time() + 300  # 5 分钟
-        while asyncio.get_event_loop().time() < deadline:
+        deadline = asyncio.get_running_loop().time() + 300  # 5 分钟
+        while asyncio.get_running_loop().time() < deadline:
             try:
                 disabled = await send_btn.get_attribute("disabled")
                 if disabled is None:
@@ -768,11 +772,11 @@ class WeiboPlatform(BasePlatform):
 
         60s 内任一命中即视为成功。
         """
-        deadline = asyncio.get_event_loop().time() + timeout_s
+        deadline = asyncio.get_running_loop().time() + timeout_s
         textarea = page.locator("textarea[placeholder*='有什么新鲜事']").first
         send_btn = page.get_by_role("button", name="发送", exact=True).first
 
-        while asyncio.get_event_loop().time() < deadline:
+        while asyncio.get_running_loop().time() < deadline:
             try:
                 # 条件 1: textarea 清空
                 textarea_empty = await textarea.input_value() == ""
@@ -1156,9 +1160,9 @@ class WeiboPlatform(BasePlatform):
             "input[type='file'][data-weibo-upload='1'],"
             "input[type='file'][data-weibo-new='1']"
         )
-        deadline = asyncio.get_event_loop().time() + 30
+        deadline = asyncio.get_running_loop().time() + 30
         found_input = None
-        while asyncio.get_event_loop().time() < deadline:
+        while asyncio.get_running_loop().time() < deadline:
             try:
                 count = await page.locator(marked_sel).count()
                 if count > 0:
@@ -1230,9 +1234,9 @@ class WeiboPlatform(BasePlatform):
         # 检测「上传中」spinner DOM 是否还存在 + 发布按钮文字是否变成「发布」
         uploading_locator = page.get_by_text("上传中", exact=True)
         publish_btn = page.get_by_role("button", name="发布", exact=True).first
-        deadline = asyncio.get_event_loop().time() + timeout_s
+        deadline = asyncio.get_running_loop().time() + timeout_s
 
-        while asyncio.get_event_loop().time() < deadline:
+        while asyncio.get_running_loop().time() < deadline:
             # 1. 「上传中」DOM 消失 或 发布按钮可见(文字已从「自动发布」变成「发布」)
             try:
                 uploading_gone = await uploading_locator.count() == 0
@@ -1269,7 +1273,7 @@ class WeiboPlatform(BasePlatform):
 
             # 3. 进度旁证(每 30s 一次,避免刷屏)
             try:
-                remaining = int(deadline - asyncio.get_event_loop().time())
+                remaining = int(deadline - asyncio.get_running_loop().time())
                 if remaining % 60 < 5 or remaining < 60:
                     uploading_count = await uploading_locator.count()
                     logger.info(

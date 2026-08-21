@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
@@ -104,7 +104,7 @@ class TiktokPlatform(BasePlatform):
         finally:
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # Cookie validation
@@ -136,7 +136,7 @@ class TiktokPlatform(BasePlatform):
             except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                 return True
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # Profile sync
@@ -203,7 +203,7 @@ class TiktokPlatform(BasePlatform):
             logger.info(f"[tiktok] sync_profile error: {e}")
             return ("", "")
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # Open creator centre (unchanged — uses sync CloakBrowser)
@@ -230,7 +230,7 @@ class TiktokPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -262,7 +262,11 @@ class TiktokPlatform(BasePlatform):
         - ``ai_content`` (*Any*, optional) -- truthy value enables the
           "AI 生成的内容" toggle on the publish page
         """
-        asyncio.run(self._upload_all(**kwargs))
+        try:
+            asyncio.run(self._upload_all(**kwargs))
+        except Exception as e:
+            logger.exception("[发布失败] TikTok publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------

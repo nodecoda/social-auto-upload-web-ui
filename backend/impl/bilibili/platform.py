@@ -19,7 +19,7 @@ from util._logger import bind_account_name, get_channel_logger
 
 logger = get_channel_logger("bilibili")
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
@@ -220,7 +220,7 @@ class BilibiliPlatform(BasePlatform):
         finally:
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # Cookie check
@@ -254,7 +254,7 @@ class BilibiliPlatform(BasePlatform):
                 await page.close()
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # Sync profile
@@ -311,7 +311,7 @@ class BilibiliPlatform(BasePlatform):
                     pass
         finally:
             try:
-                await browser.close()
+                await self.close_browser(browser)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
@@ -449,7 +449,7 @@ class BilibiliPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -577,7 +577,11 @@ class BilibiliPlatform(BasePlatform):
             logger.info("[发布视频] 视频发布流程完成!")
             logger.info("=" * 60)
 
-        asyncio.run(_run())
+        try:
+            asyncio.run(_run())
+        except Exception as e:
+            logger.exception("[发布失败] 哔哩哔哩 publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------

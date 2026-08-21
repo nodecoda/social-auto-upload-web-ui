@@ -25,7 +25,7 @@ logger = get_channel_logger("youtube")
 
 from conf import BASE_DIR
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import clear_input, get_account_name_by_cookie_file, parse_schedule_time, scrape_youtube_profile
 from ..base_platform import BasePlatform
 
@@ -121,7 +121,7 @@ class YoutubePlatform(BasePlatform):
             # Scrape profile
             user_name, avatar_url = await scrape_youtube_profile(page)
             if not user_name:
-                user_name = f"YouTube{int(asyncio.get_event_loop().time())}"
+                user_name = f"YouTube{int(asyncio.get_running_loop().time())}"
 
             # Save storage state manually (persistent context)
             cookies_dir = Path(BASE_DIR / "cookiesFile")
@@ -219,7 +219,7 @@ class YoutubePlatform(BasePlatform):
         finally:
             if browser:
                 try:
-                    await browser.close()
+                    await self.close_browser(browser)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -247,7 +247,7 @@ class YoutubePlatform(BasePlatform):
         finally:
             if browser:
                 try:
-                    await browser.close()
+                    await self.close_browser(browser)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -272,7 +272,7 @@ class YoutubePlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 

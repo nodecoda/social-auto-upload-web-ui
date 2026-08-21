@@ -26,7 +26,7 @@ from queue import Queue
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     clear_input,
     get_account_name_by_cookie_file,
@@ -120,9 +120,9 @@ class WeixinGzhPlatform(BasePlatform):
         """
         await page.goto(_LOGIN_URL, wait_until="domcontentloaded", timeout=30000)
         # cookie 触发自动跳转到 /cgi-bin/home?...&token=XXX 需要一点时间
-        deadline = asyncio.get_event_loop().time() + 15
+        deadline = asyncio.get_running_loop().time() + 15
         token = ""
-        while asyncio.get_event_loop().time() < deadline:
+        while asyncio.get_running_loop().time() < deadline:
             token = WeixinGzhPlatform._extract_token(page)
             if token:
                 break
@@ -221,9 +221,9 @@ class WeixinGzhPlatform(BasePlatform):
                 # 等待登录：URL 跳到 /cgi-bin/home 且带 token=
                 logger.info("[登录] 等待用户扫码...")
                 max_wait = 300  # 5 minutes
-                start_time = asyncio.get_event_loop().time()
+                start_time = asyncio.get_running_loop().time()
                 logged_in = False
-                while (asyncio.get_event_loop().time() - start_time) < max_wait:
+                while (asyncio.get_running_loop().time() - start_time) < max_wait:
                     try:
                         current_url = page.url or ""
                         if _HOME_PATH in current_url and "token=" in current_url:
@@ -266,7 +266,7 @@ class WeixinGzhPlatform(BasePlatform):
                 await context.close()
         finally:
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie — verify stored cookie is still valid
@@ -306,7 +306,7 @@ class WeixinGzhPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile — refresh user name / avatar / stats
@@ -359,7 +359,7 @@ class WeixinGzhPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _scrape_stats(self, page) -> list:
         """从公众号首页 DOM 抓取运营数据。
@@ -476,7 +476,7 @@ class WeixinGzhPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -505,7 +505,11 @@ class WeixinGzhPlatform(BasePlatform):
         - ``enableTimer`` (*bool*, optional) -- 定时发布
         - ``schedule_time_str`` (*str*, optional) -- 定时时间
         """
-        asyncio.run(self._upload_all(**kwargs))
+        try:
+            asyncio.run(self._upload_all(**kwargs))
+        except Exception as e:
+            logger.exception("[发布失败] 微信公众号 publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------
@@ -811,9 +815,9 @@ class WeixinGzhPlatform(BasePlatform):
 
         默认超时 4 小时(大视频 + 慢网络留余量)。
         """
-        deadline = asyncio.get_event_loop().time() + timeout_s
+        deadline = asyncio.get_running_loop().time() + timeout_s
         last_progress = ""
-        while asyncio.get_event_loop().time() < deadline:
+        while asyncio.get_running_loop().time() < deadline:
             # 成功信号: 文本「视频上传成功」且元素可见
             try:
                 success_visible = await page.evaluate(
@@ -913,8 +917,8 @@ class WeixinGzhPlatform(BasePlatform):
 
         通过 JS 判断:该按钮同时含 primary 且不含 disabled class。
         """
-        deadline = asyncio.get_event_loop().time() + timeout_s
-        while asyncio.get_event_loop().time() < deadline:
+        deadline = asyncio.get_running_loop().time() + timeout_s
+        while asyncio.get_running_loop().time() < deadline:
             clicked = await page.evaluate(
                 """(text) => {
                     const btns = document.querySelectorAll(
@@ -1044,9 +1048,9 @@ class WeixinGzhPlatform(BasePlatform):
             await save_send_btn.wait_for(state="visible", timeout=15000)
 
             # 「保存并发表」初始可能 disabled,等其可点后点击
-            deadline = asyncio.get_event_loop().time() + 60
+            deadline = asyncio.get_running_loop().time() + 60
             clicked = False
-            while asyncio.get_event_loop().time() < deadline:
+            while asyncio.get_running_loop().time() < deadline:
                 disabled = await save_send_btn.evaluate(
                     "el => el.classList.contains('weui-desktop-btn_disabled')"
                 )
@@ -1067,10 +1071,10 @@ class WeixinGzhPlatform(BasePlatform):
             # **导航销毁异常**: 点完「继续提交」后旧页面会发生导航跳转,context
             # 被销毁,此后对该 page 的 evaluate 会抛 "Execution context was
             # destroyed"。这恰恰说明弹窗确认生效、正在跳转,应捕获后转去等目标页。
-            wait_deadline = asyncio.get_event_loop().time() + 120
+            wait_deadline = asyncio.get_running_loop().time() + 120
             handled_dialogs = set()
             target_page = None
-            while asyncio.get_event_loop().time() < wait_deadline:
+            while asyncio.get_running_loop().time() < wait_deadline:
                 # 新 tab 可能已出现但 URL 还是 about:blank,补查它的最新 URL
                 if candidate_holder["page"] is not None:
                     target_page = candidate_holder["page"]
@@ -1356,8 +1360,8 @@ class WeixinGzhPlatform(BasePlatform):
 
         定位: ``.weui-desktop-dialog:not([style*='display: none']) .weui-desktop-btn_primary``
         """
-        deadline = asyncio.get_event_loop().time() + timeout_s
-        while asyncio.get_event_loop().time() < deadline:
+        deadline = asyncio.get_running_loop().time() + timeout_s
+        while asyncio.get_running_loop().time() < deadline:
             clicked = await page.evaluate(
                 """(text) => {
                     const dialogs = document.querySelectorAll('.weui-desktop-dialog');
@@ -1455,9 +1459,9 @@ class WeixinGzhPlatform(BasePlatform):
         # dl 真实存在(dlExists=true)。之前 dlExists=False 时因 dlHidden 也为 false
         # 被误判通过 —— dl 不存在不等于"可见",必须 dlExists 强制为真。
         switched = False
-        sw_deadline = asyncio.get_event_loop().time() + 20
+        sw_deadline = asyncio.get_running_loop().time() + 20
         attempt = 0
-        while asyncio.get_event_loop().time() < sw_deadline:
+        while asyncio.get_running_loop().time() < sw_deadline:
             res = await page.evaluate(
                 """() => {
                     // 只取「定时发表」开关 —— 它在 .mass-send__td-setting.timer_setting 区块下。
@@ -1687,9 +1691,9 @@ class WeixinGzhPlatform(BasePlatform):
         ]
 
         opened = False
-        op_deadline = asyncio.get_event_loop().time() + 10
+        op_deadline = asyncio.get_running_loop().time() + 10
         attempt = 0
-        while asyncio.get_event_loop().time() < op_deadline:
+        while asyncio.get_running_loop().time() < op_deadline:
             before = await _is_focused()
             if before:
                 opened = True
@@ -1877,8 +1881,8 @@ class WeixinGzhPlatform(BasePlatform):
     @staticmethod
     async def _wait_for_home(page, timeout_s: int = 120):
         """等待页面跳转到公众号首页(发表成功信号)。"""
-        deadline = asyncio.get_event_loop().time() + timeout_s
-        while asyncio.get_event_loop().time() < deadline:
+        deadline = asyncio.get_running_loop().time() + timeout_s
+        while asyncio.get_running_loop().time() < deadline:
             try:
                 url = page.url or ""
                 if _HOME_PATH in url and "token=" in url:
@@ -2115,9 +2119,9 @@ class WeixinGzhPlatform(BasePlatform):
             logger.info("[发布图集] 已点击「贴图」菜单,等待新 tab...")
 
             # 轮询等待目标新 tab 导航到 appmsg_edit
-            deadline = asyncio.get_event_loop().time() + 30
+            deadline = asyncio.get_running_loop().time() + 30
             target_page = None
-            while asyncio.get_event_loop().time() < deadline:
+            while asyncio.get_running_loop().time() < deadline:
                 if new_page_holder["page"] is not None:
                     target_page = new_page_holder["page"]
                     break
@@ -2186,9 +2190,9 @@ class WeixinGzhPlatform(BasePlatform):
         # 等待上传完成:已上传的图片项数量达到预期(轮询,最多 5 分钟)
         # 贴图编辑页每张图会生成一个预览项(li/div 含 img 或上传进度条)
         target_count = len(file_path_list)
-        deadline = asyncio.get_event_loop().time() + 300
+        deadline = asyncio.get_running_loop().time() + 300
         last_info = ""
-        while asyncio.get_event_loop().time() < deadline:
+        while asyncio.get_running_loop().time() < deadline:
             info = await page.evaluate(
                 """(target) => {
                     // 已上传图片的预览项(公众号贴图页多种可能结构)

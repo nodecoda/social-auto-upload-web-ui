@@ -129,7 +129,7 @@ class JdPlatform(BasePlatform):
                     pass
         finally:
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ---------- 占位:后续 Task 实现 ----------
 
@@ -165,7 +165,7 @@ class JdPlatform(BasePlatform):
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def sync_profile(self, cookie_file: str):
         """同步账号昵称/头像。
@@ -204,7 +204,7 @@ class JdPlatform(BasePlatform):
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def open_creator_center(self, cookie_file: str) -> None:
         """异步入口:打开创作中心(后台线程保持浏览器)。"""
@@ -213,7 +213,7 @@ class JdPlatform(BasePlatform):
             raise FileNotFoundError(f"cookie 文件不存在: {cookie_file}")
 
         def _launch():
-            from .._browser import create_browser_sync, create_context_sync
+            from .._browser import close_browser, create_browser_sync, create_context_sync
             browser = create_browser_sync(headless=False)
             try:
                 ctx = create_context_sync(browser, storage_state=str(cookie_path))
@@ -225,7 +225,7 @@ class JdPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -343,7 +343,11 @@ class JdPlatform(BasePlatform):
             logger.info("[发布视频] 京东视频发布流程完成!")
             logger.info("=" * 60)
 
-        asyncio.run(_run())
+        try:
+            asyncio.run(_run())
+        except Exception as e:
+            logger.exception("[发布失败] 京东 publish_video 异常: %s", e)
+            return False
         return True
 
     async def _upload_single_video(
@@ -730,8 +734,8 @@ class JdPlatform(BasePlatform):
 
         # 2. 轮询等目标选项(用 label 精确匹配)出现
         target = None
-        deadline = asyncio.get_event_loop().time() + 10
-        while asyncio.get_event_loop().time() < deadline:
+        deadline = asyncio.get_running_loop().time() + 10
+        while asyncio.get_running_loop().time() < deadline:
             items = await self.frame.query_selector_all(
                 f".jd-select-item-option[label='{declaration}']"
             )
@@ -812,9 +816,9 @@ class JdPlatform(BasePlatform):
         发布按钮可能因表单未完整而 disabled,需要等待其变为可点。
         """
         # 1. 等发布按钮 enabled
-        deadline = asyncio.get_event_loop().time() + timeout
+        deadline = asyncio.get_running_loop().time() + timeout
         btn = None
-        while asyncio.get_event_loop().time() < deadline:
+        while asyncio.get_running_loop().time() < deadline:
             btn = await self.frame.query_selector("._publishBtn_6bi9b_150")
             if btn:
                 disabled = await btn.get_attribute("disabled")
@@ -841,8 +845,8 @@ class JdPlatform(BasePlatform):
         Returns:
             True: 发布成功
         """
-        deadline = asyncio.get_event_loop().time() + timeout
-        while asyncio.get_event_loop().time() < deadline:
+        deadline = asyncio.get_running_loop().time() + timeout
+        while asyncio.get_running_loop().time() < deadline:
             url = self.page.url
             # 判定:URL 跳出发布页(跳转到 content-list 等列表页/管理页)即成功。
             # 不依赖 original_url 对比 —— _click_publish 里 sleep(2) 后页面可能已跳转,

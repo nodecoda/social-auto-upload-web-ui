@@ -196,8 +196,8 @@ class GuanghePickerSession:
     async def _find_publish_frame(self):
         """找含上传元素的 iframe(发布页内容由跨域 iframe 嵌入)。"""
         page = self.page
-        deadline = asyncio.get_event_loop().time() + 20
-        while asyncio.get_event_loop().time() < deadline:
+        deadline = asyncio.get_running_loop().time() + 20
+        while asyncio.get_running_loop().time() < deadline:
             for frame in page.frames:
                 if frame == page.main_frame:
                     continue

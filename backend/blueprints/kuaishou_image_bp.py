@@ -12,8 +12,9 @@ from flask import Blueprint, jsonify, request
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-from impl._browser import create_browser, create_context
+from impl._browser import close_browser, create_browser, create_context
 from util._logger import get_channel_logger
+from util.async_utils import run_async
 
 logger = get_channel_logger("kuaishou_image")
 
@@ -40,17 +41,6 @@ def _get_account_cookie_file(account_id: str) -> str | None:
     if not row:
         return None
     return row[0]
-
-
-def run_async(coro):
-    """在同步 Flask 上下文里跑 async 协程。"""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            return asyncio.run(coro)
-    except RuntimeError:
-        pass
-    return asyncio.run(coro)
 
 
 @kuaishou_image_bp.route('/ping', methods=['GET'])
@@ -268,4 +258,4 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, count: str =
         finally:
             await context.close()
     finally:
-        await browser.close()
+        await close_browser(browser)

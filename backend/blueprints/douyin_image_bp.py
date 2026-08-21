@@ -3,7 +3,6 @@
 使用CloakBrowser来请求抖音API，避免反检测
 """
 
-import asyncio
 import sqlite3
 import sys
 from pathlib import Path
@@ -13,8 +12,9 @@ from flask import Blueprint, jsonify, request
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-from impl._browser import create_browser, create_context
+from impl._browser import close_browser, create_browser, create_context
 from util._logger import get_channel_logger
+from util.async_utils import run_async
 
 logger = get_channel_logger("douyin_image")
 
@@ -97,7 +97,7 @@ async def _fetch_with_browser(cookie_file: str, url: str, base_url: str = "https
         finally:
             await context.close()
     finally:
-        await browser.close()
+        await close_browser(browser)
 
 
 async def _fetch_with_browser_post(cookie_file: str, url: str, form_data: dict, base_url: str = "https://creator.douyin.com/") -> dict:
@@ -158,16 +158,7 @@ async def _fetch_with_browser_post(cookie_file: str, url: str, form_data: dict, 
         finally:
             await context.close()
     finally:
-        await browser.close()
-
-
-def run_async(coro):
-    """在Flask中运行异步函数"""
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+        await close_browser(browser)
 
 
 @douyin_image_bp.route('/mix-list', methods=['GET'])
@@ -459,7 +450,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
         finally:
             await context.close()
     finally:
-        await browser.close()
+        await close_browser(browser)
         # 清理测试图片
         try:
             if test_image.exists():

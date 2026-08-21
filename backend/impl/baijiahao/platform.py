@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
@@ -133,7 +133,7 @@ class BaijiahaoPlatform(BasePlatform):
         finally:
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie -- verify stored cookie is still valid
@@ -189,7 +189,7 @@ class BaijiahaoPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile -- refresh user name / avatar
@@ -243,7 +243,7 @@ class BaijiahaoPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _scrape_baijiahao_stats(self, page) -> list:
         """抓取百家号首页 6 项运营数据。
@@ -343,7 +343,7 @@ class BaijiahaoPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -383,7 +383,11 @@ class BaijiahaoPlatform(BasePlatform):
             logger.error("[发布视频] 百家号前置校验失败: %s", err)
             raise ValueError(err)
 
-        asyncio.run(self._upload_all(**kwargs))
+        try:
+            asyncio.run(self._upload_all(**kwargs))
+        except Exception as e:
+            logger.exception("[发布失败] 百家号 publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------

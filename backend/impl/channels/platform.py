@@ -18,7 +18,7 @@ from util._logger import bind_account_name, get_channel_logger
 
 logger = get_channel_logger("channels")
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
@@ -1254,7 +1254,7 @@ class ChannelsPlatform(BasePlatform):
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
                 try:
-                    await browser.close()
+                    await self.close_browser(browser)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -1322,7 +1322,7 @@ class ChannelsPlatform(BasePlatform):
             return False
         finally:
             logger.info("check_cookie: 正在关闭 browser")
-            await browser.close()
+            await self.close_browser(browser)
         logger.info("=== check_cookie 结束 ===")
 
     # ------------------------------------------------------------------
@@ -1353,7 +1353,7 @@ class ChannelsPlatform(BasePlatform):
             return {"name": "", "avatar": "", "stats": []}
         finally:
             try:
-                await browser.close()
+                await self.close_browser(browser)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
@@ -1449,7 +1449,7 @@ class ChannelsPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -1676,7 +1676,11 @@ class ChannelsPlatform(BasePlatform):
                             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                                 pass
 
-        asyncio.run(_do_upload())
+        try:
+            asyncio.run(_do_upload())
+        except Exception as e:
+            logger.exception("[发布失败] 视频号 publish_video 异常: %s", e)
+            return False
 
         logger.info("=" * 60)
         logger.info("[发布视频] 视频发布流程完成!")

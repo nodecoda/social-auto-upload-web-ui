@@ -21,7 +21,7 @@ from queue import Queue
 from conf import BASE_DIR
 from util._logger import get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     save_login_result,
     scrape_jingmai_profile,
@@ -125,7 +125,7 @@ class JingmaiPlatform(BasePlatform):
                     pass
         finally:
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie
@@ -166,7 +166,7 @@ class JingmaiPlatform(BasePlatform):
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile
@@ -224,7 +224,7 @@ class JingmaiPlatform(BasePlatform):
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _login_stats_fn(self, page, account_id) -> list:
         """登录成功后的 stats 抓取入口（供 save_login_result 调用）。"""
@@ -262,8 +262,8 @@ class JingmaiPlatform(BasePlatform):
 
         async def _find_scope(total_timeout: float):
             """在主页面 + 全部子 frame 里找运营卡片，返回命中的 scope。"""
-            deadline = asyncio.get_event_loop().time() + total_timeout
-            while asyncio.get_event_loop().time() < deadline:
+            deadline = asyncio.get_running_loop().time() + total_timeout
+            while asyncio.get_running_loop().time() < deadline:
                 # 1) 主页面（历史布局：卡片直接挂在首页 DOM）
                 try:
                     await page.wait_for_selector(selector, timeout=1000)
@@ -372,7 +372,7 @@ class JingmaiPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 

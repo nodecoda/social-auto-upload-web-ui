@@ -18,7 +18,7 @@ from queue import Queue
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
@@ -127,8 +127,8 @@ class ToutiaoPlatform(BasePlatform):
                 # Wait for login
                 logger.info("[登录] 等待用户扫码...")
                 max_wait = 300  # 5 minutes
-                start_time = asyncio.get_event_loop().time()
-                while (asyncio.get_event_loop().time() - start_time) < max_wait:
+                start_time = asyncio.get_running_loop().time()
+                while (asyncio.get_running_loop().time() - start_time) < max_wait:
                     try:
                         current_url = page.url
                         if "auth/page/login" not in current_url and "profile_v4" in current_url:
@@ -162,7 +162,7 @@ class ToutiaoPlatform(BasePlatform):
                 await context.close()
         finally:
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie — verify stored cookie is still valid
@@ -194,7 +194,7 @@ class ToutiaoPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile — refresh user name / avatar
@@ -288,7 +288,7 @@ class ToutiaoPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _login_stats_fn(self, page, account_id) -> list:
         """登录成功后的 stats 抓取入口(供 save_login_result 调用)。
@@ -359,7 +359,7 @@ class ToutiaoPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -539,10 +539,10 @@ class ToutiaoPlatform(BasePlatform):
 
                 # Wait for upload to complete
                 max_wait = 14400  # 4 hours for large files (no timeout limit)
-                start_time = asyncio.get_event_loop().time()
+                start_time = asyncio.get_running_loop().time()
                 upload_complete = False
                 last_progress = ""
-                while (asyncio.get_event_loop().time() - start_time) < max_wait:
+                while (asyncio.get_running_loop().time() - start_time) < max_wait:
                     try:
                         success_text = page.locator('span.percent:has-text("上传成功")')
                         if await success_text.count():

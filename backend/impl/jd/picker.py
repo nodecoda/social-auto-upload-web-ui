@@ -344,13 +344,13 @@ class _SessionPool:
         if existing is not None:
             logger.info(f"[Pool] 账号 {account_id} 已有 session,异步销毁后重建")
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    _close_task = asyncio.ensure_future(existing.close())
-                    self._bg_tasks.add(_close_task)
-                    _close_task.add_done_callback(self._bg_tasks.discard)
+                asyncio.get_running_loop()
             except RuntimeError:
                 pass  # 没运行中的 loop,跳过(GC 兜底)
+            else:
+                _close_task = asyncio.ensure_future(existing.close())
+                self._bg_tasks.add(_close_task)
+                _close_task.add_done_callback(self._bg_tasks.discard)
         new_session = JdPickerSession(account_id)
         self._sessions[account_id] = new_session
         return new_session

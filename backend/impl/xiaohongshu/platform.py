@@ -155,7 +155,7 @@ class XiaohongshuPlatform(BasePlatform):
         finally:
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie()
@@ -191,7 +191,7 @@ class XiaohongshuPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile()
@@ -223,7 +223,7 @@ class XiaohongshuPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _login_stats_fn(self, page, account_id) -> list:
         """登录成功后的 stats 抓取入口(供 save_login_result 调用)。
@@ -262,7 +262,7 @@ class XiaohongshuPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -403,29 +403,33 @@ class XiaohongshuPlatform(BasePlatform):
                         else publish_datetimes[index]
                     )
 
-                    asyncio.run(
-                        _publish_single_video(
-                            title=title,
-                            file_path=str(file_path),
-                            tags=tags,
-                            publish_date=pub_date,
-                            account_file=str(cookie_path),
-                            # 不开 humanize:no_viewport=True 与拟人化鼠标轨迹冲突,
-                            # 会抛 "Viewport size not available"
-                            create_browser_fn=self.create_browser,
-                            create_context_fn=self.create_context,
-                            thumbnail_path=effective_cover,
-                            desc=desc,
-                            ai_content=ai_content,
-                            publish_strategy=strategy,
-                            collection_id=collection_id,
-                            collection_name=collection_name,
-                            xhs_source_type=xhs_source_type,
-                            xhs_shoot_location=xhs_shoot_location,
-                            xhs_shoot_date=xhs_shoot_date,
-                            xhs_repost_source=xhs_repost_source,
+                    try:
+                        asyncio.run(
+                            _publish_single_video(
+                                title=title,
+                                file_path=str(file_path),
+                                tags=tags,
+                                publish_date=pub_date,
+                                account_file=str(cookie_path),
+                                # 不开 humanize:no_viewport=True 与拟人化鼠标轨迹冲突,
+                                # 会抛 "Viewport size not available"
+                                create_browser_fn=self.create_browser,
+                                create_context_fn=self.create_context,
+                                thumbnail_path=effective_cover,
+                                desc=desc,
+                                ai_content=ai_content,
+                                publish_strategy=strategy,
+                                collection_id=collection_id,
+                                collection_name=collection_name,
+                                xhs_source_type=xhs_source_type,
+                                xhs_shoot_location=xhs_shoot_location,
+                                xhs_shoot_date=xhs_shoot_date,
+                                xhs_repost_source=xhs_repost_source,
+                            )
                         )
-                    )
+                    except Exception as e:
+                        logger.exception("[发布失败] 小红书 publish_video 异常: %s", e)
+                        return False
 
         logger.info("=" * 60)
         logger.info("[发布视频] 视频发布流程完成!")

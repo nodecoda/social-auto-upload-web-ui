@@ -19,8 +19,9 @@ from flask import Blueprint, jsonify, request
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-from impl._browser import create_browser, create_context
+from impl._browser import close_browser, create_browser, create_context
 from util._logger import get_channel_logger
+from util.async_utils import run_async
 
 logger = get_channel_logger("weixin_gzh")
 
@@ -53,29 +54,6 @@ def _get_account_cookie_file(account_id: str) -> str | None:
     if not row:
         return None
     return row[0]
-
-
-def run_async(coro):
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            import threading
-            result = {}
-
-            def _run():
-                new_loop = asyncio.new_event_loop()
-                try:
-                    result["v"] = new_loop.run_until_complete(coro)
-                finally:
-                    new_loop.close()
-
-            t = threading.Thread(target=_run)
-            t.start()
-            t.join()
-            return result.get("v")
-    except RuntimeError:
-        pass
-    return asyncio.run(coro)
 
 
 @weixin_gzh_bp.route('/collections', methods=['GET'])
@@ -150,8 +128,8 @@ async def _fetch_collections_via_browser(cookie_file: str, collection_type: str 
                 logger.info(f"[合集列表] 首页加载(非致命): {e}")
 
             token = ""
-            deadline = asyncio.get_event_loop().time() + 15
-            while asyncio.get_event_loop().time() < deadline:
+            deadline = asyncio.get_running_loop().time() + 15
+            while asyncio.get_running_loop().time() < deadline:
                 m = _TOKEN_RE.search(page.url or "")
                 if m:
                     token = m.group(1)
@@ -218,4 +196,4 @@ async def _fetch_collections_via_browser(cookie_file: str, collection_type: str 
         finally:
             await context.close()
     finally:
-        await browser.close()
+        await close_browser(browser)

@@ -137,7 +137,7 @@ class DouyinPlatform(BasePlatform):
         finally:
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie — verify stored cookie is still valid
@@ -179,7 +179,7 @@ class DouyinPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile — refresh user name / avatar
@@ -267,7 +267,7 @@ class DouyinPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _login_stats_fn(self, page, account_id) -> list:
         """登录成功后的 stats 抓取入口(供 save_login_result 调用)。
@@ -1229,8 +1229,8 @@ class DouyinPlatform(BasePlatform):
                 # Wait for redirect to image publish page
                 logger.info("[上传图集] 等待跳转到发布页面...")
                 max_wait = 120  # seconds - longer timeout for many images
-                start_time = asyncio.get_event_loop().time()
-                while (asyncio.get_event_loop().time() - start_time) < max_wait:
+                start_time = asyncio.get_running_loop().time()
+                while (asyncio.get_running_loop().time() - start_time) < max_wait:
                     current_url = page.url
                     if "content/upload" not in current_url:
                         logger.info("[上传图集] 已跳转到: %s", current_url)
@@ -1245,8 +1245,8 @@ class DouyinPlatform(BasePlatform):
                 max_upload_wait = max(120, min(len(file_paths) * upload_timeout_per_image, 600))
                 logger.info("[上传图集] 等待全部 %d 张图片上传完成 (超时: %ds)...", len(file_paths), max_upload_wait)
                 uploaded_count = 0
-                upload_start = asyncio.get_event_loop().time()
-                while (asyncio.get_event_loop().time() - upload_start) < max_upload_wait:
+                upload_start = asyncio.get_running_loop().time()
+                while (asyncio.get_running_loop().time() - upload_start) < max_upload_wait:
                     # Check for uploaded image count in the UI
                     image_items = page.locator('div[class*="img-"][draggable="true"]')
                     uploaded_count = await image_items.count()

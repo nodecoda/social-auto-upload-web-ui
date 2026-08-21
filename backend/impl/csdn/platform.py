@@ -17,7 +17,7 @@ from typing import ClassVar
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     get_account_name_by_cookie_file,
     parse_schedule_time,
@@ -144,7 +144,7 @@ class CsdnPlatform(BasePlatform):
                     pass
         finally:
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie
@@ -176,7 +176,7 @@ class CsdnPlatform(BasePlatform):
                 await page.close()
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile
@@ -296,7 +296,7 @@ class CsdnPlatform(BasePlatform):
                 await page.close()
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _login_stats_fn(self, page, account_id) -> list:
         """登录成功后的 stats 抓取入口(供 save_login_result 调用)。
@@ -386,7 +386,7 @@ class CsdnPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -499,7 +499,11 @@ class CsdnPlatform(BasePlatform):
             logger.info("[发布视频] 视频发布流程完成!")
             logger.info("=" * 60)
 
-        asyncio.run(_run())
+        try:
+            asyncio.run(_run())
+        except Exception as e:
+            logger.exception("[发布失败] CSDN publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------

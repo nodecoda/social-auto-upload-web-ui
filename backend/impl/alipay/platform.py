@@ -38,7 +38,7 @@ from zoneinfo import ZoneInfo
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser, create_browser_sync, create_context_sync
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
@@ -141,7 +141,7 @@ class AlipayPlatform(BasePlatform):
                 await context.close()
         finally:
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie()
@@ -179,7 +179,7 @@ class AlipayPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # open_creator_center()
@@ -202,7 +202,7 @@ class AlipayPlatform(BasePlatform):
                     pass
             finally:
                 try:
-                    browser.close()
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -238,7 +238,7 @@ class AlipayPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _scrape_alipay_stats(self, page) -> list:
         """抓取支付宝创作中心 .numBox 区块里的运营数据。
@@ -334,7 +334,11 @@ class AlipayPlatform(BasePlatform):
         - ``enableTimer`` (*bool*) / ``schedule_time_str`` (*str*) — 定时发布
         - ``reprint_url`` (*str*)  — 转载来源地址(author_statement=内容为转载 时必填)
         """
-        asyncio.run(self._upload_all(**kwargs))
+        try:
+            asyncio.run(self._upload_all(**kwargs))
+        except Exception as e:
+            logger.exception("[发布失败] 支付宝 publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------
@@ -723,8 +727,8 @@ class AlipayPlatform(BasePlatform):
         title_input = page.locator(
             "input[placeholder*='好的标题']"
         ).first
-        deadline = asyncio.get_event_loop().time() + timeout_s
-        while asyncio.get_event_loop().time() < deadline:
+        deadline = asyncio.get_running_loop().time() + timeout_s
+        while asyncio.get_running_loop().time() < deadline:
             try:
                 if await title_input.is_visible():
                     logger.info("[上传图集] 表单已可交互(标题输入框可见)")
@@ -1123,8 +1127,8 @@ class AlipayPlatform(BasePlatform):
             "input[type='file'][data-alipay-upload='1'],"
             "input[type='file'][data-alipay-new='1']"
         )
-        deadline = asyncio.get_event_loop().time() + 30
-        while asyncio.get_event_loop().time() < deadline:
+        deadline = asyncio.get_running_loop().time() + 30
+        while asyncio.get_running_loop().time() < deadline:
             try:
                 count = await page.locator(marked_sel).count()
                 if count > 0:
@@ -1158,9 +1162,9 @@ class AlipayPlatform(BasePlatform):
         title_input = page.locator(
             "input[placeholder*='好的标题']"
         ).first
-        deadline = asyncio.get_event_loop().time() + timeout_s
+        deadline = asyncio.get_running_loop().time() + timeout_s
 
-        while asyncio.get_event_loop().time() < deadline:
+        while asyncio.get_running_loop().time() < deadline:
             try:
                 # 上传失败检测
                 if await page.get_by_text("上传失败", exact=True).count() > 0:
@@ -1183,7 +1187,7 @@ class AlipayPlatform(BasePlatform):
 
             # 进度旁证(每 60s 一次)
             try:
-                remaining = int(deadline - asyncio.get_event_loop().time())
+                remaining = int(deadline - asyncio.get_running_loop().time())
                 if remaining % 60 < 5:
                     logger.info(
                         "[上传视频] 等待上传完成... (剩余 %ds)", remaining,
@@ -1902,11 +1906,11 @@ class AlipayPlatform(BasePlatform):
             "publish/short-content" if page_type == "image"
             else "publish/short-video"
         )
-        deadline = asyncio.get_event_loop().time() + timeout_s
+        deadline = asyncio.get_running_loop().time() + timeout_s
         original_url = page.url
         modal_handled = False
 
-        while asyncio.get_event_loop().time() < deadline:
+        while asyncio.get_running_loop().time() < deadline:
             # ---- 弹窗 1:「发布请注意」优化提示弹窗(antd5-modal) ----
             if not modal_handled:
                 try:
