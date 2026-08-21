@@ -21,10 +21,32 @@ FEEDBACK_APP_SECRET = os.environ.get('FEEDBACK_APP_SECRET', '')
 FEEDBACK_API_TIMEOUT = int(os.environ.get('FEEDBACK_API_TIMEOUT', '10'))
 
 # 平台 id → 中文名 / key 映射(账号导入、发布记录等共用;由 app/ext_api/services 从 conf 导入)
-PLATFORM_MAP = {1: "小红书", 2: "视频号", 3: "抖音", 4: "快手", 5: "B站", 6: "百家号", 7: "TikTok", 8: "YouTube", 9: "腾讯视频", 10: "爱奇艺", 11: "微博", 12: "支付宝", 13: "今日头条", 14: "知乎", 15: "CSDN", 16: "VIVO", 17: "微信公众号", 18: "淘宝光合", 19: "京东京麦"}
-PLATFORM_ID_TO_KEY = {
-    1: 'xiaohongshu', 2: 'channels', 3: 'douyin', 4: 'kuaishou', 5: 'bilibili',
-    6: 'baijiahao', 7: 'tiktok', 8: 'youtube', 9: 'tencent_video', 10: 'iqiyi',
-    11: 'weibo', 12: 'alipay', 13: 'toutiao', 14: 'zhihu', 15: 'csdn', 16: 'vivo',
-    17: 'weixin_gzh', 18: 'taobao_guanghe', 19: 'jingmai', 20: 'jd',
-}
+# R4/A3: 唯一真源收敛到 impl.registry 类属性 —— 本模块不再硬编码，改为惰性派生。
+# 用模块级 __getattr__ (PEP 562) 兼容既有 `from conf import PLATFORM_MAP` 引用，
+# 避免顶层 import registry 造成循环依赖(平台模块反向 import conf.BASE_DIR)与
+# 全平台重加载(registry._populate_registry 会 import 20 个平台模块)。
+_PLATFORM_MAPS_CACHE: dict = {}
+
+
+def get_platform_maps():
+    """返回 (PLATFORM_MAP, PLATFORM_ID_TO_KEY)，由 registry 类属性惰性派生。
+
+    - PLATFORM_MAP: 注册平台 id → platform_name（1-19，无 20）
+    - PLATFORM_ID_TO_KEY: id → platform_key，含 20 → 'jd'（jd 不单独注册，
+      由 jingmai 委托实现，但 id→key 映射保留供账号导入/发布记录使用）
+    """
+    if not _PLATFORM_MAPS_CACHE:
+        from impl.registry import _registry
+        platform_map = {pid: cls.platform_name for pid, cls in _registry.items()}
+        id_to_key = {pid: cls.platform_key for pid, cls in _registry.items()}
+        id_to_key[20] = 'jd'
+        _PLATFORM_MAPS_CACHE['platform_map'] = platform_map
+        _PLATFORM_MAPS_CACHE['id_to_key'] = id_to_key
+    return _PLATFORM_MAPS_CACHE['platform_map'], _PLATFORM_MAPS_CACHE['id_to_key']
+
+
+def __getattr__(name):
+    if name in ("PLATFORM_MAP", "PLATFORM_ID_TO_KEY"):
+        platform_map, id_to_key = get_platform_maps()
+        return platform_map if name == "PLATFORM_MAP" else id_to_key
+    raise AttributeError(f"module 'conf' has no attribute {name!r}")

@@ -20,7 +20,18 @@ from util._logger import get_channel_logger
 
 # R7: 状态枚举 + 聚合逻辑的唯一真源（原本地定义迁移到 util/status.py，
 # 此处 re-export 保持外部 from ext_api.task_queue import TaskStatus 兼容）
-from util.status import TaskStatus
+from util.status import TaskStatus, aggregate_batch_status
+
+# re-export 兼容面：外部（含测试）继续 from ext_api.task_queue import ...；
+# 列入 __all__ 防止 ruff 将“看起来 unused”的 re-export 误删
+__all__ = [
+    "PublishTask",
+    "TaskQueue",
+    "TaskStatus",
+    "aggregate_batch_status",
+    "get_task_queue",
+    "task_queue",
+]
 
 logger = get_channel_logger("task_queue")
 
