@@ -87,3 +87,11 @@
 ### N2. API 参考文档 — ✅ done（2026-08-21，PR #94）
 - `backend/scripts/gen_api_docs.py` 从 Flask 路由表自动生成 `docs/api-reference.md`（116 条路由、按域分组、标注前端 api 层）
 - 补齐 39 条路由 docstring，待补清单清零；路由变更后重跑脚本刷新
+
+### T1-T3b. 路由层契约测试补强 — ✅ done（2026-08-21，PR #96-99）
+- T1 jd/taobao picker 路由契约（PR #96，32 用例）：jd 23→82%、taobao 22→76%
+- T2 materials 路由契约（PR #97，18 用例）：material 24→72%
+- T3a 平台薄代理契约（PR #98，41+7skip）：8 个 bp 9-19%→22-36%
+- T3b 图片发布域代理契约（PR #99，39+2skip）：douyin_image_bp 0→49%、kuaishou_image_bp 0→20%
+- 关键契约沉淀：业务错误 = HTTP 4xx/5xx + body.code（部分域例外需实测）；统一路径 = cookie 404 → run_async 成功 200 / 失败 500
+- 全量：492→531 passed；总覆盖率 21.8%→23.0%（CI 门槛 19%）
