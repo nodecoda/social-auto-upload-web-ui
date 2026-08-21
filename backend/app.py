@@ -158,7 +158,7 @@ from blueprints.taobao_guanghe_bp import taobao_guanghe_bp  # noqa: E402
 app.register_blueprint(taobao_guanghe_bp)
 logger.info("[Startup] taobao_guanghe_bp registered OK")
 
-from blueprints.jd_bp import bp as jd_bp  # noqa: E402
+from blueprints.jd_bp import jd_bp  # noqa: E402
 
 app.register_blueprint(jd_bp)
 logger.info("[Startup] jd_picker registered OK")

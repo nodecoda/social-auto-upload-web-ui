@@ -307,12 +307,12 @@ def migrate_database():
         try:
             cursor.execute('SELECT id, fans, likes, follows FROM user_info')
             for row in cursor.fetchall():
-                acc_id, f, l, fo = row[0], row[1] or 0, row[2] or 0, row[3] or 0
-                if f == 0 and l == 0 and fo == 0:
+                acc_id, f, lk, fo = row[0], row[1] or 0, row[2] or 0, row[3] or 0
+                if f == 0 and lk == 0 and fo == 0:
                     continue
                 stats_json = json.dumps([
                     {"ICON": "user",   "COUNT": f,  "NAME": "粉丝", "SORT": 1},
-                    {"ICON": "like",   "COUNT": l,  "NAME": "获赞", "SORT": 2},
+                    {"ICON": "like",   "COUNT": lk, "NAME": "获赞", "SORT": 2},
                     {"ICON": "follow", "COUNT": fo, "NAME": "关注", "SORT": 3},
                 ], ensure_ascii=False)
                 cursor.execute('UPDATE user_info SET stats = ? WHERE id = ?', (stats_json, acc_id))

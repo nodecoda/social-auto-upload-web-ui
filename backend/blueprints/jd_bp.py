@@ -17,7 +17,7 @@ from util._logger import get_channel_logger
 
 logger = get_channel_logger("jingmai")
 
-bp = Blueprint("jd_picker", __name__)
+jd_bp = Blueprint("jd_picker", __name__)
 
 # ---------- 后台 event loop ----------
 
@@ -77,7 +77,7 @@ def _resolve_session_or_404(account_id: str):
 
 # ---------- 路由 ----------
 
-@bp.route("/api/jd/picker/open", methods=["POST"])
+@jd_bp.route("/api/jd/picker/open", methods=["POST"])
 def picker_open():
     data = request.get_json() or {}
     account_id = data.get("accountId")
@@ -107,7 +107,7 @@ def picker_open():
         return _err(f"打开选择面板失败: {e}")
 
 
-@bp.route("/api/jd/picker/search", methods=["POST"])
+@jd_bp.route("/api/jd/picker/search", methods=["POST"])
 def picker_search():
     data = request.get_json() or {}
     account_id = data.get("accountId")
@@ -124,7 +124,7 @@ def picker_search():
         return _err(str(e))
 
 
-@bp.route("/api/jd/novel/search", methods=["POST"])
+@jd_bp.route("/api/jd/novel/search", methods=["POST"])
 def novel_search():
     """搜小说关键词,返回候选列表。
 
@@ -150,7 +150,7 @@ def novel_search():
         return _err(f"搜索小说失败: {e}")
 
 
-@bp.route("/api/jd/picker/go_page", methods=["POST"])
+@jd_bp.route("/api/jd/picker/go_page", methods=["POST"])
 def picker_go_page():
     data = request.get_json() or {}
     account_id = data.get("accountId")
@@ -167,7 +167,7 @@ def picker_go_page():
         return _err(str(e))
 
 
-@bp.route("/api/jd/picker/close", methods=["POST"])
+@jd_bp.route("/api/jd/picker/close", methods=["POST"])
 def picker_close():
     data = request.get_json() or {}
     account_id = data.get("accountId")
