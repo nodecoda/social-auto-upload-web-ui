@@ -28,7 +28,7 @@ def _feedback_configured() -> bool:
     return bool(FEEDBACK_APP_KEY and FEEDBACK_APP_SECRET)
 
 
-def _feedback_sign(timestamp_ms: str, app_key: str = None, app_secret: str = None) -> str:
+def _feedback_sign(timestamp_ms: str, app_key: str | None = None, app_secret: str | None = None) -> str:
     if app_key is None:
         app_key = FEEDBACK_APP_KEY
     if app_secret is None:

@@ -149,7 +149,7 @@ def test_baijiahao_validate_publish_params():
     ok, msg = BaijiahaoPlatform._validate_publish_params("hello", [])
     assert ok is True and msg == ""
     ok, msg = BaijiahaoPlatform._validate_publish_params(
-        "", ["t%d" % i for i in range(11)]
+        "", [f"t{i}" for i in range(11)]
     )
     assert ok is False and "最多 10 个标签" in msg
     ok, msg = BaijiahaoPlatform._validate_publish_params("x" * 51, [])

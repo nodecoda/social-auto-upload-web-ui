@@ -32,6 +32,7 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 from queue import Queue
+from typing import ClassVar
 from zoneinfo import ZoneInfo
 
 from conf import BASE_DIR
@@ -81,7 +82,8 @@ class AlipayPlatform(BasePlatform):
         expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
         for pair in cookie_str.split(";"):
             pair = pair.strip()
-            if not pair or "=" not in pair: continue
+            if not pair or "=" not in pair:
+                continue
             name, _, value = pair.partition("=")
             cookies.append({
                 "name": name.strip(), "value": value.strip(),
@@ -631,11 +633,11 @@ class AlipayPlatform(BasePlatform):
 
                 # 使用可变对象存储响应,避免闭包问题
                 upload_result = {"response": None}
-                async def handle_upload_response(response):
+                async def handle_upload_response(response, _upload_result=upload_result):
                     if "mass.alipay.com/file/auth/upload" in response.url:
                         try:
                             data = await response.json()
-                            upload_result["response"] = data
+                            _upload_result["response"] = data
                         except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                             pass
 
@@ -1599,7 +1601,7 @@ class AlipayPlatform(BasePlatform):
     # 作者声明文本 → radio input value 映射(2026-07 实测 DOM)
     # DOM: <input name="tagList" type="radio" value="..."> 6 选 1
     # 注意:value 用后端业务码,不是中文,且各平台/版本会漂移,所以做双向兜底
-    _AUTHOR_STATEMENT_VALUE_MAP = {
+    _AUTHOR_STATEMENT_VALUE_MAP: ClassVar[dict[str, str]] = {
         "内容无需标注": "NO_STATEMENT",
         "个人观点，仅供参考": "S_AT2",
         "内容由AI生成": "A_AG3",

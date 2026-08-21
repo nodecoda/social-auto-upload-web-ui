@@ -606,13 +606,15 @@ class DouyinPlatform(BasePlatform):
                 third_part_element = (
                     '[class^="info"] > [class^="first-part"] div div.semi-switch'
                 )
-                if await page.locator(third_part_element).count():
-                    if "semi-switch-checked" not in await page.eval_on_selector(
+                if (
+                    await page.locator(third_part_element).count()
+                    and "semi-switch-checked" not in await page.eval_on_selector(
                         third_part_element, "div => div.className"
-                    ):
-                        await page.locator(
-                            third_part_element
-                        ).locator("input.semi-switch-native-control").click()
+                    )
+                ):
+                    await page.locator(
+                        third_part_element
+                    ).locator("input.semi-switch-native-control").click()
 
                 
                 # Set mix/collection if provided (与图文发布一致)

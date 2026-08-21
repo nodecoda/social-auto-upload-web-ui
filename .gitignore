@@ -65,3 +65,8 @@ htmlcov/
 frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
+
+# Test coverage reports
+frontend/coverage/
+backend/coverage.xml
+backend/.coverage

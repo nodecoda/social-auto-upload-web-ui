@@ -1494,10 +1494,10 @@ class ZhihuPlatform(BasePlatform):
                     url: location.href,
                 };
             }""")
-            logger.info("[DEBUG 表单状态] " + "=" * 40)
+            logger.info(f'[DEBUG 表单状态] {"=" * 40}')
             for k, v in state.items():
                 logger.info(f"[DEBUG 表单状态] {k}: {v}")
-            logger.info("[DEBUG 表单状态] " + "=" * 40)
+            logger.info(f'[DEBUG 表单状态] {"=" * 40}')
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[DEBUG 表单状态] 抓取失败: {e}")
 

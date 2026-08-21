@@ -28,12 +28,12 @@
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@vitejs/plugin-vue": "^5.2.3",
-    "@vitest/coverage-v8": "^2.1.9",
+    "@vitest/coverage-v8": "^4.1.11",
     "@vue/test-utils": "^2.4.11",
     "jsdom": "^25.0.1",
     "typescript": "^5.9.3",
-    "vite": "^6.3.5",
-    "vitest": "^2.1.9",
+    "vite": "^6.4.3",
+    "vitest": "^4.1.11",
     "vue-tsc": "^2.2.12"
   },
   "allowScripts": {

@@ -198,7 +198,7 @@ def get_tasks():
                 LEFT JOIN publish_batches b ON d.batch_id = b.id
                 {where}
                 ORDER BY d.created_at DESC LIMIT ? OFFSET ?""",
-            params + [page_size, offset]
+            [*params, page_size, offset]
         ).fetchall()
 
         tasks = []
@@ -493,7 +493,7 @@ def get_history():
         total = conn.execute(f"SELECT COUNT(*) FROM publish_batches {where}", params).fetchone()[0]
         rows = conn.execute(
             f"SELECT * FROM publish_batches {where} ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            params + [page_size, offset]
+            [*params, page_size, offset]
         ).fetchall()
         batches = [dict(r) for r in rows]
 
@@ -762,10 +762,7 @@ def update_settings():
         # 所有设置统一写入 SQLite（包括 storage / proxyUrl）
         conn = _db_conn()
         for key, value in data.items():
-            if isinstance(value, (dict, list)):
-                value = json.dumps(value, ensure_ascii=False)
-            else:
-                value = str(value)
+            value = json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else str(value)
             conn.execute(
                 """INSERT OR REPLACE INTO settings (key, value, updated_at)
                    VALUES (?, ?, ?)""",
@@ -1085,10 +1082,7 @@ def get_changelog():
         if f.is_file() and f.suffix == '.html':
             # 从文件名提取日期 (20260525.html -> 2026-05-25)
             name = f.stem
-            if len(name) == 8 and name.isdigit():
-                date_str = f"{name[:4]}-{name[4:6]}-{name[6:8]}"
-            else:
-                date_str = name
+            date_str = f"{name[:4]}-{name[4:6]}-{name[6:8]}" if len(name) == 8 and name.isdigit() else name
             files.append({
                 "filename": f.name,
                 "date": date_str,

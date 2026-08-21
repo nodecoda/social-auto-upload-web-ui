@@ -12,7 +12,7 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 sys.path.insert(0, str(BACKEND_DIR / "impl"))
 
-from taobao_guanghe import _link_ops  # noqa: E402
+from taobao_guanghe import _link_ops
 
 
 def _patch(func_name, fake_coro):

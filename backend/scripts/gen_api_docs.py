@@ -94,7 +94,7 @@ def main():
         out.append('')
         out.append('| 方法 | 路径 | 说明 | 前端 api 层 |')
         out.append('| --- | --- | --- | --- |')
-        for methods, rule, endpoint, doc, fe in sorted(groups[g], key=lambda x: x[1]):
+        for methods, rule, _endpoint, doc, fe in sorted(groups[g], key=lambda x: x[1]):
             doc_cell = doc or '*(无 docstring)*'
             out.append(f'| {methods} | `{rule}` | {doc_cell} | {fe} |')
         out.append('')

@@ -70,21 +70,21 @@ app.config['MAX_CONTENT_LENGTH'] = None
 
 # 注册阶段二扩展 API Blueprint
 logger.info("[Startup] Importing ext_api...")
-from ext_api import ext_api  # noqa: E402
+from ext_api import ext_api
 
 app.register_blueprint(ext_api)
 logger.info("[Startup] ext_api registered OK")
 
-from routes.frames import frames_bp  # noqa: E402
+from routes.frames import frames_bp
 
 app.register_blueprint(frames_bp)
 logger.info("[Startup] frames_bp registered OK")
 
-from blueprints.account_bp import account_bp  # noqa: E402
-from blueprints.feedback_bp import feedback_bp  # noqa: E402
-from blueprints.image_proxy_bp import image_proxy_bp  # noqa: E402
-from blueprints.image_publish_bp import image_publish_bp  # noqa: E402
-from blueprints.publish_bp import publish_bp  # noqa: E402
+from blueprints.account_bp import account_bp
+from blueprints.feedback_bp import feedback_bp
+from blueprints.image_proxy_bp import image_proxy_bp
+from blueprints.image_publish_bp import image_publish_bp
+from blueprints.publish_bp import publish_bp
 
 app.register_blueprint(account_bp)
 app.register_blueprint(feedback_bp)
@@ -93,72 +93,72 @@ app.register_blueprint(publish_bp)
 app.register_blueprint(image_publish_bp)
 logger.info("[Startup] image_publish_bp registered OK")
 
-from blueprints.douyin_image_bp import douyin_image_bp  # noqa: E402
+from blueprints.douyin_image_bp import douyin_image_bp
 
 app.register_blueprint(douyin_image_bp)
 logger.info("[Startup] douyin_image_bp registered OK")
 
-from blueprints.alipay_bp import alipay_bp  # noqa: E402
+from blueprints.alipay_bp import alipay_bp
 
 app.register_blueprint(alipay_bp)
 logger.info("[Startup] alipay_bp registered OK")
 
-from blueprints.toutiao_bp import toutiao_bp  # noqa: E402
+from blueprints.toutiao_bp import toutiao_bp
 
 app.register_blueprint(toutiao_bp)
 logger.info("[Startup] toutiao_bp registered OK")
 
-from blueprints.vivo_bp import vivo_bp  # noqa: E402
+from blueprints.vivo_bp import vivo_bp
 
 app.register_blueprint(vivo_bp)
 logger.info("[Startup] vivo_bp registered OK")
 
-from blueprints.xiaohongshu_bp import xiaohongshu_bp  # noqa: E402
+from blueprints.xiaohongshu_bp import xiaohongshu_bp
 
 app.register_blueprint(xiaohongshu_bp)
 logger.info("[Startup] xiaohongshu_bp registered OK")
 
-from blueprints.bilibili_bp import bilibili_bp  # noqa: E402
+from blueprints.bilibili_bp import bilibili_bp
 
 app.register_blueprint(bilibili_bp)
 logger.info("[Startup] bilibili_bp registered OK")
 
-from blueprints.weibo_bp import weibo_bp  # noqa: E402
+from blueprints.weibo_bp import weibo_bp
 
 app.register_blueprint(weibo_bp)
 logger.info("[Startup] weibo_bp registered OK")
 
-from blueprints.channels_bp import channels_bp  # noqa: E402
+from blueprints.channels_bp import channels_bp
 
 app.register_blueprint(channels_bp)
 logger.info("[Startup] channels_bp registered OK")
 
-from blueprints.weixin_gzh_bp import weixin_gzh_bp  # noqa: E402
+from blueprints.weixin_gzh_bp import weixin_gzh_bp
 
 app.register_blueprint(weixin_gzh_bp)
 logger.info("[Startup] weixin_gzh_bp registered OK")
 
-from blueprints.materials_bp import materials_bp  # noqa: E402
+from blueprints.materials_bp import materials_bp
 
 app.register_blueprint(materials_bp)
 logger.info("[Startup] materials_bp registered OK")
 
-from blueprints.kuaishou_image_bp import kuaishou_image_bp  # noqa: E402
+from blueprints.kuaishou_image_bp import kuaishou_image_bp
 
 app.register_blueprint(kuaishou_image_bp)
 logger.info("[Startup] kuaishou_image_bp registered OK")
 
-from blueprints.uploads_bp import uploads_bp  # noqa: E402
+from blueprints.uploads_bp import uploads_bp
 
 app.register_blueprint(uploads_bp)
 logger.info("[Startup] uploads_bp registered OK")
 
-from blueprints.taobao_guanghe_bp import taobao_guanghe_bp  # noqa: E402
+from blueprints.taobao_guanghe_bp import taobao_guanghe_bp
 
 app.register_blueprint(taobao_guanghe_bp)
 logger.info("[Startup] taobao_guanghe_bp registered OK")
 
-from blueprints.jd_bp import jd_bp  # noqa: E402
+from blueprints.jd_bp import jd_bp
 
 app.register_blueprint(jd_bp)
 logger.info("[Startup] jd_picker registered OK")

@@ -354,7 +354,7 @@ class JdPlatform(BasePlatform):
         account_file: str,
         thumbnail_path: str | None = None,
         related_type: str = "",
-        link_items: list = None,
+        link_items: list | None = None,
         jd_novel: str = "",
         jd_declaration: str = "",
     ) -> None:

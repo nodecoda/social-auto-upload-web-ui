@@ -47,6 +47,8 @@ jobs:
       - run: npm test
       - run: npm run test:coverage
       - run: npm run build
+      # 前端依赖漏洞审计硬门槛：npm audit 高危及以上视为失败
+      - run: npm audit --audit-level=high
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -88,7 +90,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r requirements.lock pytest pytest-cov
+      - run: pip install -r requirements.lock pytest pytest-cov ruff==0.16.3 pip-audit
+      # 静态检查硬门槛：ruff 全绿（选集中规则见 backend/pyproject.toml [tool.ruff.lint]）
+      - run: ruff check .
+      # 依赖漏洞审计硬门槛：锁定版本 + 官方漏洞库，0 已知漏洞
+      - run: pip-audit -r requirements.lock --no-deps
       # 覆盖率硬门槛（防回退）：T1-T24 平台发布编排批次覆盖全部 19 平台, 总覆盖率 36%（2026-08-21 实测 1138 passed）
       # 覆盖率报告见 Actions artifact；本地复现: python -m pytest --cov=. --cov-config=.coveragerc
       - run: python -m pytest -q --cov=. --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=34

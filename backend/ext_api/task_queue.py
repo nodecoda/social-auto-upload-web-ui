@@ -11,7 +11,7 @@ import threading
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -25,7 +25,7 @@ logger = get_channel_logger("task_queue")
 DB_PATH = BASE_DIR / "db" / "database.db"
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     PENDING = "pending"
     QUEUED = "queued"
     RUNNING = "running"
@@ -406,7 +406,8 @@ class TaskQueue:
                 row = conn.execute(
                     "SELECT batch_id FROM publish_details WHERE id=?", (task.id,)
                 ).fetchone()
-                if not row: return
+                if not row:
+                    return
                 batch_id = row[0]
                 counts = conn.execute(
                     """SELECT COUNT(*),
