@@ -4,6 +4,7 @@ publish_video(sync wrapper) → _upload_all: 参数摘要日志 → 文件×账�
 _upload_one_video(本批 mock 掉)。含 author_statement / compilation / reprint_url /
 video_format 等支付宝特有参数透传。
 """
+import asyncio
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -23,7 +24,7 @@ def _run_publish(platform, **kwargs):
     with patch.object(platform, '_upload_one_video', upload), \
          patch('impl.alipay.platform.get_account_name_by_cookie_file', return_value='昵称'), \
          patch('impl.alipay.platform.bind_account_name', MagicMock()):
-        result = platform.publish_video(**kwargs)
+        result = asyncio.run(platform.publish_video(**kwargs))
     return result, upload
 
 
@@ -33,13 +34,13 @@ class TestPublishVideoSync:
     def test_returns_true_and_calls_upload_all(self):
         inst = _make_platform()
         with patch.object(inst, '_upload_all', AsyncMock()) as upload_all:
-            assert inst.publish_video(title='T', files=['/v.mp4']) is True
+            assert asyncio.run(inst.publish_video(title='T', files=['/v.mp4'])) is True
             upload_all.assert_awaited_once()
 
     def test_empty_kwargs(self):
         inst = _make_platform()
         with patch.object(inst, '_upload_all', AsyncMock()) as upload_all:
-            assert inst.publish_video() is True
+            assert asyncio.run(inst.publish_video()) is True
             upload_all.assert_awaited_once()
 
 
@@ -101,7 +102,7 @@ class TestUploadAllOrchestration:
              patch.object(inst, '_upload_one_video', AsyncMock()), \
              patch('impl.alipay.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.alipay.platform.bind_account_name', MagicMock()):
-            inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json'])
+            asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json']))
         assert any(
             c.args[0] == '[发布策略] 发布策略: %s' and c.args[1:] == ('immediate',)
             for c in logger.info.call_args_list
@@ -114,10 +115,10 @@ class TestUploadAllOrchestration:
              patch.object(inst, '_upload_one_video', AsyncMock()), \
              patch('impl.alipay.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.alipay.platform.bind_account_name', MagicMock()):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v.mp4'], account_file=['a.json'],
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
-            )
+            ))
         assert any(
             c.args[0] == '[发布策略] 发布策略: %s' and c.args[1:] == ('scheduled',)
             for c in logger.info.call_args_list
@@ -130,7 +131,7 @@ class TestUploadAllOrchestration:
              patch.object(inst, '_upload_one_video', AsyncMock()), \
              patch('impl.alipay.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.alipay.platform.bind_account_name', MagicMock()):
-            inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json'], enableTimer=True)
+            asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json'], enableTimer=True))
         assert any(
             c.args[0] == '[发布策略] 发布策略: %s' and c.args[1:] == ('immediate',)
             for c in logger.info.call_args_list
@@ -146,5 +147,5 @@ class TestUploadAllOrchestration:
         with patch('impl.alipay.platform.get_account_name_by_cookie_file', return_value=''), \
              patch('impl.alipay.platform.bind_account_name', MagicMock()) as bind, \
              patch.object(inst, '_upload_one_video', AsyncMock()):
-            inst.publish_video(title='T', files=['/v.mp4'], account_file=['x.json'])
+            asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], account_file=['x.json']))
         bind.assert_called_once_with('-')

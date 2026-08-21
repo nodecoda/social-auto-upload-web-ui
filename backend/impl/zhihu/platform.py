@@ -401,7 +401,7 @@ class ZhihuPlatform(BasePlatform):
     # publish_video
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """发布视频到知乎。
 
         接受的 kwargs（由 app.py 统一传入）:
@@ -533,7 +533,7 @@ class ZhihuPlatform(BasePlatform):
             logger.info("=" * 60)
 
         try:
-            asyncio.run(_run())
+            await _run()
         except Exception as e:
             logger.exception("[发布失败] 知乎 publish_video 异常: %s", e)
             return False

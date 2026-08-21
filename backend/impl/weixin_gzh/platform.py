@@ -487,7 +487,7 @@ class WeixinGzhPlatform(BasePlatform):
     # publish_video — 公众号视频发布（同步入口）
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to WeChat Official Account (sync wrapper).
 
         Accepted keyword arguments (与其它平台保持一致):
@@ -506,7 +506,7 @@ class WeixinGzhPlatform(BasePlatform):
         - ``schedule_time_str`` (*str*, optional) -- 定时时间
         """
         try:
-            asyncio.run(self._upload_all(**kwargs))
+            await self._upload_all(**kwargs)
         except Exception as e:
             logger.exception("[发布失败] 微信公众号 publish_video 异常: %s", e)
             return False

@@ -1460,7 +1460,7 @@ class ChannelsPlatform(BasePlatform):
     # publish_video — full TencentVideo flow via CloakBrowser
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to Channels (视频号).
 
         Accepted keyword arguments:
@@ -1677,7 +1677,7 @@ class ChannelsPlatform(BasePlatform):
                                 pass
 
         try:
-            asyncio.run(_do_upload())
+            await _do_upload()
         except Exception as e:
             logger.exception("[发布失败] 视频号 publish_video 异常: %s", e)
             return False

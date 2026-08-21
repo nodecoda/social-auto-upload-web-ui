@@ -354,7 +354,7 @@ class BaijiahaoPlatform(BasePlatform):
     # publish_video -- full Baijiahao upload pipeline (sync entry point)
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to Baijiahao (sync wrapper).
 
         Accepted keyword arguments:
@@ -384,7 +384,7 @@ class BaijiahaoPlatform(BasePlatform):
             raise ValueError(err)
 
         try:
-            asyncio.run(self._upload_all(**kwargs))
+            await self._upload_all(**kwargs)
         except Exception as e:
             logger.exception("[发布失败] 百家号 publish_video 异常: %s", e)
             return False

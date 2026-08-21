@@ -2391,7 +2391,7 @@ class TestPublishVideoRemaining:
                  patch("impl.channels.platform.bind_account_name", MagicMock()), \
                  patch("impl.channels.platform._PUBLISH_DRY_RUN", dry_run), \
                  _no_sleep():
-                result = platform.publish_video(**kwargs)
+                result = asyncio.run(platform.publish_video(**kwargs))
         finally:
             for p in patches:
                 p.stop()

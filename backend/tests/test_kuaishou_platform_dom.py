@@ -1382,6 +1382,6 @@ class TestPublishVideoAsync:
     def test_publish_video_sync_wrapper(self):
         p = _mk_platform()
         with patch.object(p, '_publish_video_async', AsyncMock()) as pv:
-            res = p.publish_video(title='T', files=['/v/a.mp4'])
+            res = asyncio.run(p.publish_video(title='T', files=['/v/a.mp4']))
         assert res is True
         pv.assert_awaited_once()

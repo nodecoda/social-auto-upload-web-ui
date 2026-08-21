@@ -407,11 +407,11 @@ class TestPublishVideo:
              patch('impl.csdn.platform.parse_schedule_time', return_value=dates), \
              patch('impl.csdn.platform.get_account_name_by_cookie_file', return_value='号'), \
              patch('impl.csdn.platform.logger'):
-            res = p.publish_video(
+            res = asyncio.run(p.publish_video(
                 title='T', files=['/v/a.mp4', '/v/b.mp4'],
                 account_file=['a.json', 'b.json'], tags=['x'], desc='简介',
                 thumbnail_landscape_path='/l.png', thumbnail_portrait_path='/p.png',
-            )
+            ))
         assert res is True
         assert usv.await_count == 4
         calls = usv.await_args_list
@@ -428,10 +428,10 @@ class TestPublishVideo:
              patch('impl.csdn.platform.parse_schedule_time', return_value=[0]), \
              patch('impl.csdn.platform.get_account_name_by_cookie_file', return_value=''), \
              patch('impl.csdn.platform.logger'):
-            p.publish_video(
+            asyncio.run(p.publish_video(
                 title='T', files=['/v/a.mp4'], account_file=['ck.json'],
                 tags=[], thumbnail_landscape_path='', thumbnail_portrait_path='/p.png',
-            )
+            ))
         assert usv.await_args.kwargs['thumbnail_path'] == '/p.png'
 
     def test_non_list_schedule(self):
@@ -440,7 +440,7 @@ class TestPublishVideo:
              patch('impl.csdn.platform.parse_schedule_time', return_value=42), \
              patch('impl.csdn.platform.get_account_name_by_cookie_file', return_value=''), \
              patch('impl.csdn.platform.logger'):
-            p.publish_video(title='T', files=['/v/a.mp4'], account_file=['ck.json'], tags=[])
+            asyncio.run(p.publish_video(title='T', files=['/v/a.mp4'], account_file=['ck.json'], tags=[]))
         assert usv.await_args.kwargs['publish_date'] == 42
 
 

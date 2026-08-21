@@ -7,6 +7,7 @@
 - evaluate 驱动轮询: _resolve_token / _wait_for_video_uploaded /
   _click_primary_when_enabled / _dismiss_upload_notice
 """
+import asyncio
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -134,7 +135,7 @@ class TestPublishVideo:
     def test_sync_wrapper_runs_upload_all(self):
         p = WeixinGzhPlatform()
         with patch.object(p, '_upload_all', AsyncMock()) as m:
-            result = p.publish_video(title='T', files=['/v.mp4'], account_file=['c.json'])
+            result = asyncio.run(p.publish_video(title='T', files=['/v.mp4'], account_file=['c.json']))
         assert result is True
         m.assert_awaited_once()
         assert m.await_args.kwargs['title'] == 'T'

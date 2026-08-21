@@ -6,6 +6,7 @@ and implement the abstract methods. Browser entry points delegate to
 ``_browser.py`` (CloakBrowser stealth layer).
 """
 
+import asyncio
 import json
 import sqlite3
 import uuid
@@ -159,9 +160,21 @@ class BasePlatform(ABC):
         ...
 
     @abstractmethod
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to the platform.  Returns True on success."""
         ...
+
+    # ------------------------------------------------------------------
+    # Sync bridge (legacy callers in request threads)
+    # ------------------------------------------------------------------
+
+    def run_publish_sync(self, **kwargs) -> bool:
+        """同步桥接：在请求线程内调用 async publish_video。
+
+        R5 后 publish_video 全量 async 化；旧的同步调用方（如 postVideoBatch）
+        通过本包装逐次驱动事件循环，避免拿到未执行的 coroutine。
+        """
+        return asyncio.run(self.publish_video(**kwargs))
 
     # ------------------------------------------------------------------
     # Cookie import (default skeleton + per-platform hook)

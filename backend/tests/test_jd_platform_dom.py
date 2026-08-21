@@ -635,7 +635,7 @@ class TestDeclarationSchedule:
              patch('impl.jd.platform.parse_schedule_time', return_value=[None]), \
              patch('impl.jd.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.jd.platform.bind_account_name', MagicMock()):
-            p.publish_video(title=long_val, files=['/tmp/a.mp4'], account_file=['c.json'])
+            asyncio.run(p.publish_video(title=long_val, files=['/tmp/a.mp4'], account_file=['c.json']))
         up.assert_awaited_once()
 
     def test_click_publish_enabled(self):

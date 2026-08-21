@@ -364,7 +364,7 @@ class WeiboPlatform(BasePlatform):
     # publish_video -- full Weibo upload pipeline (sync entry point)
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to Weibo (sync wrapper).
 
         Accepted keyword arguments (与百家号保持一致):
@@ -383,7 +383,7 @@ class WeiboPlatform(BasePlatform):
         V1 暂不支持定时发布;``schedule_time_str`` 等参数被忽略。
         """
         try:
-            asyncio.run(self._upload_all(**kwargs))
+            await self._upload_all(**kwargs)
         except Exception as e:
             logger.exception("[发布失败] 微博 publish_video 异常: %s", e)
             return False

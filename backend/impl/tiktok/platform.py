@@ -241,7 +241,7 @@ class TiktokPlatform(BasePlatform):
     # Publish video — main entry point (sync)
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to TikTok.
 
         Accepted keyword arguments:
@@ -263,7 +263,7 @@ class TiktokPlatform(BasePlatform):
           "AI 生成的内容" toggle on the publish page
         """
         try:
-            asyncio.run(self._upload_all(**kwargs))
+            await self._upload_all(**kwargs)
         except Exception as e:
             logger.exception("[发布失败] TikTok publish_video 异常: %s", e)
             return False

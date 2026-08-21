@@ -980,7 +980,7 @@ class TestPublishVideoLongKwarg:
                    return_value='昵称'), \
              patch('impl.taobao_guanghe.platform.bind_account_name', MagicMock()), \
              patch('impl.taobao_guanghe.platform.logger') as logger:
-            inst.publish_video(title='T', files=[], guangheProducts=['x' * 200])
+            asyncio.run(inst.publish_video(title='T', files=[], guangheProducts=['x' * 200]))
         assert upload.await_count == 0
         logged = ' '.join(str(c) for c in logger.info.call_args_list)
         assert '...' in logged  # 长 repr 截断分支
@@ -1000,7 +1000,7 @@ class TestPublishVideoLongKwarg:
                    return_value='昵称'), \
              patch('impl.taobao_guanghe.platform.bind_account_name', MagicMock()), \
              patch('impl.taobao_guanghe.platform.logger'):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/a.mp4', '/b.mp4'],
                 account_file=['u1.json', 'u2.json'],
                 guangheLinkType='shop',
@@ -1008,7 +1008,7 @@ class TestPublishVideoLongKwarg:
                 video_format='landscape',
                 thumbnail_landscape_169_path='/l169.png',
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
-            )
+            ))
         # 2 视频 × 2 账号 = 4 次上传
         assert upload.await_count == 4
         calls = upload.await_args_list
@@ -1038,13 +1038,13 @@ class TestPublishVideoLongKwarg:
                    return_value='昵称'), \
              patch('impl.taobao_guanghe.platform.bind_account_name', MagicMock()), \
              patch('impl.taobao_guanghe.platform.logger'):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v.mp4'], account_file=['u1.json'],
                 guangheLinkType='product',
                 guangheProducts=[{'title': 'P1', 'id': '1'}],
                 video_format='portrait',
                 thumbnail_portrait_path='/p.png',
-            )
+            ))
         assert upload.await_count == 1
         call = upload.await_args_list[0]
         assert call.kwargs['link_type'] == 'product'

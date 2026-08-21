@@ -4,6 +4,7 @@ publish_video(同步) 内联 async _run(): 封面仅横版(landscape→thumbnail
 排期(标量兜底) → 文件×账号笛卡尔积 → _upload_single_video。
 特有: category / bili_repost_source / bili_collection_name / creation_declaration。
 """
+import asyncio
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -30,7 +31,7 @@ def _run_publish(platform, **kwargs):
          patch('impl.bilibili.platform.parse_schedule_time', pst), \
          patch('impl.bilibili.platform.get_account_name_by_cookie_file', return_value='昵称'), \
          patch('impl.bilibili.platform.bind_account_name', MagicMock()):
-        result = platform.publish_video(**kwargs)
+        result = asyncio.run(platform.publish_video(**kwargs))
     return result, upload, pst
 
 
@@ -95,10 +96,10 @@ class TestPublishVideoOrchestration:
              patch('impl.bilibili.platform.parse_schedule_time', pst), \
              patch('impl.bilibili.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.bilibili.platform.bind_account_name', MagicMock()):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v1.mp4', '/v2.mp4'], account_file=['a.json', 'b.json'],
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
-            )
+            ))
         for i, call in enumerate(upload.await_args_list):
             assert call.kwargs['publish_date'] == pst.return_value[i // 2]
 
@@ -111,10 +112,10 @@ class TestPublishVideoOrchestration:
              patch('impl.bilibili.platform.parse_schedule_time', pst), \
              patch('impl.bilibili.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.bilibili.platform.bind_account_name', MagicMock()):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v1.mp4', '/v2.mp4'], account_file=['a.json'],
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
-            )
+            ))
         for call in upload.await_args_list:
             assert call.kwargs['publish_date'] == dt
 
@@ -126,7 +127,7 @@ class TestPublishVideoOrchestration:
              patch('impl.bilibili.platform.parse_schedule_time', MagicMock(return_value=[None])), \
              patch('impl.bilibili.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.bilibili.platform.bind_account_name', MagicMock()):
-            inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json'])
+            asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json']))
         assert any(
             c.args[0] == '[发布策略] 发布策略: %s' and c.args[1:] == ('immediate',)
             for c in logger.info.call_args_list
@@ -140,10 +141,10 @@ class TestPublishVideoOrchestration:
              patch('impl.bilibili.platform.parse_schedule_time', MagicMock(return_value=[None])), \
              patch('impl.bilibili.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.bilibili.platform.bind_account_name', MagicMock()):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v.mp4'], account_file=['a.json'],
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
-            )
+            ))
         assert any(
             c.args[0] == '[发布策略] 发布策略: %s' and c.args[1:] == ('scheduled',)
             for c in logger.info.call_args_list

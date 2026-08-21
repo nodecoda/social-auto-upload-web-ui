@@ -318,7 +318,7 @@ class AlipayPlatform(BasePlatform):
     # publish_video -- sync entry point
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """支付宝视频发布(sync wrapper)。
 
         Accepted keyword arguments:
@@ -335,7 +335,7 @@ class AlipayPlatform(BasePlatform):
         - ``reprint_url`` (*str*)  — 转载来源地址(author_statement=内容为转载 时必填)
         """
         try:
-            asyncio.run(self._upload_all(**kwargs))
+            await self._upload_all(**kwargs)
         except Exception as e:
             logger.exception("[发布失败] 支付宝 publish_video 异常: %s", e)
             return False

@@ -558,7 +558,7 @@ class TaobaoGuanghePlatform(BasePlatform):
     # publish_video
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """发布视频到淘宝光合。
 
         接受的 kwargs（由 app.py 统一传入）:
@@ -690,7 +690,7 @@ class TaobaoGuanghePlatform(BasePlatform):
             logger.info("=" * 60)
 
         try:
-            asyncio.run(_run())
+            await _run()
         except Exception as e:
             logger.exception("[发布失败] 淘宝光合 publish_video 异常: %s", e)
             return False

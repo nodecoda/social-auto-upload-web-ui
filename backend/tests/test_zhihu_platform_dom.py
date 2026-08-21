@@ -702,9 +702,9 @@ class TestPublishVideoRawLog:
              patch('impl.zhihu.platform.bind_account_name', MagicMock()), \
              patch('impl.zhihu.platform._get_video_orientation', return_value='horizontal'), \
              patch('impl.zhihu.platform.logger', logger):
-            assert p.publish_video(
+            assert asyncio.run(p.publish_video(
                 title='T', files=['/v.mp4'], account_file=['a.json'], desc='x' * 200
-            ) is True
+            )) is True
         raw = [c for c in logger.info.call_args_list
                if c.args and c.args[0] == '[发布参数 RAW] %s = %s']
         assert len(raw) == 4

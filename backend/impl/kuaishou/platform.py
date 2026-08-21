@@ -597,7 +597,7 @@ class KuaishouPlatform(BasePlatform):
     # Publish video
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to Kuaishou using CloakBrowser.
 
         Accepted keyword arguments:
@@ -616,10 +616,20 @@ class KuaishouPlatform(BasePlatform):
         - ``schedule_time_str`` (*str*, optional)
         - ``author_declaration`` (*str*, optional)
         """
-        import asyncio as _aio
+
+        # 标签上限校验前置（快手最多 4 个）。ValueError 直接抛给调用方，
+        # 不落入下方 try/except —— R2 吞失败修复只针对真实发布异常(浏览器/上传)，
+        # 调用方参数错误必须尽早暴露,否则会被伪装成"页面未跳转"。
+        tags = kwargs.get("tags", []) or []
+        if len(tags) > _KS_MAX_TAGS:
+            logger.error(
+                "[发布校验] 快手标签超过上限: 当前 %d 个, 最多 %d 个",
+                len(tags), _KS_MAX_TAGS,
+            )
+            raise ValueError(f"快手标签最多 {_KS_MAX_TAGS} 个, 当前 {len(tags)} 个")
 
         try:
-            _aio.run(self._publish_video_async(**kwargs))
+            await self._publish_video_async(**kwargs)
         except Exception as e:
             logger.exception("[发布失败] 快手 publish_video 异常: %s", e)
             return False

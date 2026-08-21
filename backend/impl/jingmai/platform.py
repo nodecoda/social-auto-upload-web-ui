@@ -341,7 +341,7 @@ class JingmaiPlatform(BasePlatform):
     # publish_video（委托给 JdPlatform 实现，避免重复代码）
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """京东京麦视频发布 — 复用 jd 平台实现。
 
         jingmai 与 jd 是同一个产品(dr.jd.com/jm/),用户在 jingmai 账号下
@@ -350,7 +350,7 @@ class JingmaiPlatform(BasePlatform):
         """
         from ..jd.platform import JdPlatform
         jd = JdPlatform()
-        return jd.publish_video(**kwargs)
+        return await jd.publish_video(**kwargs)
 
     # ------------------------------------------------------------------
     # open_creator_center

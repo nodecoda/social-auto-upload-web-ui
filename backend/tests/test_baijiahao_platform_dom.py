@@ -500,18 +500,18 @@ class TestPublishVideoWrapper:
     def test_tags_over_10_raises(self):
         p = _mk_platform()
         with patch('impl.baijiahao.platform.logger'), pytest.raises(ValueError, match='最多 10 个标签'):
-            p.publish_video(title='T', files=['/v/a.mp4'], tags=[f't{i}' for i in range(11)])
+            asyncio.run(p.publish_video(title='T', files=['/v/a.mp4'], tags=[f't{i}' for i in range(11)]))
 
     def test_over_50_chars_raises(self):
         p = _mk_platform()
         with patch('impl.baijiahao.platform.logger'), pytest.raises(ValueError, match='总字符数'):
-            p.publish_video(title='T', files=['/v/a.mp4'], desc='x' * 60)
+            asyncio.run(p.publish_video(title='T', files=['/v/a.mp4'], desc='x' * 60))
 
     def test_valid_delegates_to_upload_all(self):
         p = _mk_platform()
         with patch.object(p, '_upload_all', AsyncMock()) as ua, \
              patch('impl.baijiahao.platform.logger'):
-            res = p.publish_video(title='T', files=['/v/a.mp4'], tags=['x'], desc='简介')
+            res = asyncio.run(p.publish_video(title='T', files=['/v/a.mp4'], tags=['x'], desc='简介'))
         assert res is True
         ua.assert_awaited_once()
 

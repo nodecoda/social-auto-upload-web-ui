@@ -249,17 +249,12 @@ class TaskQueue:
             if not platform:
                 raise ValueError(f"不支持的平台类型: {task.platform_type}")
             publish_fn = platform.publish_video
-            if asyncio.iscoroutinefunction(publish_fn):
-                # 在独立子任务里跑：impl/_browser 的 watchdog 在用户关闭浏览器时会
-                # cancel 当前 asyncio task（= 这里的子任务），避免把 worker 主循环一起杀掉
-                # （否则队列再无人消费，后续任务全部卡死）。
-                inner = asyncio.create_task(publish_fn(**task.payload))
-                result = await inner
-            else:
-                loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(
-                    None, lambda: publish_fn(**task.payload)
-                )
+            # R5：publish_video 契约已统一为 async，直接 await。
+            # 在独立子任务里跑：impl/_browser 的 watchdog 在用户关闭浏览器时会
+            # cancel 当前 asyncio task（= 这里的子任务），避免把 worker 主循环一起杀掉
+            # （否则队列再无人消费，后续任务全部卡死）。
+            inner = asyncio.create_task(publish_fn(**task.payload))
+            result = await inner
             if not result:
                 # 与旧 publish_executor job 语义一致：返回 falsy = 页面未跳转/校验未通过
                 raise RuntimeError("发布失败：页面未跳转，表单校验未通过")

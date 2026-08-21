@@ -273,7 +273,7 @@ class XiaohongshuPlatform(BasePlatform):
     # publish_video()
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to Xiaohongshu using CloakBrowser.
 
         Accepted keyword arguments:
@@ -404,28 +404,26 @@ class XiaohongshuPlatform(BasePlatform):
                     )
 
                     try:
-                        asyncio.run(
-                            _publish_single_video(
-                                title=title,
-                                file_path=str(file_path),
-                                tags=tags,
-                                publish_date=pub_date,
-                                account_file=str(cookie_path),
-                                # 不开 humanize:no_viewport=True 与拟人化鼠标轨迹冲突,
-                                # 会抛 "Viewport size not available"
-                                create_browser_fn=self.create_browser,
-                                create_context_fn=self.create_context,
-                                thumbnail_path=effective_cover,
-                                desc=desc,
-                                ai_content=ai_content,
-                                publish_strategy=strategy,
-                                collection_id=collection_id,
-                                collection_name=collection_name,
-                                xhs_source_type=xhs_source_type,
-                                xhs_shoot_location=xhs_shoot_location,
-                                xhs_shoot_date=xhs_shoot_date,
-                                xhs_repost_source=xhs_repost_source,
-                            )
+                        await _publish_single_video(
+                            title=title,
+                            file_path=str(file_path),
+                            tags=tags,
+                            publish_date=pub_date,
+                            account_file=str(cookie_path),
+                            # 不开 humanize:no_viewport=True 与拟人化鼠标轨迹冲突,
+                            # 会抛 "Viewport size not available"
+                            create_browser_fn=self.create_browser,
+                            create_context_fn=self.create_context,
+                            thumbnail_path=effective_cover,
+                            desc=desc,
+                            ai_content=ai_content,
+                            publish_strategy=strategy,
+                            collection_id=collection_id,
+                            collection_name=collection_name,
+                            xhs_source_type=xhs_source_type,
+                            xhs_shoot_location=xhs_shoot_location,
+                            xhs_shoot_date=xhs_shoot_date,
+                            xhs_repost_source=xhs_repost_source,
                         )
                     except Exception as e:
                         logger.exception("[发布失败] 小红书 publish_video 异常: %s", e)

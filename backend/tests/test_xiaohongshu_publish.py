@@ -4,6 +4,7 @@ publish_video(同步) 是小红书特有结构: 话题总数≤10 前置校验(�
 方向感知封面选择(竖版优先平台) → XHS compat 排期(无定时→0) →
 同步循环内 asyncio.run(_publish_single_video 模块级函数)。
 """
+import asyncio
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -32,7 +33,7 @@ def _run_publish(platform, **kwargs):
          patch('impl.xiaohongshu.platform.parse_schedule_time', pst), \
          patch('impl.xiaohongshu.platform.get_account_name_by_cookie_file', return_value='昵称'), \
          patch('impl.xiaohongshu.platform.bind_account_name', MagicMock()):
-        result = platform.publish_video(**kwargs)
+        result = asyncio.run(platform.publish_video(**kwargs))
     return result, single, pst
 
 
@@ -133,7 +134,7 @@ class TestScheduleAndOrchestration:
              patch('impl.xiaohongshu.platform.parse_schedule_time', pst), \
              patch('impl.xiaohongshu.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.xiaohongshu.platform.bind_account_name', MagicMock()):
-            inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json'], enableTimer=True)
+            asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json'], enableTimer=True))
         assert single.await_args.kwargs['publish_date'] == dt
 
     def test_scheduled_strategy(self):
@@ -145,10 +146,10 @@ class TestScheduleAndOrchestration:
              patch('impl.xiaohongshu.platform.parse_schedule_time', pst), \
              patch('impl.xiaohongshu.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.xiaohongshu.platform.bind_account_name', MagicMock()):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v.mp4'], account_file=['a.json'],
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
-            )
+            ))
         assert single.await_args.kwargs['publish_date'] == dt
         assert single.await_args.kwargs['publish_strategy'] == 'scheduled'
 

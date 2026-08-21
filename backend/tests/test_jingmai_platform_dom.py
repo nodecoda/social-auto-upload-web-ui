@@ -387,7 +387,7 @@ class TestJingmaiPublishVideo(unittest.TestCase):
         platform = _make_platform()
         with mock.patch('impl.jd.platform.JdPlatform') as m_jd:
             m_jd.return_value.publish_video.return_value = True
-            result = platform.publish_video(title='T')
+            result = asyncio.run(platform.publish_video(title='T'))
         self.assertTrue(result)
         m_jd.return_value.publish_video.assert_called_once_with(title='T')
 

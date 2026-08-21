@@ -6,8 +6,9 @@
 - 结构契约：注册表内所有平台均为 BasePlatform 子类、元数据完整、key 唯一
 - 文件级红线：平台目录禁止直接 `browser.close()` / `asyncio.get_event_loop()`
   （浏览器生命周期必须走基类 self.close_browser / self.create_browser）
-- 发布契约：sync 平台 publish_video 的 asyncio.run 必须被 try 包裹
-  （否则异常被吞 = 静默发布失败；R2 修复目标，当前 0 违规）
+- 发布契约（R5）：注册表内全部平台 publish_video 必须为 async
+  （R2 的 sync+asyncio.run 桥接已全部迁移为原生 async，调用方统一 await，
+  不存在"拿到未执行 coroutine"或"异常被吞 = 静默发布失败"）
 
 注意：只扫「已注册」平台（registry._registry），不扫 impl/ 下全部模块
 （jd 不单独注册，由 jingmai 委托，不算独立平台）。
@@ -99,36 +100,20 @@ def test_no_asyncio_get_event_loop_in_platform_sources():
 # 发布契约：sync 平台不得吞失败
 # ---------------------------------------------------------------------------
 
-def test_no_sync_publish_video_swallow_failure():
-    """sync publish_video 的 asyncio.run 必须被 try 包裹。
+def test_all_registered_publish_video_async():
+    """R5: 注册表内全部平台 publish_video 必须为 async（统一异步契约）。
 
-    判定：方法非 async、含 asyncio.run 调用，且该 run 不在 try 块内 → 违规。
-    R2 修复后期望 0 违规；违规说明发布异常被静默吞掉（返回成功）。
+    14 个平台已从 sync+asyncio.run 桥接迁移到原生 async；
+    调用方(task_queue/蓝图)统一 await，禁止出现"调用方拿到未执行 coroutine"。
     """
-    violations = []
-    for path, tree in _platform_sources().items():
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef) and node.name == "publish_video":
-                runs = [
-                    n for n in ast.walk(node)
-                    if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
-                    and n.func.attr == "run" and isinstance(n.func.value, ast.Name)
-                    and n.func.value.id in ("asyncio", "_aio")
-                ]
-                for run in runs:
-                    in_try = False
-                    parent = run
-                    while parent is not None:
-                        if isinstance(parent, ast.Try):
-                            in_try = True
-                            break
-                        parent = getattr(parent, "parent", None)
-                    if not in_try:
-                        violations.append(f"{path.relative_to(IMPL_DIR)}:{run.lineno}")
-    assert not violations, (
-        f"sync publish_video 存在吞失败反模式（asyncio.run 异常未被捕获），"
-        f"应在 run 外加 try/except 返回 False: {violations}"
-    )
+    offenders = []
+    for cls in _registered_platforms():
+        method = getattr(cls, "publish_video", None)
+        if method is None:
+            offenders.append(f"{cls.__name__} 缺 publish_video")
+        elif not inspect.iscoroutinefunction(method):
+            offenders.append(f"{cls.__name__}.publish_video 仍为 sync（R5 要求 async）")
+    assert not offenders, f"publish_video 契约违规: {offenders}"
 
 
 def test_registry_derived_platform_map_consistent():

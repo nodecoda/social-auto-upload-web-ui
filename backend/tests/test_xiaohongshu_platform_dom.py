@@ -675,7 +675,7 @@ class TestPublishVideo:
              patch('impl.xiaohongshu.platform.get_account_name_by_cookie_file',
                    return_value='昵称'), \
              patch('impl.xiaohongshu.platform.bind_account_name', MagicMock()):
-            result = platform.publish_video(**kwargs)
+            result = asyncio.run(platform.publish_video(**kwargs))
         return result, single
 
     def test_preflight_over_10_raises(self):
@@ -708,14 +708,14 @@ class TestPublishVideo:
              patch('impl.xiaohongshu.platform.get_account_name_by_cookie_file',
                    return_value='昵称'), \
              patch('impl.xiaohongshu.platform.bind_account_name', MagicMock()):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v1.mp4', '/v2.mp4'],
                 account_file=['a.json', 'b.json'],
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
                 xhs_collection_id='c1', xhs_collection_name='合集A',
                 xhs_source_type='self', xhs_shoot_location='北京',
                 xhs_shoot_date='2026-08-01', xhs_repost_source='',
-            )
+            ))
         assert single.await_count == 4  # 2 文件 × 2 账号
         calls = single.await_args_list
         assert calls[0].kwargs['publish_strategy'] == _PUBLISH_STRATEGY_SCHEDULED

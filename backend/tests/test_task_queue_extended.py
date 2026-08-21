@@ -2,7 +2,7 @@
 import asyncio
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
@@ -70,7 +70,9 @@ def test_execute_splats_payload_to_platform_publish_video():
 
     # Mock platform
     fake_platform = MagicMock()
-    fake_platform.publish_video = MagicMock(return_value=True)
+    # R5：publish_video 契约已统一为 async，必须用 AsyncMock（sync mock 会让
+    # task_queue 的 asyncio.create_task 拿到非 coroutine 直接 TypeError）。
+    fake_platform.publish_video = AsyncMock(return_value=True)
 
     with patch.object(tq, 'get_platform', return_value=fake_platform):
         queue = tq.get_task_queue()

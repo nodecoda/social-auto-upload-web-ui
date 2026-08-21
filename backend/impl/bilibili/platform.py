@@ -460,7 +460,7 @@ class BilibiliPlatform(BasePlatform):
     # Publish video
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to Bilibili.
 
         Accepted keyword arguments:
@@ -578,7 +578,7 @@ class BilibiliPlatform(BasePlatform):
             logger.info("=" * 60)
 
         try:
-            asyncio.run(_run())
+            await _run()
         except Exception as e:
             logger.exception("[发布失败] 哔哩哔哩 publish_video 异常: %s", e)
             return False

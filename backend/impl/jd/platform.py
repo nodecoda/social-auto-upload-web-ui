@@ -234,7 +234,7 @@ class JdPlatform(BasePlatform):
 
     # ---------- 发布主流程 ----------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """发布视频到京东(京麦)。接受 app.py 统一传入的标准 kwargs(与淘宝光合对齐)。
 
         接受的 kwargs:
@@ -247,6 +247,14 @@ class JdPlatform(BasePlatform):
         - ``video_format`` (*str*) — 'landscape'/'portrait'
         - ``jd_related_type`` / ``jd_products`` / ``jd_novel`` / ``jd_declaration``
         """
+        # 空输入校验前置（京东特有：非静默跳过）。ValueError 直接抛给调用方，
+        # 不落入下方 try/except —— R2 的吞失败修复只针对真实发布异常(浏览器/上传),
+        # 编程错误(缺 files/account_file)必须尽早暴露,否则会被伪装成"页面未跳转"。
+        if not kwargs.get("files"):
+            raise ValueError("files 不能为空")
+        if not kwargs.get("account_file"):
+            raise ValueError("account_file 不能为空")
+
         async def _run():
             logger.info("=" * 60)
             logger.info("[发布视频] 开始京东视频发布流程")
@@ -344,7 +352,7 @@ class JdPlatform(BasePlatform):
             logger.info("=" * 60)
 
         try:
-            asyncio.run(_run())
+            await _run()
         except Exception as e:
             logger.exception("[发布失败] 京东 publish_video 异常: %s", e)
             return False
