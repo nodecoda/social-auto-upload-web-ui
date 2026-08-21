@@ -38,10 +38,26 @@ class TestAppAssembly(unittest.TestCase):
         if self._session_data_dir:
             os.environ['SAU_DATA_DIR'] = self._session_data_dir
 
+
+    @staticmethod
+    def _make_frontend(tmp):
+        """自建临时 frontend/dist（CI 无构建产物，测试完全隔离）。"""
+        dist = Path(tmp) / 'dist'
+        (dist / 'assets').mkdir(parents=True, exist_ok=True)
+        (dist / 'index.html').write_text('<html><body>ok</body></html>', encoding='utf-8')
+        (dist / 'vite.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg"/>', encoding='utf-8')
+        (dist / 'assets' / 'app.js').write_text('console.log(1)', encoding='utf-8')
+        return dist
+
     # ---------- 静态页路由 ----------
 
     def test_index_serves_frontend(self):
-        resp = self.client.get('/')
+        import tempfile
+
+        import app as app_mod
+        dist = self._make_frontend(tempfile.mkdtemp(prefix='sau_fe_'))
+        with mock.patch.object(app_mod, 'FRONTEND_DIR', dist):
+            resp = self.client.get('/')
         self.assertEqual(resp.status_code, 200)
         self.assertIn('text/html', resp.content_type)
 
@@ -55,20 +71,32 @@ class TestAppAssembly(unittest.TestCase):
         self.assertEqual(body['msg'], 'API server running')
 
     def test_custom_static_serves_asset(self):
+        import tempfile
+
         import app as app_mod
-        asset = next(iter((Path(app_mod.FRONTEND_DIR) / 'assets').iterdir()), None)
-        if asset is None:
-            self.skipTest('no assets dir')
-        resp = self.client.get(f"/assets/{asset.name}")
+        dist = self._make_frontend(tempfile.mkdtemp(prefix='sau_fe2_'))
+        with mock.patch.object(app_mod, 'FRONTEND_DIR', dist):
+            resp = self.client.get('/assets/app.js')
         self.assertEqual(resp.status_code, 200)
+        self.assertIn('javascript', resp.content_type)
 
     def test_favicon_missing_404(self):
+        import tempfile
+
+        import app as app_mod
+        dist = self._make_frontend(tempfile.mkdtemp(prefix='sau_fe3_'))
+        with mock.patch.object(app_mod, 'FRONTEND_DIR', dist):
+            resp = self.client.get('/favicon.ico')
         # dist 下无 favicon.ico → 404（send_from_directory 抛 404）
-        resp = self.client.get('/favicon.ico')
-        self.assertIn(resp.status_code, (404, 200))
+        self.assertEqual(resp.status_code, 404)
 
     def test_vite_svg_served(self):
-        resp = self.client.get('/vite.svg')
+        import tempfile
+
+        import app as app_mod
+        dist = self._make_frontend(tempfile.mkdtemp(prefix='sau_fe4_'))
+        with mock.patch.object(app_mod, 'FRONTEND_DIR', dist):
+            resp = self.client.get('/vite.svg')
         self.assertEqual(resp.status_code, 200)
         self.assertIn('image/svg+xml', resp.content_type)
 
@@ -195,8 +223,9 @@ class TestAppAssembly(unittest.TestCase):
     # ---------- health_check ----------
 
     def test_health_ok(self):
-        import tempfile
         import sqlite3 as _s
+        import tempfile
+
         import app as app_mod
         tmp = tempfile.mkdtemp(prefix='sau_health_')
         fake_db = Path(tmp) / 'db' / 'database.db'
