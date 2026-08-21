@@ -56,6 +56,10 @@
   - 前端漏洞修复：vitest 2→4.1.11、vite 6.3.5→6.4.3、coverage-v8 配套（npm audit 12→0）
   - CI 新增：backend `ruff check .` + `pip-audit`；frontend `npm audit --audit-level=high`
   - frontend/coverage 误跟踪产物移出 git + gitignore
+- ✅ 成熟度提升（2026-08-21，PR #155 + #156）：
+  - 覆盖率门槛锁现状：后端 34→80%（实测 91%）、前端 80→85%（实测 97.8%）
+  - mypy 核心域引入：services/ext_api 11 文件 0 错入 CI 硬门槛（渐进式，check_untyped_defs=false 起步）
+  - 顺带修复 task_queue/draft_merge/ffmpeg 12 处真实类型缺陷
 - ✅ 包源规则固化（2026-08-21）：AGENTS.md §1 强制国内源（pip 清华 / uv tuna / npm npmmirror / playwright npmmirror CDN），npm audit/pip-audit 走官方源+代理的例外
 
 ---

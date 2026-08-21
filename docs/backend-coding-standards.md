@@ -135,6 +135,7 @@ except ApiTimeoutError as e:
 ## 10. 治理清单（ruff 基线 2026-08-20）
 
 > **2026-08-21 更新：ruff 已入 CI 强制门槛**（PR #153，`ruff check .` 0 错才合并）。当前 **All checks passed = 0 违规**。
+> **2026-08-21 更新：mypy 已入 CI 强制门槛**（PR #156，核心域 services/ext_api 0 错）。覆盖率门槛已抬升（PR #155：后端 34→80%，前端 80→85%）。
 > 依赖漏洞也已入 CI：后端 `pip-audit -r requirements.lock --no-deps`、前端 `npm audit --audit-level=high` 0 漏洞。
 
 `ruff check . --exclude .venv` 基线 **1623 个违规**。分批处置（当前已降为 **0**，All checks passed）：
