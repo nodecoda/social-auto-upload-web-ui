@@ -56,7 +56,7 @@ class TestPostVideoVideoValidation(unittest.TestCase):
         self.client = self.app.test_client()
         # 隔离 DB：mock DB_PATH，避免污染生产库
         self._db_patches = [
-            patch("app.DB_PATH", DB_PATH),
+            patch("blueprints.publish_bp.DB_PATH", DB_PATH),
             patch("app._get_db_path", return_value=DB_PATH),
         ]
         for p in self._db_patches:
@@ -69,7 +69,7 @@ class TestPostVideoVideoValidation(unittest.TestCase):
 
         # 屏蔽真实 platform publish_video 与文件路径解析
         self._patches = [
-            patch("app._resolve_material_path", side_effect=lambda p: p or "/tmp/fake.mp4"),
+            patch("blueprints.publish_bp._resolve_material_path", side_effect=lambda p: p or "/tmp/fake.mp4"),
         ]
         for p in self._patches:
             p.start()
@@ -97,7 +97,7 @@ class TestPostVideoVideoValidation(unittest.TestCase):
         p.publish_video = MagicMock(return_value=True)
         return p
 
-    @patch("app.get_platform")
+    @patch("blueprints.publish_bp.get_platform")
     def test_postVideo_rejects_video_too_long_for_douyin(self, mock_get_platform):
         """4000 秒视频到抖音应被拒（> 3600）"""
         self._insert_material("vid-long", 100 * 1024**2, 4000)
@@ -115,7 +115,7 @@ class TestPostVideoVideoValidation(unittest.TestCase):
         assert "抖音" in body["msg"]
         assert "时长" in body["msg"]
 
-    @patch("app.get_platform")
+    @patch("blueprints.publish_bp.get_platform")
     def test_postVideo_accepts_video_within_douyin_range(self, mock_get_platform):
         """30 秒视频到抖音应通过"""
         self._insert_material("vid-ok", 100 * 1024**2, 30)
@@ -130,7 +130,7 @@ class TestPostVideoVideoValidation(unittest.TestCase):
         })
         assert r.status_code == 200
 
-    @patch("app.get_platform")
+    @patch("blueprints.publish_bp.get_platform")
     def test_postVideo_accepts_video_without_material_record(self, mock_get_platform):
         """找不到材料记录（旧路径直接上传）→ 跳过校验"""
         mock_get_platform.return_value = self._fake_platform("douyin")
@@ -144,7 +144,7 @@ class TestPostVideoVideoValidation(unittest.TestCase):
         })
         assert r.status_code == 200
 
-    @patch("app.get_platform")
+    @patch("blueprints.publish_bp.get_platform")
     def test_postVideo_rejects_oversized_for_bilibili(self, mock_get_platform):
         """B站 17G 视频应被拒（> 16G）"""
         self._insert_material("vid-big", 17 * 1024**3, 30)

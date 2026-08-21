@@ -324,10 +324,11 @@ def test_postvideo_stores_account_configs_with_string_key_douyin():
     fake_platform = MagicMock()
     fake_platform.publish_video = MagicMock(return_value=True)
 
-    with patch("app.get_platform", return_value=fake_platform), \
-         patch("app.DB_PATH", db_path), \
+    with patch("blueprints.publish_bp.get_platform", return_value=fake_platform), \
+         patch("blueprints.publish_bp.DB_PATH", db_path), \
          patch("app._get_db_path", return_value=db_path), \
-         patch("app._resolve_material_path", side_effect=lambda p: p or "/tmp/v.mp4"):
+         patch("services.publish_history.DB_PATH", db_path), \
+         patch("blueprints.publish_bp._resolve_material_path", side_effect=lambda p: p or "/tmp/v.mp4"):
         client = app.test_client()
         r = client.post("/postVideo", json={
             "type": 3,  # 抖音
@@ -361,10 +362,11 @@ def test_postvideo_stores_account_configs_with_string_key_xiaohongshu():
     fake_platform = MagicMock()
     fake_platform.publish_video = MagicMock(return_value=True)
 
-    with patch("app.get_platform", return_value=fake_platform), \
-         patch("app.DB_PATH", db_path), \
+    with patch("blueprints.publish_bp.get_platform", return_value=fake_platform), \
+         patch("blueprints.publish_bp.DB_PATH", db_path), \
          patch("app._get_db_path", return_value=db_path), \
-         patch("app._resolve_material_path", side_effect=lambda p: p or "/tmp/v.mp4"):
+         patch("services.publish_history.DB_PATH", db_path), \
+         patch("blueprints.publish_bp._resolve_material_path", side_effect=lambda p: p or "/tmp/v.mp4"):
         client = app.test_client()
         r = client.post("/postVideo", json={
             "type": 1,  # 小红书

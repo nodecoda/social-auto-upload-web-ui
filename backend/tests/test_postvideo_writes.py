@@ -96,10 +96,11 @@ class TestPostVideoWrites(unittest.TestCase):
         self._fake_platform = MagicMock()
         self._fake_platform.publish_video = MagicMock(return_value=True)
         self._patches = [
-            patch("app.get_platform", return_value=self._fake_platform),
-            patch("app.DB_PATH", DB_PATH),
+            patch("blueprints.publish_bp.get_platform", return_value=self._fake_platform),
+            patch("blueprints.publish_bp.DB_PATH", DB_PATH),
             patch("app._get_db_path", return_value=DB_PATH),
-            patch("app._resolve_material_path", side_effect=lambda p: p or "/tmp/fake.mp4"),
+            patch("services.publish_history.DB_PATH", DB_PATH),
+            patch("blueprints.publish_bp._resolve_material_path", side_effect=lambda p: p or "/tmp/fake.mp4"),
         ]
         for p in self._patches:
             p.start()
