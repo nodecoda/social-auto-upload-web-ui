@@ -104,7 +104,7 @@ export interface HttpLike {
   get<T = unknown>(url: string, params?: Record<string, unknown>): Promise<T>
   post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
   put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
-  delete<T = unknown>(url: string, params?: Record<string, unknown>): Promise<T>
+  delete<T = unknown>(url: string, params?: Record<string, unknown>, data?: unknown): Promise<T>
   upload<T = unknown>(url: string, formData: FormData, onUploadProgress?: (e: AxiosProgressEvent) => void): Promise<T>
 }
 
@@ -121,8 +121,9 @@ export const http: HttpLike = {
     return request.put(url, data, config) as Promise<T>
   },
 
-  delete<T = unknown>(url: string, params?: Record<string, unknown>) {
-    return request.delete(url, { params }) as Promise<T>
+  delete<T = unknown>(url: string, params?: Record<string, unknown>, data?: unknown) {
+    // params → query，data → body（axios delete 的 config 同时支持两者）
+    return request.delete(url, { params, data }) as Promise<T>
   },
 
   upload<T = unknown>(url: string, formData: FormData, onUploadProgress?: (e: AxiosProgressEvent) => void) {

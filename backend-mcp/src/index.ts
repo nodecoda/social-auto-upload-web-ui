@@ -4,23 +4,22 @@ import express, { Request, Response, NextFunction } from 'express';
 import { loadConfig } from './config.js';
 import { createMcpServer } from './server.js';
 import { AuthManager } from './auth.js';
+import { BackendClient } from './client.js';
 
 async function main() {
   const config = loadConfig();
 
-  const auth = new AuthManager(config.dbPath);
+  const auth = new AuthManager(new BackendClient(config.backendUrl));
   await auth.init();
 
   console.log(`[MCP] Starting in ${config.transportMode} mode...`);
   console.log(`[MCP] Backend URL: ${config.backendUrl}`);
-  console.log(`[MCP] DB Path: ${config.dbPath}`);
   console.log(`[MCP] Auth enabled: ${auth.isAuthEnabled()}`);
 
   // ── Stdio 模式 ──
   if (config.transportMode === 'stdio' || config.transportMode === 'both') {
     const stdioServer = createMcpServer({
       backendUrl: config.backendUrl,
-      dbPath: config.dbPath,
     });
     const stdioTransport = new StdioServerTransport();
     await stdioServer.connect(stdioTransport);
@@ -31,7 +30,6 @@ async function main() {
   if (config.transportMode === 'sse' || config.transportMode === 'both') {
     const sseServer = createMcpServer({
       backendUrl: config.backendUrl,
-      dbPath: config.dbPath,
     });
 
     const app = express();

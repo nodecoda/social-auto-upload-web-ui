@@ -1,53 +1,25 @@
-import initSqlJs, { Database } from 'sql.js';
+import { BackendClient } from './client.js';
 
+/**
+ * MCP 鉴权管理：从后端 `/api/v2/settings` 读取 `mcp_api_token`。
+ *
+ * 历史：曾用 sql.js 直读 SQLite（settings 表），与后端并发写存在快照读取
+ * 风险且耦合 DB schema。现收敛为单一数据通道（HTTP API），token 的唯一
+ * 真相源在后端 settings 表（/api/v2/settings 本就全量返回）。
+ */
 export class AuthManager {
   private token: string = '';
-  private dbPath: string;
-  private db: Database | null = null;
 
-  constructor(dbPath: string) {
-    this.dbPath = dbPath;
-  }
+  constructor(private client: BackendClient) {}
 
   async init(): Promise<void> {
     try {
-      const SQL = await initSqlJs();
-
-      // 如果是内存数据库或者文件不存在，创建新数据库
-      if (this.dbPath === ':memory:') {
-        this.db = new SQL.Database();
-        // 创建 settings 表用于测试
-        this.db.run("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)");
-      } else {
-        // 尝试读取现有数据库文件
-        const fs = await import('fs');
-        if (fs.existsSync(this.dbPath)) {
-          const fileBuffer = fs.readFileSync(this.dbPath);
-          this.db = new SQL.Database(fileBuffer);
-        } else {
-          this.db = new SQL.Database();
-        }
-      }
-
-      this.loadToken();
+      const res = await this.client.get<Record<string, unknown>>('/api/v2/settings');
+      const data = res?.data ?? {};
+      const token = data['mcp_api_token'];
+      this.token = typeof token === 'string' ? token : '';
     } catch (error) {
-      console.error('Failed to initialize auth database:', error);
-    }
-  }
-
-  private loadToken(): void {
-    if (!this.db) return;
-
-    try {
-      const result = this.db.exec(
-        "SELECT value FROM settings WHERE key = 'mcp_api_token'"
-      );
-
-      if (result.length > 0 && result[0].values.length > 0) {
-        this.token = result[0].values[0][0] as string;
-      }
-    } catch (error) {
-      console.error('Failed to load MCP token:', error);
+      console.error('Failed to load MCP token from backend:', error);
     }
   }
 
