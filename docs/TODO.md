@@ -116,3 +116,4 @@
 - T10 CI 门槛锁定（PR #108）：cov-fail-under 22%→24%，锁住 T1-T9 测试批次成果
 - T11 服务层单元测试（PR #109，74 用例）：ffmpeg_service 50 用例（stderr 解析/二进制发现三优先序/元数据读取/帧提取全链路，subprocess 全 mock，模块级状态每测重置）31%→93%；duration_repair 24 用例（并发锁/probe 写库/批量补全 ok-fail-skip 计数/提交兜底，fake conn 隔离 DB + resolve mock）48%→90%；全量 780 passed、总覆盖率 29%→30%（CI 门槛 24%）
 - T12 frames 路由契约（PR #110，33 用例）：6 路由全路径（extract-frames 状态机 done/processing/404 业务态、frames-status、frames、frame-image send_file+参数校验、clear-cache 四类目标+日志保留期、system-info 版本+缓存统计）+ 4 helper（_resolve_video_path/_resolve_material_video local-s3/_download_s3_to_cache 缓存命中+下载）；routes/frames.py 9%→82%；全量 813 passed（CI 门槛 24%）
+- T13 平台基类+发布参数纯函数（PR #111，47 用例）：base_platform 18 用例（浏览器四委托/import_cookie 4 步全路径：解析失败/空 cookies/INSERT/UPDATE/sync 三形态/失效清理/DB 异常）34%→94%；三平台纯函数 29 用例（抖音话题计数边界+≤5 校验/小红书同语义/百家号 emoji=3+标签≤10+字符≤50）；全量 860 passed、总覆盖率 30%→31%（CI 门槛 24%）
