@@ -17,6 +17,9 @@
     <!-- 渠道黑名单 -->
     <BlacklistCard :platforms="disabledPlatformObjects" @open="openBlacklistDialog" @remove="removeFromBlacklist" />
 
+    <!-- 访问令牌 -->
+    <AccessTokenCard :enabled="settings.accessTokenSet" @save="saveToken" @clear="clearToken" />
+
     <!-- 文件存储 -->
     <StorageSettingsCard :storage="settings.storage" />
     <!-- 缓存管理 -->
@@ -106,6 +109,7 @@ import PlatformBlacklistDialog from '@/components/PlatformBlacklistDialog.vue'
 import ProxySettingsCard from '@/components/ProxySettingsCard.vue'
 import PublishSettingsCard from '@/components/PublishSettingsCard.vue'
 import BlacklistCard from '@/components/BlacklistCard.vue'
+import AccessTokenCard from '@/components/AccessTokenCard.vue'
 import StorageSettingsCard, { type StorageConfig, type S3Config } from '@/components/StorageSettingsCard.vue'
 import CacheSettingsCard, { type CacheInfoState, type ClearCacheTarget, type CacheEntry, type LogsCacheEntry } from '@/components/CacheSettingsCard.vue'
 
@@ -123,6 +127,7 @@ interface SettingsState {
   accountCheckMode: string
   storage: StorageConfig
   feedbackEmail: string
+  accessTokenSet: boolean
 }
 
 // 后端 /api/v2/settings 返回的数据(字段可能缺省,均为可选)
@@ -135,6 +140,7 @@ interface SettingsData {
   storage?: StorageConfig
   feedbackEmail?: string
   disabledPlatforms?: string | string[] | null
+  accessTokenSet?: boolean
 }
 
 // /api/system-info 返回的缓存数据(字段可能缺省)
@@ -267,6 +273,7 @@ const settings = reactive<SettingsState>({
     s3: { endpoint: '', access_key: '', secret_key: '', bucket: '', region: '' },
   },
   feedbackEmail: '',
+  accessTokenSet: false,
 })
 
 // 海外平台列表
@@ -304,6 +311,9 @@ const fetchSettings = async () => {
       if (res.data.accountCheckMode !== undefined) settings.accountCheckMode = res.data.accountCheckMode
       if (res.data.storage) {
         settings.storage = { ...settings.storage, ...res.data.storage }
+      }
+      if (res.data.accessTokenSet !== undefined) {
+        settings.accessTokenSet = res.data.accessTokenSet
       }
       if (res.data.feedbackEmail !== undefined) {
         settings.feedbackEmail = res.data.feedbackEmail
@@ -360,6 +370,30 @@ const handleSave = async () => {
     ElMessage.error('保存失败')
   } finally {
     saving.value = false
+  }
+}
+
+// 访问令牌：保存/清除（写入 settings 表 + 同步 localStorage 让请求拦截器携带）
+const saveToken = async (token: string) => {
+  const res = (await settingsApi.updateSettings({ access_token: token })) as ApiResponse
+  if (res.code === 200) {
+    localStorage.setItem('access_token', token)
+    settings.accessTokenSet = true
+    ElMessage.success('访问令牌已启用（本浏览器自动携带）')
+  } else {
+    ElMessage.error(res.msg || '保存失败')
+    throw new Error(res.msg || '保存失败')
+  }
+}
+
+const clearToken = async () => {
+  const res = (await settingsApi.updateSettings({ access_token: '' })) as ApiResponse
+  if (res.code === 200) {
+    localStorage.removeItem('access_token')
+    settings.accessTokenSet = false
+    ElMessage.success('访问令牌已清除')
+  } else {
+    ElMessage.error(res.msg || '清除失败')
   }
 }
 
