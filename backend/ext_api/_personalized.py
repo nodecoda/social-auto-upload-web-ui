@@ -4,6 +4,16 @@
 import json
 
 
+def _id_of(value):
+    """防御：老数据/前端可能写入非 dict 值（如 int/str），一律视为无 id。
+
+    与历史行为等价：dict 值取 id（缺省 ''），非 dict 返回 ''（不视为个性化）。
+    """
+    if isinstance(value, dict):
+        return value.get('id') or ''
+    return ''
+
+
 def compute_personalized(account_configs: dict, batch_row: dict) -> bool:
     cfg = account_configs or {}
     batch = batch_row or {}
@@ -15,20 +25,20 @@ def compute_personalized(account_configs: dict, batch_row: dict) -> bool:
         return True
 
     # 视频/封面（ID 比较）
-    video_id = (cfg.get('videoLandscape') or {}).get('id') or (cfg.get('videoPortrait') or {}).get('id')
+    video_id = _id_of(cfg.get('videoLandscape')) or _id_of(cfg.get('videoPortrait'))
     if video_id and video_id != (batch.get('video_material_id') or ''):
         return True
 
-    cover_l_id = (cfg.get('coverLandscape') or {}).get('id')
+    cover_l_id = _id_of(cfg.get('coverLandscape'))
     if cover_l_id and cover_l_id != (batch.get('landscape_cover_material_id') or ''):
         return True
 
-    cover_p_id = (cfg.get('coverPortrait') or {}).get('id')
+    cover_p_id = _id_of(cfg.get('coverPortrait'))
     if cover_p_id and cover_p_id != (batch.get('portrait_cover_material_id') or ''):
         return True
 
     # 图文图片（ID 列表比较）
-    cfg_image_ids = [img.get('id', '') for img in (cfg.get('images') or [])]
+    cfg_image_ids = [_id_of(img) for img in (cfg.get('images') or [])]
     if cfg_image_ids:
         try:
             batch_image_ids = json.loads(batch.get('image_material_ids') or '[]')
@@ -38,7 +48,7 @@ def compute_personalized(account_configs: dict, batch_row: dict) -> bool:
             return True
 
     # 图文封面（与 batch 第一张图对比；coverImage 独立 override 时算个性化）
-    cover_img_id = (cfg.get('coverImage') or {}).get('id')
+    cover_img_id = _id_of(cfg.get('coverImage'))
     if cover_img_id:
         try:
             batch_image_ids = json.loads(batch.get('image_material_ids') or '[]')
