@@ -88,7 +88,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r requirements.txt pytest pytest-cov
+      - run: pip install -r requirements.lock pytest pytest-cov
       # 覆盖率硬门槛（防回退）：T1-T24 平台发布编排批次覆盖全部 19 平台, 总覆盖率 36%（2026-08-21 实测 1138 passed）
       # 覆盖率报告见 Actions artifact；本地复现: python -m pytest --cov=. --cov-config=.coveragerc
       - run: python -m pytest -q --cov=. --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=34
