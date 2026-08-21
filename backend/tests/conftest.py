@@ -25,8 +25,9 @@ import pytest
 @pytest.fixture(scope='session', autouse=True)
 def _init_test_database():
     """全量 schema（tags/account_tags/user_info/upload_*）在共享临时 DB 初始化一次。"""
-    from init_db import init_database
+    from init_db import init_database, migrate_database
     init_database()
+    migrate_database()  # 与生产启动(app._ensure_db/__main__)对齐:补齐 fans/likes/follows/stats 列
     yield
 
 
