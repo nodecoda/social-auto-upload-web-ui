@@ -57,48 +57,6 @@ def _get_db():
 
 # ========== 发布 ==========
 
-def _update_image_publish_detail(detail_id, status, error_message=""):
-    """更新单条 publish_details 状态，并聚合到 publish_batches"""
-    try:
-        with sqlite3.connect(str(DB_PATH)) as conn:
-            conn.execute(
-                "UPDATE publish_details SET status=?, finished_at=?, error_message=? WHERE id=?",
-                (status, datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), error_message, detail_id)
-            )
-            row = conn.execute(
-                "SELECT batch_id FROM publish_details WHERE id=?", (detail_id,)
-            ).fetchone()
-            if not row:
-                return
-            batch_id = row[0]
-            counts = conn.execute(
-                """SELECT COUNT(*),
-                          SUM(CASE WHEN status='success' THEN 1 ELSE 0 END),
-                          SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END)
-                   FROM publish_details WHERE batch_id=?""",
-                (batch_id,)
-            ).fetchone()
-            total, succ, fail = counts[0], counts[1] or 0, counts[2] or 0
-            if total == 0:
-                bs = 'pending'
-            elif fail == 0:
-                bs = 'success'
-            elif succ == 0:
-                bs = 'failed'
-            else:
-                bs = 'partial'
-            conn.execute(
-                """UPDATE publish_batches
-                   SET status=?, success_count=?, failed_count=?, account_count=?,
-                       finished_at=?, updated_at=?
-                   WHERE id=?""",
-                (bs, succ, fail, total, datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(),
-                 datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), batch_id)
-            )
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-        logger.info(f"[image_publish] 更新失败: {e}")
-
-
 @image_publish_bp.route('/publish', methods=['POST'])
 def publish_images():
     """发布图集内容到各平台（单账号 + batchId 模式，前端循环调用）"""
@@ -192,7 +150,8 @@ def publish_images():
             # 没有图片或缺配置：不调用平台（保留成功占位以便 batch 不卡 pending）
             err = "无图片或缺平台/cookie 配置，跳过实际发布"
             logger.info(f"[image_publish] {err}")
-            _update_image_publish_detail(detail_id, TaskStatus.SUCCESS, error_message=err)
+            from services.publish_history import _update_publish_result
+            _update_publish_result(detail_id, TaskStatus.SUCCESS, now, error_message=err)
             return jsonify({"code": 200, "msg": "发布成功", "data": {"batch_id": batch_id, "detail_id": detail_id}})
 
         # 平台类型映射（中文名/英文key → id）：由 registry 类属性派生（R4），
@@ -271,7 +230,8 @@ def publish_images():
     except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"发布失败: {e}")
         err = str(e)
-        _update_image_publish_detail(detail_id, TaskStatus.FAILED, error_message=err)
+        from services.publish_history import _update_publish_result
+        _update_publish_result(detail_id, TaskStatus.FAILED, now, error_message=err)
         return jsonify({"code": 500, "msg": f"发布失败: {err}"}), 500
 
 
@@ -586,7 +546,8 @@ def execute_publish():
     except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.error(f"执行发布失败: {e}")
         err = str(e)
-        _update_image_publish_detail(detail_id, TaskStatus.FAILED, error_message=err)
+        from services.publish_history import _update_publish_result
+        _update_publish_result(detail_id, TaskStatus.FAILED, now, error_message=err)
         return jsonify({"code": 500, "msg": f"发布失败: {err}"}), 500
 
 

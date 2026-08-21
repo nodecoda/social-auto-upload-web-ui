@@ -5,7 +5,6 @@
 
 import asyncio
 import json
-import sqlite3
 import sys
 import threading
 import uuid
@@ -21,7 +20,7 @@ from util._logger import get_channel_logger
 
 # R7: 状态枚举 + 聚合逻辑的唯一真源（原本地定义迁移到 util/status.py，
 # 此处 re-export 保持外部 from ext_api.task_queue import TaskStatus 兼容）
-from util.status import TaskStatus, aggregate_batch_status
+from util.status import TaskStatus
 
 logger = get_channel_logger("task_queue")
 
@@ -309,79 +308,53 @@ class TaskQueue:
     # ========== 数据库操作 ==========
 
     def _insert_db(self, task: PublishTask):
-        """插 1 行 publish_batches（如果不存在）+ 1 行 publish_details"""
+        """插 1 行 publish_batches（如果不存在）+ 1 行 publish_details。
+
+        A1: 收敛到 services.publish_history._record_publish（唯一 writer）。
+        source/draft_id 溯源（草稿批量）与 account_configs（task 字段打包）在此组装。
+        """
         try:
-            with sqlite3.connect(str(DB_PATH)) as conn:
-                # batch 插一次，多次同 batch_id 跳过
-                # 草稿批量发布时填 source='draft' + draft_id 溯源到草稿
-                conn.execute(
-                    """INSERT OR IGNORE INTO publish_batches
-                       (id, type, title, description, video_material_id,
-                        landscape_cover_material_id, portrait_cover_material_id,
-                        account_count, status, created_at, updated_at,
-                        source, draft_id)
-                       VALUES (?, 'video', ?, ?, '', '', '', 0, 'pending', ?, ?,
-                               ?, ?)""",
-                    (task.batch_id or task.id, task.title, task.description,
-                     task.created_at, task.created_at,
-                     task.source or '', task.draft_id or 0)
-                )
-                # account_configs：把 task 字段打包成 JSON
-                cfg = _build_account_configs(task)
-                # detail 也用 INSERT OR IGNORE：/postVideo 链路 app._before_publish 已
-                # 预插入 publish_details 行（task.id == publish_details.id），跳过不冲突；
-                # 草稿批量发布路径 task.id 是新 uuid，正常插入。
-                conn.execute(
-                    """INSERT OR IGNORE INTO publish_details
-                       (id, batch_id, account_id, account_name, platform, account_configs,
-                        status, created_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (task.id, task.batch_id or task.id, task.account_id or None,
-                     task.account_name, task.platform,
-                     json.dumps(cfg, ensure_ascii=False), task.status, task.created_at)
-                )
+            from services.publish_history import _record_publish
+            _record_publish(
+                batch_id=task.batch_id or task.id,
+                detail_id=task.id,
+                platform=task.platform,
+                account_id=task.account_id,
+                account_name=task.account_name,
+                video_path=task.video_path,
+                title=task.title,
+                description=task.description,
+                tags=task.tags,
+                status=task.status,
+                started_at=task.created_at,
+                account_configs=_build_account_configs(task),
+                content_type=task.publish_kind,
+                source=task.source or '',
+                draft_id=task.draft_id or 0,
+            )
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[TaskQueue] 插入数据库失败: {e}")
 
     def _update_db(self, task: PublishTask):
-        """更新 1 行 publish_details + 聚合 publish_batches 状态"""
+        """更新 1 行 publish_details + 聚合 publish_batches 状态。
+
+        A1: 收敛到 services.publish_history._update_publish_result（唯一 writer），
+        聚合口径 A2：cancelled 归 fail，in-flight 保持 running。
+        """
         try:
-            with sqlite3.connect(str(DB_PATH)) as conn:
-                conn.execute(
-                    """UPDATE publish_details
-                       SET status=?, retry_count=?, error_message=?, publish_url=?,
-                           started_at=?, finished_at=?
-                       WHERE id=?""",
-                    (task.status, task.retry_count, task.error_message, task.publish_url,
-                     task.started_at, task.finished_at, task.id)
-                )
-                # 聚合
-                row = conn.execute(
-                    "SELECT batch_id FROM publish_details WHERE id=?", (task.id,)
-                ).fetchone()
-                if not row:
-                    return
-                batch_id = row[0]
-                counts = conn.execute(
-                    """SELECT COUNT(*),
-                              SUM(CASE WHEN status='success' THEN 1 ELSE 0 END),
-                              SUM(CASE WHEN status IN ('failed', 'cancelled') THEN 1 ELSE 0 END),
-                              SUM(CASE WHEN status IN ('running', 'queued') THEN 1 ELSE 0 END)
-                       FROM publish_details WHERE batch_id=?""",
-                    (batch_id,)
-                ).fetchone()
-                total, succ, fail, in_flight = counts[0], counts[1] or 0, counts[2] or 0, counts[3] or 0
-                bs = aggregate_batch_status(succ=succ, fail=fail, in_flight=in_flight, total=total)
-                now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
-                conn.execute(
-                    """UPDATE publish_batches
-                       SET status=?, success_count=?, failed_count=?, account_count=?,
-                           finished_at=?, updated_at=?
-                       WHERE id=?""",
-                    (bs, succ, fail, total, task.finished_at or now, now, batch_id)
-                )
+            from services.publish_history import _update_publish_result
+            _update_publish_result(
+                detail_id=task.id,
+                status=task.status,
+                finished_at=task.finished_at,
+                error_message=task.error_message,
+                retry_count=task.retry_count,
+                publish_url=task.publish_url,
+                started_at=task.started_at,
+            )
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[TaskQueue] 更新数据库失败: {e}")
+
 
 
 # 全局单例

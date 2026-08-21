@@ -66,7 +66,9 @@ def _make_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             started_at TIMESTAMP,
             finished_at TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            source TEXT NOT NULL DEFAULT '',
+            draft_id INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE publish_details (
             id TEXT PRIMARY KEY,
@@ -289,7 +291,9 @@ def _postvideo_roundtrip_db_path():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             started_at TIMESTAMP,
             finished_at TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            source TEXT NOT NULL DEFAULT '',
+            draft_id INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE publish_details (
             id TEXT PRIMARY KEY,

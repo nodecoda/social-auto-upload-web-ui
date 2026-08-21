@@ -260,7 +260,9 @@ def test_worker_survives_browser_watchdog_cancel():
 def test_insert_db_ignores_preexisting_detail_row():
     """_before_publish 已插入 detail 行（id == task.id）时，_insert_db 不得重复/覆盖。"""
     from ext_api import task_queue as tq_module
-    with patch.object(tq_module, 'DB_PATH', DB_PATH):
+    # A1: 状态回写收敛到 services.publish_history（唯一 writer），两处 DB_PATH 都要指向测试库
+    with patch.object(tq_module, 'DB_PATH', DB_PATH), \
+            patch('services.publish_history.DB_PATH', DB_PATH):
         # 预插 batch + detail（模拟 app._before_publish）
         conn = sqlite3.connect(str(DB_PATH))
         conn.execute(
@@ -296,7 +298,9 @@ def test_insert_db_ignores_preexisting_detail_row():
 def test_update_db_cancelled_counts_as_failed_in_batch():
     """单条 cancelled detail 不应让 batch 误判 success，应聚合为 failed。"""
     from ext_api import task_queue as tq_module
-    with patch.object(tq_module, 'DB_PATH', DB_PATH):
+    # A1: 状态回写收敛到 services.publish_history（唯一 writer），两处 DB_PATH 都要指向测试库
+    with patch.object(tq_module, 'DB_PATH', DB_PATH), \
+            patch('services.publish_history.DB_PATH', DB_PATH):
         conn = sqlite3.connect(str(DB_PATH))
         conn.execute(
             "INSERT OR IGNORE INTO publish_batches (id, type, title, status, created_at, updated_at) "
