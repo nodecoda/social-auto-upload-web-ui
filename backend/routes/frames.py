@@ -75,6 +75,7 @@ def _download_s3_to_cache(material_id, stored_path):
 
 @frames_bp.post('/api/extract-frames')
 def extract_frames():
+    """提取视频抽帧：material_id 或 video_path 指定素材，后台生成帧列表。"""
     data = request.get_json(force=True)
     # 优先使用素材 ID
     material_id = data.get('material_id', '')
@@ -111,6 +112,7 @@ def extract_frames():
 
 @frames_bp.get('/api/frames-status')
 def frames_status():
+    """查询抽帧任务状态/进度。"""
     material_id = request.args.get('material_id', '')
     video_path = request.args.get('video_path', '')
 
@@ -130,6 +132,7 @@ def frames_status():
 
 @frames_bp.get('/api/frames')
 def get_frames():
+    """获取已抽取的帧列表（时间戳+URL）。"""
     material_id = request.args.get('material_id', '')
     video_path = request.args.get('video_path', '')
 
@@ -151,6 +154,7 @@ def get_frames():
 
 @frames_bp.get('/api/frame-image')
 def get_frame_image():
+    """按秒数获取单帧图片（回源视频转码）。"""
     material_id = request.args.get('material_id', '')
     video_path = request.args.get('video_path', '')
     seconds = request.args.get('seconds', '0')

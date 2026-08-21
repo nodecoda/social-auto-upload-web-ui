@@ -175,6 +175,7 @@ def _finish_publish_failed(task_id, detail_id, msg):
 
 @publish_bp.route('/postVideo', methods=['POST'])
 def postVideo():
+    """发布视频：校验+入队后台串行执行器，立即返回 taskId（前端轮询 status）。"""
     data = request.get_json()
     if not data:
         return jsonify({"code": 400, "msg": "请求数据不能为空", "data": None}), 400
@@ -371,6 +372,7 @@ def postVideo_status(task_id):
 
 @publish_bp.route('/postVideoBatch', methods=['POST'])
 def postVideoBatch():
+    """批量发布视频（同步调用）：逐条校验/发布，失败项聚合到 errors 返回。"""
     data_list = request.get_json()
     if not isinstance(data_list, list):
         return jsonify({"code": 400, "msg": "Expected a JSON array", "data": None}), 400

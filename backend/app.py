@@ -170,24 +170,29 @@ logger.info(f"[Startup] Frontend dir: {FRONTEND_DIR} (exists={FRONTEND_DIR.exist
 
 @app.route('/')
 def index():
+    """前端 SPA 入口：返回 frontend/dist/index.html（不存在则报 API 存活）。"""
     if FRONTEND_DIR.exists():
         return send_from_directory(str(FRONTEND_DIR), 'index.html')
     return jsonify({"code": 200, "msg": "API server running"}), 200
 
 @app.route('/assets/<path:filename>')
 def custom_static(filename):
+    """前端构建产物静态资源（frontend/dist/assets）。"""
     return send_from_directory(str(FRONTEND_DIR / 'assets'), filename)
 
 @app.route('/favicon.ico')
 def favicon():
+    """站点 favicon（frontend/dist/favicon.ico）。"""
     return send_from_directory(str(FRONTEND_DIR), 'favicon.ico')
 
 @app.route('/vite.svg')
 def vite_svg():
+    """Vite 默认 logo（frontend/dist/vite.svg）。"""
     return send_from_directory(str(FRONTEND_DIR), 'vite.svg')
 
 @app.route('/changelog/<path:filename>')
 def serve_changelog(filename):
+    """更新日志静态文件（changelog/ 目录，打包目录缺失时回退 BASE_DIR）。"""
     changelog_dir = Path(__file__).parent.parent / "changelog"
     if not changelog_dir.exists():
         changelog_dir = BASE_DIR / "changelog"
@@ -327,6 +332,7 @@ def _after_publish(response):
 
 @app.route("/api/health", methods=['GET'])
 def health_check():
+    """健康检查/诊断：数据目录、DB 存在性、Python 环境、user_info 计数。"""
     import sqlite3 as _sqlite
     diag = {
         "sau_data_dir": os.environ.get("SAU_DATA_DIR"),
