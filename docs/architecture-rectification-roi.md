@@ -31,7 +31,7 @@
 | R3 平台接入 checklist | ✅ done | `6edcc75`：backend-coding-standards.md 新增 7 项 checklist |
 | R4 元数据单源 | ✅ done | `c334f2f`：conf/ext_api/image_publish_bp 映射收敛 registry 派生（懒加载防循环依赖），image_publish_bp 补齐 19 平台 |
 | R5 publish_video 全 async | ✅ done | `434ac23`：14 平台 async 化 + 契约红线(注册表全 async) + task_queue 统一 create_task；修复 R2 回归(jd/kuaishou 校验被吞)；13 publish + 9 DOM 测试同步 asyncio.run（轻量 299 passed，DOM 留 CI） |
-| R6 队列三合一 | ✅ done | `待提交`：image_publish 2 路由入队化(publish_images/execute_publish)、删 postVideoBatch(132 行)、task_queue 按 publish_kind 分发 + 清 myUtils 旧路径、create_task payload 化(registry 真源校验)、3 平台 publish_image async 化（轻量 332 passed，DOM 留 CI） |
+| R6 队列三合一 | ✅ done | `bf26ac8`：image_publish 2 路由入队化(publish_images/execute_publish)、删 postVideoBatch(132 行)、task_queue 按 publish_kind 分发 + 清 myUtils 旧路径、create_task payload 化(registry 真源校验)、3 平台 publish_image async 化（轻量 332 passed，DOM 留 CI） |
 | R7 历史唯一 writer | ⏳ 待做 | 依赖 R6 |
 | R8 浏览器生命周期 | ✅ done | `e454576`：impl 59 处 → self.close_browser、19 处 _launch → asyncio.run(close_browser)、blueprint 16 处 → close_browser、全仓 get_event_loop 清零 |
 | R9 样板上移 + _utils 拆分 | ⏳ 待做 | 依赖 R5 防返工 |
