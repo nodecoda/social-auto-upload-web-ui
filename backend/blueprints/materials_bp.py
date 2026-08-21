@@ -442,6 +442,7 @@ def list_files():
 
 @materials_bp.route("/<material_id>", methods=["GET"])
 def get_material(material_id: str):
+    """按 id 获取素材详情（含存储类型解析）。"""
     from storage import get_storage_by_type
     conn = _get_db()
     row = conn.execute("SELECT * FROM materials WHERE id = ?", (material_id,)).fetchone()

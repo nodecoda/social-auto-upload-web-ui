@@ -28,6 +28,7 @@ DB_PATH = BASE_DIR / "db" / "database.db"
 
 @account_bp.route("/getAccounts", methods=['GET'])
 def getAccounts():
+    """获取全部账号列表（含标签聚合）。"""
     try:
         with sqlite3.connect(str(DB_PATH)) as conn:
             conn.row_factory = sqlite3.Row
@@ -88,6 +89,7 @@ def getValidAccounts():
 
 @account_bp.route('/deleteAccount', methods=['DELETE'])
 def delete_account():
+    """按 id 删除账号。"""
     account_id = request.args.get('id')
     if not account_id or not account_id.isdigit():
         return jsonify({"code": 400, "msg": "Invalid or missing account ID", "data": None}), 400
@@ -122,6 +124,7 @@ def delete_account():
 
 @account_bp.route('/updateUserinfo', methods=['POST'])
 def updateUserinfo():
+    """更新账号信息（昵称/备注等）。"""
     data = request.get_json()
     user_id = data.get('id')
     type_ = data.get('type')
@@ -142,6 +145,7 @@ def updateUserinfo():
 
 @account_bp.route('/api/tags', methods=['GET'])
 def get_tags():
+    """获取全部标签列表。"""
     try:
         with sqlite3.connect(str(DB_PATH)) as conn:
             conn.row_factory = sqlite3.Row
@@ -153,6 +157,7 @@ def get_tags():
 
 @account_bp.route('/api/tags', methods=['POST'])
 def create_tag():
+    """新建标签（名称去重）。"""
     data = request.get_json()
     name = (data.get('name') or '').strip()
     color = data.get('color') or random.choice([
@@ -176,6 +181,7 @@ def create_tag():
 
 @account_bp.route('/api/tags/<int:tag_id>', methods=['DELETE'])
 def delete_tag(tag_id):
+    """按 id 删除标签。"""
     try:
         with sqlite3.connect(str(DB_PATH)) as conn:
             # SQLite 默认不强制外键,需要先清关联行
@@ -189,6 +195,7 @@ def delete_tag(tag_id):
 
 @account_bp.route('/api/accounts/<int:account_id>/tags', methods=['PUT'])
 def set_account_tags(account_id):
+    """设置单个账号的标签（整体覆盖）。"""
     data = request.get_json()
     tag_ids = data.get('tag_ids', [])
     try:
@@ -223,6 +230,7 @@ def set_batch_account_tags():
 
 @account_bp.route('/api/accounts/<int:account_id>/tags', methods=['GET'])
 def get_account_tags(account_id):
+    """获取单个账号的标签列表。"""
     try:
         with sqlite3.connect(str(DB_PATH)) as conn:
             conn.row_factory = sqlite3.Row
@@ -241,6 +249,7 @@ def get_account_tags(account_id):
 
 @account_bp.route('/uploadCookie', methods=['POST'])
 def upload_cookie():
+    """上传账号 cookie 文件并更新账号状态。"""
     try:
         if 'file' not in request.files:
             return jsonify({"code": 400, "msg": "没有找到Cookie文件", "data": None}), 400
@@ -275,6 +284,7 @@ def upload_cookie():
 
 @account_bp.route('/downloadCookie', methods=['GET'])
 def download_cookie():
+    """按 filePath 下载账号 cookie 文件。"""
     try:
         file_path = request.args.get('filePath')
         if not file_path:
@@ -337,6 +347,7 @@ def _get_account_record(account_id):
 
 @account_bp.route('/checkAccount', methods=['GET'])
 def check_account():
+    """校验单个账号 cookie 是否有效（浏览器验证）。"""
     account_id = request.args.get('id')
     if not account_id or not account_id.isdigit():
         return jsonify({"code": 400, "msg": "无效的账号ID"}), 400
@@ -360,6 +371,7 @@ def check_account():
 
 @account_bp.route('/syncProfile', methods=['POST'])
 def sync_profile():
+    """同步账号主页资料（昵称/头像/粉丝数等）。"""
     account_id = request.json.get('id')
     if not account_id:
         return jsonify({"code": 400, "msg": "缺少账号ID", "data": None}), 400
@@ -410,6 +422,7 @@ def sync_profile():
 
 @account_bp.route('/openCreatorCenter', methods=['POST'])
 def open_creator_center():
+    """打开平台创作者中心页面（登录态确认）。"""
     account_id = request.json.get('id')
     if not account_id:
         return jsonify({"code": 400, "msg": "缺少账号ID"}), 400
@@ -432,6 +445,7 @@ def open_creator_center():
 
 @account_bp.route('/login')
 def login():
+    """平台登录：发起扫码/账号登录，返回 SSE 流式状态。"""
     type_str = request.args.get('type')
     id_str = request.args.get('id')
     account_id = request.args.get('account_id')

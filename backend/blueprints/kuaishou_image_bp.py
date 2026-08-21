@@ -55,6 +55,7 @@ def run_async(coro):
 
 @kuaishou_image_bp.route('/ping', methods=['GET'])
 def ping():
+    """快手图集 blueprint 存活探针。"""
     return jsonify({"code": 200, "msg": "kuaishou-image bp ok"})
 
 

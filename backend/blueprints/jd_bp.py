@@ -79,6 +79,7 @@ def _resolve_session_or_404(account_id: str):
 
 @jd_bp.route("/api/jd/picker/open", methods=["POST"])
 def picker_open():
+    """打开京东关联商品选择器（后台浏览器+事件循环）。"""
     data = request.get_json() or {}
     account_id = data.get("accountId")
     if not account_id:
@@ -109,6 +110,7 @@ def picker_open():
 
 @jd_bp.route("/api/jd/picker/search", methods=["POST"])
 def picker_search():
+    """按关键词搜索京东商品。"""
     data = request.get_json() or {}
     account_id = data.get("accountId")
     keyword = data.get("keyword", "")
@@ -152,6 +154,7 @@ def novel_search():
 
 @jd_bp.route("/api/jd/picker/go_page", methods=["POST"])
 def picker_go_page():
+    """翻页浏览搜索结果。"""
     data = request.get_json() or {}
     account_id = data.get("accountId")
     page = data.get("page", 1)
@@ -169,6 +172,7 @@ def picker_go_page():
 
 @jd_bp.route("/api/jd/picker/close", methods=["POST"])
 def picker_close():
+    """关闭选择器会话并释放浏览器。"""
     data = request.get_json() or {}
     account_id = data.get("accountId")
     if not account_id:

@@ -108,6 +108,7 @@ def feedback_list():
 
 @feedback_bp.route('/api/feedback/submit', methods=['POST'])
 def feedback_submit():
+    """提交反馈：表单+附件透传上游，邮箱缺省读 settings.feedbackEmail。"""
     if not _feedback_configured():
         return jsonify({'code': 503, 'message': '反馈系统未配置（缺少 FEEDBACK_APP_KEY / FEEDBACK_APP_SECRET）', 'data': None}), 503
     content = request.form.get('content', '').strip()
@@ -135,6 +136,7 @@ def feedback_submit():
 
 @feedback_bp.route('/api/feedback/vote', methods=['POST'])
 def feedback_vote():
+    """反馈点赞/有用投票：body 传 id+email，邮箱缺省读 settings。"""
     if not _feedback_configured():
         return jsonify({'code': 503, 'message': '反馈系统未配置（缺少 FEEDBACK_APP_KEY / FEEDBACK_APP_SECRET）', 'data': None}), 503
     body = request.get_json(silent=True) or {}

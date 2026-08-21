@@ -156,6 +156,7 @@ def picker_switch_type():
 
 @taobao_guanghe_bp.route('/picker/tab', methods=['POST'])
 def picker_tab():
+    """切换选择面板标签页（商品/店铺/图片）。"""
     body = request.get_json(silent=True) or {}
     session, err = _resolve_session_or_404(body.get("session_id"))
     if err:
@@ -177,6 +178,7 @@ def picker_tab():
 
 @taobao_guanghe_bp.route('/picker/filter', methods=['POST'])
 def picker_filter():
+    """应用筛选条件到当前列表。"""
     body = request.get_json(silent=True) or {}
     session, err = _resolve_session_or_404(body.get("session_id"))
     if err:
@@ -199,6 +201,7 @@ def picker_filter():
 
 @taobao_guanghe_bp.route('/picker/search', methods=['POST'])
 def picker_search():
+    """按关键词搜索光合面板内容。"""
     body = request.get_json(silent=True) or {}
     session, err = _resolve_session_or_404(body.get("session_id"))
     if err:
@@ -218,6 +221,7 @@ def picker_search():
 
 @taobao_guanghe_bp.route('/picker/load_more', methods=['POST'])
 def picker_load_more():
+    """加载下一页/滚动加载更多。"""
     body = request.get_json(silent=True) or {}
     session, err = _resolve_session_or_404(body.get("session_id"))
     if err:
@@ -236,6 +240,7 @@ def picker_load_more():
 
 @taobao_guanghe_bp.route('/picker/close', methods=['POST'])
 def picker_close():
+    """关闭选择器会话并释放浏览器。"""
     body = request.get_json(silent=True) or {}
     session_id = (body.get("session_id") or "").strip()
     session = pool.remove(session_id)
