@@ -42,8 +42,8 @@ def _make_db():
     _postvideo_roundtrip_db_path() 里用旧表 schema，因为 _record_publish 仍写旧表
     （Task 6 会重构 /postVideo 写路径，届时这些 fixture 一并迁移到新表）。
     """
-    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    tmp.close()
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        pass
     db_path = Path(tmp.name)
     conn = sqlite3.connect(str(db_path))
     conn.executescript("""
@@ -139,13 +139,12 @@ def test_video_templates_filters_success_and_nonempty():
     conn.close()
 
     import ext_api as ext
-    with patch.object(ext, "_db_conn", lambda: _open_test_conn(db_path)):
-        with ext.app.test_request_context("/api/v2/publish-templates?type=video"):
-            resp = get_publish_templates()
-            data = resp.get_json()
-            ids = [r['id'] for r in data['data']['list']]
-            assert ids == ["1", "4"]
-            assert data['data']['total'] == 2
+    with patch.object(ext, "_db_conn", lambda: _open_test_conn(db_path)), ext.app.test_request_context("/api/v2/publish-templates?type=video"):
+        resp = get_publish_templates()
+        data = resp.get_json()
+        ids = [r['id'] for r in data['data']['list']]
+        assert ids == ["1", "4"]
+        assert data['data']['total'] == 2
 
 
 def test_video_templates_returns_expected_fields():
@@ -168,18 +167,17 @@ def test_video_templates_returns_expected_fields():
     conn.close()
 
     import ext_api as ext
-    with patch.object(ext, "_db_conn", lambda: _open_test_conn(db_path)):
-        with ext.app.test_request_context("/api/v2/publish-templates?type=video"):
-            resp = get_publish_templates()
-            data = resp.get_json()
-            item = data['data']['list'][0]
-            assert item['type'] == 'video'
-            assert item['title'] == 'My Title'
-            assert item['thumbnail_path'] == 'thumbs/2026/06/08/thumb.png'
-            # account_configs 取第一个 detail 的（按 created_at ASC），是该 platform 的单条配置
-            assert item['account_configs'] == {"title": "ok"}
-            platforms = [c['platform'] for c in item['channels']]
-            assert set(platforms) == {'douyin', 'xiaohongshu'}
+    with patch.object(ext, "_db_conn", lambda: _open_test_conn(db_path)), ext.app.test_request_context("/api/v2/publish-templates?type=video"):
+        resp = get_publish_templates()
+        data = resp.get_json()
+        item = data['data']['list'][0]
+        assert item['type'] == 'video'
+        assert item['title'] == 'My Title'
+        assert item['thumbnail_path'] == 'thumbs/2026/06/08/thumb.png'
+        # account_configs 取第一个 detail 的（按 created_at ASC），是该 platform 的单条配置
+        assert item['account_configs'] == {"title": "ok"}
+        platforms = [c['platform'] for c in item['channels']]
+        assert set(platforms) == {'douyin', 'xiaohongshu'}
 
 
 def test_image_templates_returns_image_with_first_image_id():
@@ -214,20 +212,19 @@ def test_image_templates_returns_image_with_first_image_id():
     conn.close()
 
     import ext_api as ext
-    with patch.object(ext, "_db_conn", lambda: _open_test_conn(db_path)):
-        with ext.app.test_request_context("/api/v2/publish-templates?type=image"):
-            resp = get_publish_templates()
-            data = resp.get_json()
-            item = data['data']['list'][0]
-            assert item['type'] == 'image'
-            assert item['first_image_id'] == 'img-uuid-1'
-            assert item['title'] == 'img title'
-            # 第一个 detail 的 account_configs
-            assert isinstance(item['account_configs'], dict)
-            assert item['account_configs'].get('title') == 'img title'
-            # channels 列表含两个 platform
-            platforms = [c['platform'] for c in item['channels']]
-            assert set(platforms) == {'douyin', 'xiaohongshu'}
+    with patch.object(ext, "_db_conn", lambda: _open_test_conn(db_path)), ext.app.test_request_context("/api/v2/publish-templates?type=image"):
+        resp = get_publish_templates()
+        data = resp.get_json()
+        item = data['data']['list'][0]
+        assert item['type'] == 'image'
+        assert item['first_image_id'] == 'img-uuid-1'
+        assert item['title'] == 'img title'
+        # 第一个 detail 的 account_configs
+        assert isinstance(item['account_configs'], dict)
+        assert item['account_configs'].get('title') == 'img title'
+        # channels 列表含两个 platform
+        platforms = [c['platform'] for c in item['channels']]
+        assert set(platforms) == {'douyin', 'xiaohongshu'}
 
 
 def test_publish_templates_invalid_type_returns_400():
@@ -255,12 +252,11 @@ def test_publish_templates_pagination():
     conn.close()
 
     import ext_api as ext
-    with patch.object(ext, "_db_conn", lambda: _open_test_conn(db_path)):
-        with ext.app.test_request_context("/api/v2/publish-templates?type=video&page=2&page_size=10"):
-            resp = get_publish_templates()
-            data = resp.get_json()
-            assert data['data']['total'] == 25
-            assert len(data['data']['list']) == 10
+    with patch.object(ext, "_db_conn", lambda: _open_test_conn(db_path)), ext.app.test_request_context("/api/v2/publish-templates?type=video&page=2&page_size=10"):
+        resp = get_publish_templates()
+        data = resp.get_json()
+        assert data['data']['total'] == 25
+        assert len(data['data']['list']) == 10
 
 
 def _postvideo_roundtrip_db_path():
@@ -269,8 +265,8 @@ def _postvideo_roundtrip_db_path():
     之前 /postVideo → _record_publish 写旧 publish_tasks 表；Task 6 重构后写到新表。
     这些 roundtrip 测试现在用新 schema，断言改查 publish_details。
     """
-    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    tmp.close()
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        pass
     db_path = Path(tmp.name)
     conn = sqlite3.connect(str(db_path))
     conn.executescript("""

@@ -59,27 +59,26 @@ def test_feedback_list_no_filter_returns_active():
         captured["headers"] = headers
         return fake_resp
 
-    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "viewer@example.com"}):
-        with patch("blueprints.feedback_bp._requests.get", side_effect=fake_get):
-            client = app.test_client()
-            r = client.get("/api/feedback/list?page=1&page_size=20")
-            assert r.status_code == 200
-            body = r.get_json()
-            assert body["data"]["total"] == 1
-            # 不应包含 include_all 或 status
-            assert "include_all" not in captured["params"]
-            assert "status" not in captured["params"]
-            # settings 里的 email 自动透传给上游
-            assert captured["params"].get("email") == "viewer@example.com"
-            # URL 指向反馈系统
-            assert captured["url"].startswith("https://feedback.cjxch.com/api/v1/feedback")
-            # 签名头齐
-            assert "X-App-Key" in captured["headers"]
-            assert "X-Timestamp" in captured["headers"]
-            assert "X-Sign" in captured["headers"]
-            assert len(captured["headers"]["X-Sign"]) == 64
-            # file_url 被改写为绝对 URL
-            assert body["data"]["list"][0]["attachments"][0]["file_url"] == "https://feedback.cjxch.com/uploads/x.png"
+    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "viewer@example.com"}), patch("blueprints.feedback_bp._requests.get", side_effect=fake_get):
+        client = app.test_client()
+        r = client.get("/api/feedback/list?page=1&page_size=20")
+        assert r.status_code == 200
+        body = r.get_json()
+        assert body["data"]["total"] == 1
+        # 不应包含 include_all 或 status
+        assert "include_all" not in captured["params"]
+        assert "status" not in captured["params"]
+        # settings 里的 email 自动透传给上游
+        assert captured["params"].get("email") == "viewer@example.com"
+        # URL 指向反馈系统
+        assert captured["url"].startswith("https://feedback.cjxch.com/api/v1/feedback")
+        # 签名头齐
+        assert "X-App-Key" in captured["headers"]
+        assert "X-Timestamp" in captured["headers"]
+        assert "X-Sign" in captured["headers"]
+        assert len(captured["headers"]["X-Sign"]) == 64
+        # file_url 被改写为绝对 URL
+        assert body["data"]["list"][0]["attachments"][0]["file_url"] == "https://feedback.cjxch.com/uploads/x.png"
 
 
 def test_feedback_list_no_email_in_settings():
@@ -210,13 +209,12 @@ def test_feedback_submit_uses_settings_email_when_form_empty():
         captured["data"] = data
         return fake_resp
 
-    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "settings@example.com"}):
-        with patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
-            client = app.test_client()
-            r = client.post("/api/feedback/submit", data={"content": "hello"})
-            assert r.status_code == 200
-            assert captured["data"]["email"] == "settings@example.com"
-            assert captured["data"]["content"] == "hello"
+    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "settings@example.com"}), patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
+        client = app.test_client()
+        r = client.post("/api/feedback/submit", data={"content": "hello"})
+        assert r.status_code == 200
+        assert captured["data"]["email"] == "settings@example.com"
+        assert captured["data"]["content"] == "hello"
 
 
 def test_feedback_submit_form_email_overrides_settings():
@@ -233,15 +231,14 @@ def test_feedback_submit_form_email_overrides_settings():
         captured["data"] = data
         return fake_resp
 
-    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "settings@example.com"}):
-        with patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
-            client = app.test_client()
-            r = client.post(
-                "/api/feedback/submit",
-                data={"email": "override@example.com", "content": "hi"},
-            )
-            assert r.status_code == 200
-            assert captured["data"]["email"] == "override@example.com"
+    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "settings@example.com"}), patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
+        client = app.test_client()
+        r = client.post(
+            "/api/feedback/submit",
+            data={"email": "override@example.com", "content": "hi"},
+        )
+        assert r.status_code == 200
+        assert captured["data"]["email"] == "override@example.com"
 
 
 def test_feedback_submit_forwards_files():
@@ -263,24 +260,23 @@ def test_feedback_submit_forwards_files():
         captured["headers"] = headers
         return fake_resp
 
-    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "user@example.com"}):
-        with patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
-            client = app.test_client()
-            r = client.post(
-                "/api/feedback/submit",
-                data={
-                    "content": "应用启动后白屏",
-                    "files": (io.BytesIO(b"fake-image-bytes"), "screen.png"),
-                },
-                content_type="multipart/form-data",
-                buffered=True,
-            )
-            assert r.status_code == 200
-            assert captured["data"]["email"] == "user@example.com"
-            assert captured["data"]["content"] == "应用启动后白屏"
-            assert len(captured["files"]) >= 1
-            assert "X-Sign" in captured["headers"]
-            assert captured["url"].startswith("https://feedback.cjxch.com/api/v1/feedback")
+    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "user@example.com"}), patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
+        client = app.test_client()
+        r = client.post(
+            "/api/feedback/submit",
+            data={
+                "content": "应用启动后白屏",
+                "files": (io.BytesIO(b"fake-image-bytes"), "screen.png"),
+            },
+            content_type="multipart/form-data",
+            buffered=True,
+        )
+        assert r.status_code == 200
+        assert captured["data"]["email"] == "user@example.com"
+        assert captured["data"]["content"] == "应用启动后白屏"
+        assert len(captured["files"]) >= 1
+        assert "X-Sign" in captured["headers"]
+        assert captured["url"].startswith("https://feedback.cjxch.com/api/v1/feedback")
 
 
 def test_feedback_vote_uses_settings_email():
@@ -298,13 +294,12 @@ def test_feedback_vote_uses_settings_email():
         captured["json"] = json
         return fake_resp
 
-    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "settings@example.com"}):
-        with patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
-            client = app.test_client()
-            r = client.post("/api/feedback/vote", json={"id": 42})
-            assert r.status_code == 200
-            assert captured["url"] == "https://feedback.cjxch.com/api/v1/feedback/42/vote"
-            assert captured["json"] == {"email": "settings@example.com"}
+    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "settings@example.com"}), patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
+        client = app.test_client()
+        r = client.post("/api/feedback/vote", json={"id": 42})
+        assert r.status_code == 200
+        assert captured["url"] == "https://feedback.cjxch.com/api/v1/feedback/42/vote"
+        assert captured["json"] == {"email": "settings@example.com"}
 
 
 def test_feedback_vote_no_email_anywhere_returns_400():
@@ -335,14 +330,13 @@ def test_feedback_vote_forwards():
         captured["headers"] = headers
         return fake_resp
 
-    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "settings@example.com"}):
-        with patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
-            client = app.test_client()
-            r = client.post("/api/feedback/vote", json={"id": 42, "email": "voter@example.com"})
-            assert r.status_code == 200
-            assert captured["url"] == "https://feedback.cjxch.com/api/v1/feedback/42/vote"
-            assert captured["json"] == {"email": "voter@example.com"}
-            assert "X-Sign" in captured["headers"]
+    with patch("blueprints.feedback_bp.read_settings", return_value={"feedbackEmail": "settings@example.com"}), patch("blueprints.feedback_bp._requests.post", side_effect=fake_post):
+        client = app.test_client()
+        r = client.post("/api/feedback/vote", json={"id": 42, "email": "voter@example.com"})
+        assert r.status_code == 200
+        assert captured["url"] == "https://feedback.cjxch.com/api/v1/feedback/42/vote"
+        assert captured["json"] == {"email": "voter@example.com"}
+        assert "X-Sign" in captured["headers"]
 
 
 def test_feedback_vote_passes_through_400():

@@ -84,7 +84,8 @@ def test_get_local_path_local_fallback_first(s3, tmp_path):
     storage.get = MagicMock(return_value=b'remote')
     p = storage.get_local_path('remote.txt')
     assert p and p.endswith('.txt')
-    assert open(p, 'rb').read() == b'remote'
+    with open(p, 'rb') as f:
+        assert f.read() == b'remote'
 
 
 def test_get_local_path_download_failure_returns_none(s3):

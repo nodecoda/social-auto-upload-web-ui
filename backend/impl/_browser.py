@@ -14,6 +14,9 @@ from util._logger import get_channel_logger
 logger = get_channel_logger("browser")
 
 
+
+# asyncio 任务强引用持有(官方推荐:防 GC 回收后台任务)
+_BG_TASKS: set = set()
 def _download_binary():
     """Download CloakBrowser stealth binary."""
     from cloakbrowser import ensure_binary
@@ -119,7 +122,9 @@ async def create_browser(
                 pass
 
         if task is not None:
-            asyncio.create_task(_watchdog())
+            _watchdog_task = asyncio.create_task(_watchdog())
+            _BG_TASKS.add(_watchdog_task)
+            _watchdog_task.add_done_callback(_BG_TASKS.discard)
 
         # 包装 close：代码主动关闭时置 is_close_by_code=True，
         # 使 disconnected 回调和 watchdog 都不再 cancel（正常收尾）。

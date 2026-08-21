@@ -22,3 +22,14 @@ ignore = [
     "TRY400",   #  54 处
     "PLW2901",  #  21 处循环变量重定义
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# E402(import 不在文件顶部)为平台类文件入口/兼容性写法,按模式豁免
+"app.py" = ["E402"]
+"tests/*" = ["E402"]
+"scripts/*" = ["E402"]
+"services/*" = ["E402"]
+"ext_api/*" = ["E402"]
+"impl/*/platform.py" = ["E402"]
+"impl/zhihu/platform.py" = ["E402"]
+

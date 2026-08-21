@@ -218,7 +218,7 @@ def _run_worker_through_tasks_cancellable(worker, tasks_and_outcomes):
         task_done_calls.append(iter_state['idx'])
 
     queue.get = fake_get_v2
-    queue.put = lambda t: queued_tasks.append(t)
+    queue.put = queued_tasks.append
     queue.task_done = fake_task_done
 
     worker.queue = queue

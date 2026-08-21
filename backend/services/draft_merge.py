@@ -326,10 +326,7 @@ def build_platform_kwargs(merged: dict[str, Any], common: dict[str, Any], accoun
     # category: zone 优先（B 站），否则 isOriginal ? 1 : 0
     zone = merged.get('zone') or ''
     is_original = merged.get('isOriginal')
-    if zone:
-        category = zone
-    else:
-        category = 1 if is_original else 0
+    category = zone or (1 if is_original else 0)
 
     # schedule_time
     schedule_time_str = merged.get('scheduleTime') or ''

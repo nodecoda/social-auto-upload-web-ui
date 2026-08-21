@@ -12,7 +12,7 @@ _tmpdir = tempfile.mkdtemp(prefix="probe_test_")
 os.environ['SAU_DATA_DIR'] = _tmpdir
 
 # Use real BASE_DIR (so materials_bp._get_db() resolves to our tmpdir)
-from conf import BASE_DIR  # noqa: E402
+from conf import BASE_DIR
 
 DB_PATH = BASE_DIR / "db" / "database.db"
 

@@ -707,7 +707,7 @@ class TaobaoGuanghePlatform(BasePlatform):
         claim: str = "",
         thumbnail_path: str | None = None,
         link_type: str = "",
-        link_items: list = None,
+        link_items: list | None = None,
     ) -> None:
         """上传单个视频到一个光合账号。
 

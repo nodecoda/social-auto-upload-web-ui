@@ -65,8 +65,8 @@ def test_record_publish_writes_account_configs():
 
     from services.publish_history import _record_publish
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    tmp.close()
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        pass
     db_path = Path(tmp.name)
     _make_db_with_new_schema(db_path)
 
@@ -102,8 +102,8 @@ def test_record_publish_default_account_configs():
 
     from services.publish_history import _record_publish
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-    tmp.close()
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        pass
     db_path = Path(tmp.name)
     _make_db_with_new_schema(db_path)
 

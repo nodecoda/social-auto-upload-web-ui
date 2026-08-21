@@ -74,7 +74,7 @@ def _setup_db():
 
 _setup_db()
 
-from ext_api.task_queue import PublishTask, TaskQueue  # noqa: E402
+from ext_api.task_queue import PublishTask, TaskQueue
 
 
 class TestPublishTaskPersonalizedFields(unittest.TestCase):

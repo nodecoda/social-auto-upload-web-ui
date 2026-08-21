@@ -274,6 +274,8 @@ class _SessionPool:
     def __init__(self):
         self._sessions: dict[str, GuanghePickerSession] = {}
         self._lock = threading.Lock()
+        # asyncio 任务强引用持有(防 GC 回收后台关闭任务)
+        self._bg_tasks: set = set()
 
     def get(self, session_id: str) -> GuanghePickerSession | None:
         with self._lock:
@@ -287,7 +289,9 @@ class _SessionPool:
             self._sessions[session_id] = session
         # 关旧会话(锁外,async)
         if old:
-            asyncio.ensure_future(old._teardown())
+            _teardown_task = asyncio.ensure_future(old._teardown())
+            self._bg_tasks.add(_teardown_task)
+            _teardown_task.add_done_callback(self._bg_tasks.discard)
         return session
 
     def remove(self, session_id: str) -> GuanghePickerSession | None:

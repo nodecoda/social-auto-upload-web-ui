@@ -12,6 +12,7 @@ import threading
 import time
 from pathlib import Path
 from queue import Queue
+from typing import ClassVar
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -52,16 +53,16 @@ class CsdnPlatform(BasePlatform):
     # 登录态丢失：mp.csdn.net 判定未登录。这里按真实多子域结构智能分配。
     #
     # 这些 cookie 不在 .csdn.net 主域：
-    _CSDN_COOKIE_DOMAIN_MAP = {
+    _CSDN_COOKIE_DOMAIN_MAP: ClassVar[dict[str, str]] = {
         "https_waf_cookie": "passport.csdn.net",
         "waf_captcha_marker": "passport.csdn.net",
         "bc_bot_session": ".blog.csdn.net",
         "_bl_uid": "i.csdn.net",
     }
     # secure=True 的 cookie（真实文件里只有这两个走 HTTPS-only）：
-    _CSDN_SECURE_COOKIES = {"https_waf_cookie", "bc_bot_session"}
+    _CSDN_SECURE_COOKIES: ClassVar[set[str]] = {"https_waf_cookie", "bc_bot_session"}
     # httpOnly=True 的 cookie（真实文件里只有这几个服务端设置的）：
-    _CSDN_HTTPONLY_COOKIES = {
+    _CSDN_HTTPONLY_COOKIES: ClassVar[set[str]] = {
         "SESSION", "UserInfo", "UserToken",
         "https_waf_cookie", "waf_captcha_marker",
     }

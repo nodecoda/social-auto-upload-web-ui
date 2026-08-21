@@ -71,24 +71,24 @@ def _total(desc, tags):
 
 def test_tags_only_10_ok():
     """纯标签 10 个 = 10,刚好通过"""
-    assert _total("", ["t%d" % i for i in range(10)]) == 10
+    assert _total("", [f"t{i}" for i in range(10)]) == 10
 
 
 def test_tags_only_11_fail():
     """纯标签 11 个 = 11,超出"""
-    assert _total("", ["t%d" % i for i in range(11)]) == 11
-    assert _total("", ["t%d" % i for i in range(11)]) > _XHS_MAX_TOPICS
+    assert _total("", [f"t{i}" for i in range(11)]) == 11
+    assert _total("", [f"t{i}" for i in range(11)]) > _XHS_MAX_TOPICS
 
 
 def test_desc2_tags8_ok():
     """描述 2 + 标签 8 = 10,刚好通过"""
-    assert _total("#a #b", ["t%d" % i for i in range(8)]) == 10
+    assert _total("#a #b", [f"t{i}" for i in range(8)]) == 10
 
 
 def test_desc2_tags9_fail():
     """描述 2 + 标签 9 = 11,超出"""
-    assert _total("#a #b", ["t%d" % i for i in range(9)]) == 11
-    assert _total("#a #b", ["t%d" % i for i in range(9)]) > _XHS_MAX_TOPICS
+    assert _total("#a #b", [f"t{i}" for i in range(9)]) == 11
+    assert _total("#a #b", [f"t{i}" for i in range(9)]) > _XHS_MAX_TOPICS
 
 
 def test_desc10_tags0_ok():
@@ -106,7 +106,7 @@ def test_desc11_fail():
 def test_inline_hash_in_desc_not_counted():
     """描述里 a#b 不计入,只有独立的 #xxx 算"""
     # a#b#c#d 全部粘连 = 0 个独立话题
-    assert _total("a#b#c#d 文案", ["t%d" % i for i in range(10)]) == 10
+    assert _total("a#b#c#d 文案", [f"t{i}" for i in range(10)]) == 10
 
 
 # ----- _normalize_desc_hashtags: 描述里 #xxx 前补空格 -----

@@ -47,7 +47,8 @@ class TiktokPlatform(BasePlatform):
         expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
         for pair in cookie_str.split(";"):
             pair = pair.strip()
-            if not pair or "=" not in pair: continue
+            if not pair or "=" not in pair:
+                continue
             name, _, value = pair.partition("=")
             cookies.append({
                 "name": name.strip(), "value": value.strip(),
@@ -599,7 +600,7 @@ class TiktokPlatform(BasePlatform):
         actionability checks that can also fail during the transition.
         """
         try:
-            frames = [page] + list(page.frames)
+            frames = [page, *list(page.frames)]
             for frame in frames:
                 try:
                     btn = frame.locator(

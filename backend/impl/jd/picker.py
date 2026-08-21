@@ -137,7 +137,7 @@ class JdPickerSession:
                 f"[JdPicker] 页面可见文本前800字:\n{page_state.get('texts', '')}"
             )
             logger.error(
-                "[JdPicker] 关键 class:\n" + "\n".join(page_state.get('classes', []))
+                "[JdPicker] 关键 class:\n%s", "\n".join(page_state.get('classes', []))
             )
 
             # iframe 等待失败时的诊断:遍历所有 frame,确认 iframe 是否存在、
@@ -319,6 +319,7 @@ class _SessionPool:
 
     def __init__(self):
         self._sessions: dict[str, JdPickerSession] = {}
+        self._bg_tasks: set = set()
 
     def get_or_create(self, account_id: str) -> JdPickerSession:
         existing = self._sessions.get(account_id)
@@ -345,7 +346,9 @@ class _SessionPool:
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
-                    asyncio.ensure_future(existing.close())
+                    _close_task = asyncio.ensure_future(existing.close())
+                    self._bg_tasks.add(_close_task)
+                    _close_task.add_done_callback(self._bg_tasks.discard)
             except RuntimeError:
                 pass  # 没运行中的 loop,跳过(GC 兜底)
         new_session = JdPickerSession(account_id)

@@ -101,7 +101,7 @@ def test_raise_when_disabled():
     try:
         try:
             asyncio.run(platform_mod._replay_groups(frame, "product", link_items, max_load_more=5))
-            assert False, "应抛 RuntimeError"
+            raise AssertionError("应抛 RuntimeError")
         except RuntimeError as e:
             assert "不可选" in str(e)
     finally:
@@ -117,7 +117,7 @@ def test_raise_when_not_found_after_max_load_more():
     try:
         try:
             asyncio.run(platform_mod._replay_groups(frame, "product", link_items, max_load_more=5))
-            assert False, "应抛 RuntimeError"
+            raise AssertionError("应抛 RuntimeError")
         except RuntimeError as e:
             assert "未找到" in str(e)
             assert "999" in str(e)

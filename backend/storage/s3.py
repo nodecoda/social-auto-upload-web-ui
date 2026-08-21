@@ -102,10 +102,9 @@ class S3Storage(StorageBackend):
             data = self.get(relative_path)
             import tempfile
             ext = Path(relative_path).suffix
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
-            tmp.write(data)
-            tmp.close()
-            return tmp.name
+            with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+                tmp.write(data)
+                return tmp.name
         except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
             return None
 
