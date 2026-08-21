@@ -158,6 +158,19 @@ def _build_account_configs(task: 'PublishTask') -> dict:
     }
 
 
+
+def _friendly_error_message(exc: Exception) -> str:
+    """把浏览器自动化异常翻译成面向用户的文案。
+
+    用户手动关闭浏览器时 Playwright 会抛 "Browser has been closed" /
+    "Target page, context or browser has been closed" 等；其余按
+    旧 publish_executor 的文案格式兜底（'发布失败: ...'）。
+    """
+    err_msg = str(exc)
+    if "has been closed" in err_msg or "Target page" in err_msg:
+        return '用户关闭了浏览器，发布已取消'
+    return f'发布失败: {err_msg}'
+
 class TaskQueue:
     """基于 asyncio 的任务队列，在后台线程中运行"""
 
@@ -204,12 +217,15 @@ class TaskQueue:
                 await self._execute(task)
                 task.status = TaskStatus.SUCCESS
             except asyncio.CancelledError:
+                # 用户手动关闭了浏览器 → impl/_browser 的 watchdog/disconnected 会
+                # cancel 当前发布子任务；翻译成友好文案（与旧 publish_executor 一致）
                 task.status = TaskStatus.CANCELLED
+                task.error_message = '用户关闭了浏览器，发布已取消'
             except Exception as e:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
                 # 重试逻辑已禁用 — 长耗时任务(如视频上传)失败立即标记 FAILED,
                 # 避免误触发「同一任务再次开浏览器重新上传」
                 task.status = TaskStatus.FAILED
-                task.error_message = str(e)
+                task.error_message = _friendly_error_message(e)
 
             finally:
                 task.finished_at = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
@@ -227,18 +243,27 @@ class TaskQueue:
         新逻辑：当 task.payload 非空时，调 platform.publish_video(**payload)（splat）。
         旧逻辑（task.payload 为空时）：保留原 myUtils.postVideo 模块函数调用（向后兼容）。
         """
-        # 新逻辑：payload 透传到 platform.publish_video
+        # 新逻辑：payload 透传到 platform.publish_video（/postVideo 与草稿批量共用）
         if task.payload:
             platform = get_platform(task.platform_type)
             if not platform:
                 raise ValueError(f"不支持的平台类型: {task.platform_type}")
             publish_fn = platform.publish_video
             if asyncio.iscoroutinefunction(publish_fn):
-                return await publish_fn(**task.payload)
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(
-                None, lambda: publish_fn(**task.payload)
-            )
+                # 在独立子任务里跑：impl/_browser 的 watchdog 在用户关闭浏览器时会
+                # cancel 当前 asyncio task（= 这里的子任务），避免把 worker 主循环一起杀掉
+                # （否则队列再无人消费，后续任务全部卡死）。
+                inner = asyncio.create_task(publish_fn(**task.payload))
+                result = await inner
+            else:
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(
+                    None, lambda: publish_fn(**task.payload)
+                )
+            if not result:
+                # 与旧 publish_executor job 语义一致：返回 falsy = 页面未跳转/校验未通过
+                raise RuntimeError("发布失败：页面未跳转，表单校验未通过")
+            return result
 
         # 旧逻辑：保留原代码不动
         from myUtils.postVideo import (
@@ -384,8 +409,11 @@ class TaskQueue:
                 )
                 # account_configs：把 task 字段打包成 JSON
                 cfg = _build_account_configs(task)
+                # detail 也用 INSERT OR IGNORE：/postVideo 链路 app._before_publish 已
+                # 预插入 publish_details 行（task.id == publish_details.id），跳过不冲突；
+                # 草稿批量发布路径 task.id 是新 uuid，正常插入。
                 conn.execute(
-                    """INSERT INTO publish_details
+                    """INSERT OR IGNORE INTO publish_details
                        (id, batch_id, account_id, account_name, platform, account_configs,
                         status, created_at)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -418,7 +446,7 @@ class TaskQueue:
                 counts = conn.execute(
                     """SELECT COUNT(*),
                               SUM(CASE WHEN status='success' THEN 1 ELSE 0 END),
-                              SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END),
+                              SUM(CASE WHEN status IN ('failed', 'cancelled') THEN 1 ELSE 0 END),
                               SUM(CASE WHEN status IN ('running', 'queued') THEN 1 ELSE 0 END)
                        FROM publish_details WHERE batch_id=?""",
                     (batch_id,)
@@ -438,7 +466,9 @@ class TaskQueue:
 
 
 # 全局单例
-task_queue = TaskQueue(max_concurrent=2)
+# 强制单并发：任意时刻最多 1 个浏览器在发布（架构整改 #8 队列统一，
+# 替代原 services/publish_executor 单工作线程语义，杜绝并发开多个浏览器）。
+task_queue = TaskQueue(max_concurrent=1)
 
 
 def get_task_queue() -> TaskQueue:

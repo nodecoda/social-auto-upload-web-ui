@@ -156,8 +156,15 @@ class TestPostVideoPassthrough(unittest.TestCase):
         from services import publish_history as _ph_mod
         _ph_mod.DB_PATH = DB_PATH
         _pb_mod.DB_PATH = DB_PATH
+        # 队列统一（#8）：roundtrip 用独立 TaskQueue 实例，避免全局单例跨测试串任务
+        self._tq_patch = patch(
+            "ext_api.task_queue.get_task_queue",
+            return_value=TaskQueue(max_concurrent=1),
+        )
+        self._tq_patch.start()
 
     def tearDown(self):
+        self._tq_patch.stop()
         # 清空 test DB 的 publish_batches/publish_details，避免跨测试污染
         with sqlite3.connect(str(DB_PATH)) as conn:
             conn.execute("DELETE FROM publish_details")
@@ -194,11 +201,11 @@ class TestPostVideoPassthrough(unittest.TestCase):
         # _ensure_db 是 app.before_request，会试图 init_database 覆盖我们的 test schema
         # 屏蔽掉。_before_publish 真实跑，_after_publish 也真实跑（仅写 status）
         # 屏蔽 platform.publish_video（不需要真发）
+        mock_platform = MagicMock()
+        mock_platform.publish_video.return_value = {"code": 200, "status": "success"}
         with patch('app._ensure_db'), \
-             patch('blueprints.publish_bp.get_platform') as mock_get_platform:
-            mock_platform = MagicMock()
-            mock_platform.publish_video.return_value = {"code": 200, "status": "success"}
-            mock_get_platform.return_value = mock_platform
+             patch('blueprints.publish_bp.get_platform', return_value=mock_platform), \
+             patch('ext_api.task_queue.get_platform', return_value=mock_platform):
             r = client.post('/postVideo', json=payload)
             self.assertEqual(r.status_code, 200, f"postVideo 失败: {r.get_json()}")
             # 异步发布：轮询任务状态直到终态（fake publish 秒完成）

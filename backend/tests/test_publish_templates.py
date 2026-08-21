@@ -8,6 +8,8 @@ import uuid
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from ext_api.task_queue import TaskQueue
+
 
 def _wait_publish_done(client, resp, timeout=10.0):
     """异步发布：轮询 /postVideo/status/<taskId> 直到终态，返回 (status, msg)。"""
@@ -324,7 +326,10 @@ def test_postvideo_stores_account_configs_with_string_key_douyin():
          patch("blueprints.publish_bp.DB_PATH", db_path), \
          patch("app._get_db_path", return_value=db_path), \
          patch("services.publish_history.DB_PATH", db_path), \
-         patch("blueprints.publish_bp._resolve_material_path", side_effect=lambda p: p or "/tmp/v.mp4"):
+         patch("blueprints.publish_bp._resolve_material_path", side_effect=lambda p: p or "/tmp/v.mp4"), \
+         patch("ext_api.task_queue.DB_PATH", db_path), \
+         patch("ext_api.task_queue.get_task_queue", return_value=TaskQueue(max_concurrent=1)), \
+         patch("ext_api.task_queue.get_platform", return_value=fake_platform):
         client = app.test_client()
         r = client.post("/postVideo", json={
             "type": 3,  # 抖音
@@ -362,7 +367,10 @@ def test_postvideo_stores_account_configs_with_string_key_xiaohongshu():
          patch("blueprints.publish_bp.DB_PATH", db_path), \
          patch("app._get_db_path", return_value=db_path), \
          patch("services.publish_history.DB_PATH", db_path), \
-         patch("blueprints.publish_bp._resolve_material_path", side_effect=lambda p: p or "/tmp/v.mp4"):
+         patch("blueprints.publish_bp._resolve_material_path", side_effect=lambda p: p or "/tmp/v.mp4"), \
+         patch("ext_api.task_queue.DB_PATH", db_path), \
+         patch("ext_api.task_queue.get_task_queue", return_value=TaskQueue(max_concurrent=1)), \
+         patch("ext_api.task_queue.get_platform", return_value=fake_platform):
         client = app.test_client()
         r = client.post("/postVideo", json={
             "type": 1,  # 小红书

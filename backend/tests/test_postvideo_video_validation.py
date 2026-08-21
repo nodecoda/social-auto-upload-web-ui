@@ -70,6 +70,9 @@ class TestPostVideoVideoValidation(unittest.TestCase):
         # 屏蔽真实 platform publish_video 与文件路径解析
         self._patches = [
             patch("blueprints.publish_bp._resolve_material_path", side_effect=lambda p: p or "/tmp/fake.mp4"),
+            # 队列统一（#8）：200 用例会真实入队 —— 用 MagicMock 短路，不起线程不写库
+            patch("ext_api.task_queue.DB_PATH", DB_PATH),
+            patch("ext_api.task_queue.get_task_queue", return_value=MagicMock()),
         ]
         for p in self._patches:
             p.start()
