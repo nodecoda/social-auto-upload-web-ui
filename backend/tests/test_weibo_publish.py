@@ -37,7 +37,7 @@ def _run_publish_image(platform, **kwargs):
     with patch.object(platform, '_upload_one_image', upload), \
          patch('impl.weibo.platform.get_account_name_by_cookie_file', return_value='昵称'), \
          patch('impl.weibo.platform.bind_account_name', MagicMock()):
-        result = platform.publish_image(**kwargs)
+        result = asyncio.run(platform.publish_image(**kwargs))
     return result, upload
 
 
@@ -122,13 +122,13 @@ class TestPublishImage:
     def test_dry_run_returns_early(self):
         inst = _make_platform()
         with patch.object(inst, '_upload_all_images', AsyncMock()) as upload_all:
-            assert inst.publish_image(files=['/i1.png'], dry_run=True) is True
+            assert asyncio.run(inst.publish_image(files=['/i1.png'], dry_run=True)) is True
             upload_all.assert_not_awaited()
 
     def test_normal_path_calls_upload_all_images(self):
         inst = _make_platform()
         with patch.object(inst, '_upload_all_images', AsyncMock()) as upload_all:
-            assert inst.publish_image(files=['/i1.png']) is True
+            assert asyncio.run(inst.publish_image(files=['/i1.png'])) is True
             upload_all.assert_awaited_once()
 
     def test_over_18_images_raises(self):

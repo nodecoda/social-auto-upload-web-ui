@@ -31,7 +31,7 @@
 | R3 平台接入 checklist | ✅ done | `6edcc75`：backend-coding-standards.md 新增 7 项 checklist |
 | R4 元数据单源 | ✅ done | `c334f2f`：conf/ext_api/image_publish_bp 映射收敛 registry 派生（懒加载防循环依赖），image_publish_bp 补齐 19 平台 |
 | R5 publish_video 全 async | ✅ done | `434ac23`：14 平台 async 化 + 契约红线(注册表全 async) + task_queue 统一 create_task；修复 R2 回归(jd/kuaishou 校验被吞)；13 publish + 9 DOM 测试同步 asyncio.run（轻量 299 passed，DOM 留 CI） |
-| R6 队列三合一 | ⏳ 待做 | 最大重构，依赖 R5 |
+| R6 队列三合一 | ✅ done | `待提交`：image_publish 2 路由入队化(publish_images/execute_publish)、删 postVideoBatch(132 行)、task_queue 按 publish_kind 分发 + 清 myUtils 旧路径、create_task payload 化(registry 真源校验)、3 平台 publish_image async 化（轻量 332 passed，DOM 留 CI） |
 | R7 历史唯一 writer | ⏳ 待做 | 依赖 R6 |
 | R8 浏览器生命周期 | ✅ done | `e454576`：impl 59 处 → self.close_browser、19 处 _launch → asyncio.run(close_browser)、blueprint 16 处 → close_browser、全仓 get_event_loop 清零 |
 | R9 样板上移 + _utils 拆分 | ⏳ 待做 | 依赖 R5 防返工 |
@@ -115,9 +115,9 @@ Phase 4（机械去重，≈7 人日）   R4 元数据单源（可在 P2 并行�
 | review 断言 | 复核结果 |
 |---|---|
 | 20 平台类注册 | ✅ `grep -c "class.*Platform(BasePlatform)" backend/impl/` = 20 |
-| publish_video 6 async / 14 sync | ✅ 6 async / 14 sync（kuaishou 桥接后无条件 `return True` 属实） |
-| image_publish_bp 仍活跃 | ✅ 8 处 route/asyncio.run |
-| postVideoBatch 残留 | ✅ `publish_bp.py:404` 仍在，同步循环 |
+| publish_video 6 async / 14 sync | ✅ R5 后 20/20 async（契约测试红线锁定） |
+| image_publish_bp 仍活跃 | ✅ R6 后 2 处 asyncio.run 全入队化，0 残留 |
+| postVideoBatch 残留 | ✅ R6 后已删除（132 行），路由/文档同步清理 |
 | 浏览器直连 | ✅ 20/20 直连 `create_browser_sync` 与 `browser.close()` |
 | Batch E 半程：postVideo 已入 task_queue | ✅ `publish_bp.py:123-151` 注释与代码一致（单并发承接 publish_executor） |
 

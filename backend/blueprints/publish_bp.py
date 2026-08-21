@@ -1,10 +1,9 @@
-"""视频发布 Blueprint：postVideo / postVideo/status / postVideoBatch + 发布域 helper。
+"""视频发布 Blueprint：postVideo / postVideo/status + 发布域 helper（R6 已删除 postVideoBatch 同步循环）。
 
 从 app.py 单体迁移（域重构），行为与迁移前一致。
 注意：_before_publish/_after_publish 钩子仍在 app.py（g.publish_detail_id 机制），
 发布历史写入共用 services/publish_history.py。
 """
-import asyncio
 import sqlite3
 import sys
 import uuid
@@ -61,7 +60,6 @@ def _resolve_video_format_from_db(file_list_raw):
     except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info(f"查询素材 orientation 失败(降级忽略): {e}")
         return ''
-
 
 def _validate_publish_video(type_id, file_list):
     """校验视频文件是否符合平台限制。
@@ -151,7 +149,6 @@ def _enqueue_publish(platform_type, platform_name, publish_kwargs, detail_id, ba
     _task_queue_mod.get_task_queue().add_task(task)
     return task.id
 
-
 def _account_display_name(account_file):
     """从 accountList[0] 推导展示用账号名（与 app._before_publish 的规则一致）。"""
     if not account_file:
@@ -160,7 +157,6 @@ def _account_display_name(account_file):
     if isinstance(account_path, str) and account_path:
         return Path(account_path).stem or account_path
     return ''
-
 
 @publish_bp.route('/postVideo', methods=['POST'])
 def postVideo():
@@ -349,7 +345,6 @@ def postVideo():
     )
     return jsonify({"code": 200, "msg": "发布任务已提交", "data": {"taskId": task_id}}), 200
 
-
 @publish_bp.route('/postVideo/status/<task_id>', methods=['GET'])
 def postVideo_status(task_id):
     """查询异步发布任务状态（前端在发布期间轮询本接口）。
@@ -399,140 +394,6 @@ def postVideo_status(task_id):
             "finishedAt": row['finished_at'],
         },
     }), 200
-
-
-@publish_bp.route('/postVideoBatch', methods=['POST'])
-def postVideoBatch():
-    """批量发布视频（同步调用）：逐条校验/发布，失败项聚合到 errors 返回。"""
-    data_list = request.get_json()
-    if not isinstance(data_list, list):
-        return jsonify({"code": 400, "msg": "Expected a JSON array", "data": None}), 400
-
-    failures = []
-    for idx, data in enumerate(data_list):
-        platform = get_platform(data.get('type'))
-        if not platform:
-            failures.append({"index": idx, "reason": "不支持的平台类型"})
-            continue
-
-        # 视频时长/大小校验
-        ok, err = _validate_publish_video(data.get('type'), data.get('fileList', []))
-        if not ok:
-            failures.append({"index": idx, "reason": err})
-            continue
-
-        try:
-            # Resolve file paths through storage abstraction
-            file_list = [_resolve_material_path(f) for f in data.get('fileList', [])]
-            thumbnail_landscape = _resolve_material_path(data.get('thumbnailLandscape', ''))
-            thumbnail_portrait = _resolve_material_path(data.get('thumbnailPortrait', ''))
-
-            # 根据素材表 orientation 推导 video_format(横/竖),覆盖前端字段
-            db_video_format = _resolve_video_format_from_db(data.get('fileList', []))
-            if db_video_format:
-                data['videoFormat'] = db_video_format
-                data['videoOrientation'] = 'horizontal' if db_video_format == 'landscape' else 'vertical'
-                logger.info(f"[发布] 素材表 orientation 推导 video_format={db_video_format}")
-
-            publish_fn = platform.publish_video
-            if asyncio.iscoroutinefunction(publish_fn):
-                result = asyncio.run(publish_fn(
-                    title=data.get('title'),
-                    files=file_list,
-                    tags=data.get('tags'),
-                    account_file=data.get('accountList', []),
-                    category=data.get('category'),
-                    enableTimer=data.get('enableTimer'),
-                    videos_per_day=data.get('videosPerDay'),
-                    daily_times=data.get('dailyTimes'),
-                    start_days=data.get('startDays'),
-                    thumbnail_path=data.get('thumbnail', ''),
-                    thumbnail_landscape_path=thumbnail_landscape,
-                    thumbnail_portrait_path=thumbnail_portrait,
-                    productLink=data.get('productLink', ''),
-                    productTitle=data.get('productTitle', ''),
-                    desc=data.get('description', ''),
-                    schedule_time_str=data.get('scheduleTime', ''),
-                    ai_content=data.get('aiContent', ''),
-                    creation_declaration=data.get('creationDeclaration', ''),
-                # B 站转载来源(创作声明=转载 时必填)
-                bili_repost_source=data.get('biliRepostSource', ''),
-                    risk_warning=data.get('riskWarning', ''),
-                    enable_cash_activity=data.get('enableCashActivity', False),
-                    supplementary_declaration=data.get('supplementaryDeclaration', ''),
-                    is_draft=data.get('isDraft', False),
-                    audience=data.get('audience', 'not_kids'),
-                    altered_content=data.get('alteredContent', False),
-                    # 微信公众号特有参数
-                    is_original=data.get('isOriginal', False),
-                    gzh_collection_name=data.get('gzhCollectionName', ''),
-                    gzh_claim_source=data.get('gzhClaimSource', ''),
-                # 淘宝光合创作者声明
-                guanghe_claim=data.get('guangheClaim', ''),
-                # 淘宝光合关联商品/店铺(发布时按名称在光合面板内搜索匹配勾选)
-                guangheLinkType=data.get('guangheLinkType', ''),
-                guangheProducts=data.get('guangheProducts') or data.get('guangheProductNames') or [],
-                guangheShops=data.get('guangheShops') or data.get('guangheShopNames') or [],
-                # 京东平台特有参数
-                jd_related_type=data.get('jdRelatedType', ''),
-                jd_products=data.get('jdProducts') or data.get('jdProductNames') or [],
-                jd_novel=data.get('jdNovel', ''),
-                jd_declaration=data.get('jdDeclaration', ''),
-                schedule_time=data.get('scheduleTime', ''),
-                ))
-            else:
-                result = publish_fn(
-                    title=data.get('title'),
-                    files=file_list,
-                    tags=data.get('tags'),
-                    account_file=data.get('accountList', []),
-                    category=data.get('category'),
-                    enableTimer=data.get('enableTimer'),
-                    videos_per_day=data.get('videosPerDay'),
-                    daily_times=data.get('dailyTimes'),
-                    start_days=data.get('startDays'),
-                    thumbnail_path=data.get('thumbnail', ''),
-                    thumbnail_landscape_path=thumbnail_landscape,
-                    thumbnail_portrait_path=thumbnail_portrait,
-                    productLink=data.get('productLink', ''),
-                    productTitle=data.get('productTitle', ''),
-                    desc=data.get('description', ''),
-                    schedule_time_str=data.get('scheduleTime', ''),
-                    ai_content=data.get('aiContent', ''),
-                    creation_declaration=data.get('creationDeclaration', ''),
-                # B 站转载来源(创作声明=转载 时必填)
-                bili_repost_source=data.get('biliRepostSource', ''),
-                    risk_warning=data.get('riskWarning', ''),
-                    enable_cash_activity=data.get('enableCashActivity', False),
-                    supplementary_declaration=data.get('supplementaryDeclaration', ''),
-                    is_draft=data.get('isDraft', False),
-                    audience=data.get('audience', 'not_kids'),
-                    altered_content=data.get('alteredContent', False),
-                    # 微信公众号特有参数
-                    is_original=data.get('isOriginal', False),
-                    gzh_collection_name=data.get('gzhCollectionName', ''),
-                    gzh_claim_source=data.get('gzhClaimSource', ''),
-                # 淘宝光合创作者声明
-                guanghe_claim=data.get('guangheClaim', ''),
-                # 淘宝光合关联商品/店铺(发布时按名称在光合面板内搜索匹配勾选)
-                guangheLinkType=data.get('guangheLinkType', ''),
-                guangheProducts=data.get('guangheProducts') or data.get('guangheProductNames') or [],
-                guangheShops=data.get('guangheShops') or data.get('guangheShopNames') or [],
-                # 京东平台特有参数
-                jd_related_type=data.get('jdRelatedType', ''),
-                jd_products=data.get('jdProducts') or data.get('jdProductNames') or [],
-                jd_novel=data.get('jdNovel', ''),
-                jd_declaration=data.get('jdDeclaration', ''),
-                schedule_time=data.get('scheduleTime', ''),
-                )
-            if not result:
-                failures.append({"index": idx, "reason": "发布失败：页面未跳转"})
-        except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
-            failures.append({"index": idx, "reason": str(e)})
-
-    if failures:
-        return jsonify({"code": 500, "msg": f"{len(failures)} 个发布失败", "errors": failures}), 500
-    return jsonify({"code": 200, "msg": None, "data": None}), 200
 
 # ── Publish history tracking ────────────────────────────────
 

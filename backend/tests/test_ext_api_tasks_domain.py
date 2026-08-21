@@ -229,15 +229,15 @@ class TestCreateTask:
         assert resp.status_code == 400
         assert field in resp.get_json()['msg']
 
-    def test_unknown_platform_type_maps_to_unknown(self):
+    def test_unknown_platform_type_rejected(self):
+        """R6：平台由 registry 真源校验，未知类型不再容错入队（老行为映射为'未知'）。"""
         fake_tq = MagicMock()
         payload = dict(VALID_PAYLOAD, platformType=999)
         with patch('ext_api.get_task_queue', return_value=fake_tq):
             resp = app.test_client().post('/api/v2/tasks', json=payload)
-        assert resp.status_code == 200
-        task = fake_tq.add_task.call_args[0][0]
-        assert task.platform == '未知'
-        assert task.platform_type == 999
+        assert resp.status_code == 400
+        assert '不支持的平台类型' in resp.get_json()['msg']
+        fake_tq.add_task.assert_not_called()
 
     def test_normal_creation_maps_fields_and_defaults(self):
         fake_tq = MagicMock()

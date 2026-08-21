@@ -171,7 +171,7 @@ class BasePlatform(ABC):
     def run_publish_sync(self, **kwargs) -> bool:
         """同步桥接：在请求线程内调用 async publish_video。
 
-        R5 后 publish_video 全量 async 化；旧的同步调用方（如 postVideoBatch）
+        R5 后 publish_video 全量 async 化；旧同步调用方（postVideoBatch 已随 R6 移除）
         通过本包装逐次驱动事件循环，避免拿到未执行的 coroutine。
         """
         return asyncio.run(self.publish_video(**kwargs))

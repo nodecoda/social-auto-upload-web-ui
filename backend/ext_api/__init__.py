@@ -218,7 +218,13 @@ def get_tasks():
 
 @ext_api.route('/tasks', methods=['POST'])
 def create_task():
-    """创建发布任务"""
+    """创建发布任务（R6 起走 payload 统一契约）。
+
+    老版本构造的 task 无 payload，会落入 task_queue._execute 的
+    myUtils.postVideo 旧模块路径（该路径已随 R6 移除）；现改为由 registry
+    校验平台并把老字段映射为 publish_video kwargs（payload），worker 统一
+    执行新契约，行为不变。
+    """
     data = request.get_json()
     if not data:
         return jsonify({"code": 400, "msg": "请求数据不能为空"}), 400
@@ -228,17 +234,25 @@ def create_task():
         if not data.get(field):
             return jsonify({"code": 400, "msg": f"缺少必填字段: {field}"}), 400
 
-    # 平台 id → 名称 完整映射(必须与 frontend config/platforms.js + impl/registry.py 一致)
-    platform_map = {
-        1: "小红书", 2: "视频号", 3: "抖音", 4: "快手", 5: "B站",
-        6: "百家号", 7: "TikTok", 8: "YouTube", 9: "腾讯视频",
-        10: "爱奇艺", 11: "微博", 12: "支付宝", 13: "今日头条", 14: "知乎",
-        15: "CSDN",
-    }
     platform_type = data['platformType']
 
+    # 平台实例/名称：registry 类属性为唯一真源（R4），淘汰老硬编码 15 平台表
+    from impl.registry import get_platform
+    platform = get_platform(platform_type)
+    if not platform:
+        return jsonify({"code": 400, "msg": f"不支持的平台类型: {platform_type}"}), 400
+
+    payload = {
+        'title': data['title'],
+        'files': [data['videoPath']],
+        'tags': data.get('tags', []),
+        'account_file': [data['accountCookiePath']],
+        'desc': data.get('description', ''),
+        'thumbnail_path': data.get('thumbnailPath', ''),
+    }
+
     task = PublishTask(
-        platform=platform_map.get(platform_type, "未知"),
+        platform=platform.platform_name,
         platform_type=platform_type,
         account_name=data['accountName'],
         account_cookie_path=data['accountCookiePath'],
@@ -247,6 +261,7 @@ def create_task():
         description=data.get('description', ''),
         thumbnail_path=data.get('thumbnailPath', ''),
         tags=data.get('tags', []),
+        payload=payload,
     )
 
     tq = get_task_queue()

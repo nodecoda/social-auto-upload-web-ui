@@ -393,8 +393,8 @@ class WeiboPlatform(BasePlatform):
     # publish_image -- full Weibo image-album pipeline (sync entry point)
     # ------------------------------------------------------------------
 
-    def publish_image(self, **kwargs) -> bool:
-        """Publish an image album to Weibo (sync wrapper).
+    async def publish_image(self, **kwargs) -> bool:
+        """Publish an image album to Weibo（R6 起 async）。
 
         入口仅做 kwargs 解包 + dry-run 早返回 + 调 _upload_all_images。
         实际浏览器操作在 _upload_one_image。
@@ -403,7 +403,7 @@ class WeiboPlatform(BasePlatform):
         if dry_run:
             logger.info("[发布图集] dry-run 模式, 跳过实际发布 (publish_image)")
             return True
-        asyncio.run(self._upload_all_images(**kwargs))
+        await self._upload_all_images(**kwargs)
         return True
 
     # ------------------------------------------------------------------

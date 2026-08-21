@@ -426,8 +426,8 @@ class AlipayPlatform(BasePlatform):
     # 文档 ~/ZFB-tuji.md
     # ------------------------------------------------------------------
 
-    def publish_image(self, **kwargs) -> bool:
-        """支付宝图集发布(sync wrapper)。
+    async def publish_image(self, **kwargs) -> bool:
+        """支付宝图集发布（R6 起 async，与 publish_video 契约一致）。
 
         Accepted keyword arguments:
 
@@ -440,7 +440,7 @@ class AlipayPlatform(BasePlatform):
         - ``music_title`` (*str*)  — 选中的音乐名(可选)
         - ``music_id`` (*str*)     — 选中的音乐 id(可选,保留)
         """
-        asyncio.run(self._upload_all_images(**kwargs))
+        await self._upload_all_images(**kwargs)
         return True
 
     async def _upload_all_images(self, **kwargs):

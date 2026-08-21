@@ -1904,8 +1904,8 @@ class WeixinGzhPlatform(BasePlatform):
     _IMAGE_TITLE_MAX = 20
     _IMAGE_DESC_MAX = 1000
 
-    def publish_image(self, **kwargs) -> bool:
-        """发布图集(贴图)到公众号(同步入口)。
+    async def publish_image(self, **kwargs) -> bool:
+        """发布图集(贴图)到公众号（R6 起 async）。
 
         流程: 创作中心首页点「贴图」→ 新 tab(appmsg_edit_v2 type=77)
         → 上传多图 → 复用 video 的标题/描述/合集/创作来源/发表 helpers。
@@ -1916,7 +1916,7 @@ class WeixinGzhPlatform(BasePlatform):
         if dry_run:
             logger.info("[发布图集] dry-run 模式, 跳过实际发布 (publish_image)")
             return True
-        asyncio.run(self._upload_all_images(**kwargs))
+        await self._upload_all_images(**kwargs)
         return True
 
     async def _upload_all_images(self, **kwargs):

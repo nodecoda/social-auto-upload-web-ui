@@ -94,6 +94,7 @@ class PublishTask:
     account_id: int = 0
     detail_id: str = ''            # publish_details.id
     payload: dict = field(default_factory=dict)
+    publish_kind: str = 'video'  # 'video' | 'image'（R6 队列三合一：同一队列按 kind 分发）
 
     def to_dict(self):
         d = asdict(self)
@@ -238,85 +239,35 @@ class TaskQueue:
                 self.queue.task_done()
 
     async def _execute(self, task: PublishTask):
-        """调用上游 uploader 执行上传。
+        """调用上游 uploader 执行发布（R6 队列三合一：唯一执行内核）。
 
-        新逻辑：当 task.payload 非空时，调 platform.publish_video(**payload)（splat）。
-        旧逻辑（task.payload 为空时）：保留原 myUtils.postVideo 模块函数调用（向后兼容）。
+        - 所有任务必须携带 payload（postVideo / 草稿批量 / image 发布统一 splat）；
+          payload 为空的旧 myUtils.postVideo 模块函数路径已随 R6 移除。
+        - 按 publish_kind 分发：'video' → platform.publish_video，'image' →
+          platform.publish_image（R5 后两者均已统一为 async，直接 await）。
+        - 在独立子任务里跑：impl/_browser 的 watchdog 在用户关闭浏览器时会
+          cancel 当前 asyncio task（= 这里的子任务），避免把 worker 主循环一起杀掉
+          （否则队列再无人消费，后续任务全部卡死）。
         """
-        # 新逻辑：payload 透传到 platform.publish_video（/postVideo 与草稿批量共用）
-        if task.payload:
-            platform = get_platform(task.platform_type)
-            if not platform:
-                raise ValueError(f"不支持的平台类型: {task.platform_type}")
-            publish_fn = platform.publish_video
-            # R5：publish_video 契约已统一为 async，直接 await。
-            # 在独立子任务里跑：impl/_browser 的 watchdog 在用户关闭浏览器时会
-            # cancel 当前 asyncio task（= 这里的子任务），避免把 worker 主循环一起杀掉
-            # （否则队列再无人消费，后续任务全部卡死）。
-            inner = asyncio.create_task(publish_fn(**task.payload))
-            result = await inner
-            if not result:
-                # 与旧 publish_executor job 语义一致：返回 falsy = 页面未跳转/校验未通过
-                raise RuntimeError("发布失败：页面未跳转，表单校验未通过")
-            return result
+        if not task.payload:
+            raise ValueError(
+                f"任务缺少 payload（R6 起所有发布任务必须携带 payload），task={task.id}"
+            )
 
-        # 旧逻辑：保留原代码不动
-        from myUtils.postVideo import (
-            post_video_bilibili,
-            post_video_DouYin,
-            post_video_ks,
-            post_video_tencent,
-            post_video_xhs,
+        platform = get_platform(task.platform_type)
+        if not platform:
+            raise ValueError(f"不支持的平台类型: {task.platform_type}")
+
+        publish_fn = (
+            platform.publish_image if task.publish_kind == 'image' else platform.publish_video
         )
 
-        file_list = [task.video_path]
-        account_list = [task.account_cookie_path]
-        tags = task.tags
-        title = task.title
-        thumbnail_path = task.thumbnail_path
-        desc = task.description
-
-        # 在 executor 中运行同步的上传函数
-        loop = asyncio.get_running_loop()
-        match task.platform_type:
-            case 1:
-                await loop.run_in_executor(
-                    None, lambda: post_video_xhs(
-                        title, file_list, tags, account_list, None, 0, 1, ['10:00'], 0,
-                        thumbnail_path=thumbnail_path, desc=desc
-                    )
-                )
-            case 2:
-                await loop.run_in_executor(
-                    None, lambda: post_video_tencent(
-                        title, file_list, tags, account_list, None, 0, 1, ['10:00'], 0, False,
-                        thumbnail_path=thumbnail_path, desc=desc
-                    )
-                )
-            case 3:
-                await loop.run_in_executor(
-                    None, lambda: post_video_DouYin(
-                        title, file_list, tags, account_list, None, 0, 1, ['10:00'], 0,
-                        thumbnail_landscape_path='', thumbnail_portrait_path=thumbnail_path,
-                        productLink='', productTitle='', desc=desc
-                    )
-                )
-            case 4:
-                await loop.run_in_executor(
-                    None, lambda: post_video_ks(
-                        title, file_list, tags, account_list, None, 0, 1, ['10:00'], 0,
-                        thumbnail_path=thumbnail_path, desc=desc
-                    )
-                )
-            case 5:
-                await loop.run_in_executor(
-                    None, lambda: post_video_bilibili(
-                        title, file_list, tags, account_list, None, 0, 1, ['10:00'], 0,
-                        desc=desc
-                    )
-                )
-            case _:
-                raise ValueError(f"不支持的平台类型: {task.platform_type}")
+        inner = asyncio.create_task(publish_fn(**task.payload))
+        result = await inner
+        if not result:
+            # 与旧 publish_executor job 语义一致：返回 falsy = 页面未跳转/校验未通过
+            raise RuntimeError("发布失败：页面未跳转，表单校验未通过")
+        return result
 
     def add_task(self, task: PublishTask):
         """线程安全地添加任务到队列"""
