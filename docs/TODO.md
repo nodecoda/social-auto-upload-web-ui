@@ -113,3 +113,4 @@
   bilibili _fetch_collections(frame 探测+合集浮层) 5 用例 → 25%→64%；vivo _fetch_positions(上传轮询+位置下拉)
   8 用例 → 26%→66%；weibo _fetch_collections(platform 上传补丁+合集开关+value 解析) 5 用例 → 26%→56%；
   全量 713 passed、总覆盖率 27%→29%（CI 门槛 22%，裕度 7pp）
+- T10 CI 门槛锁定（PR #108）：cov-fail-under 22%→24%，锁住 T1-T9 测试批次成果
