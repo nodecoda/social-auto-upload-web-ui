@@ -21,6 +21,7 @@ from .._utils import (
     scrape_user_profile,
 )
 from ..base_platform import BasePlatform
+from ..primitives import get_params, set_schedule
 from ._dom_ops import (
     _count_hashtags,
     _fill_title_and_description,
@@ -32,7 +33,6 @@ from ._dom_ops import (
     _set_image_mix,
     _set_location_tag,
     _set_product_link,
-    _set_schedule_time,
     _set_tag,
     _set_thumbnail,
     _validate_publish_params,
@@ -54,7 +54,6 @@ class DouyinPlatform(DouyinImageOps, BasePlatform):
     _count_hashtags = staticmethod(_count_hashtags)
     _validate_publish_params = staticmethod(_validate_publish_params)
     _fill_title_and_description = staticmethod(_fill_title_and_description)
-    _set_schedule_time = staticmethod(_set_schedule_time)
     _set_product_link = staticmethod(_set_product_link)
     _set_thumbnail = staticmethod(_set_thumbnail)
     _handle_auto_video_cover = staticmethod(_handle_auto_video_cover)
@@ -643,7 +642,7 @@ class DouyinPlatform(DouyinImageOps, BasePlatform):
                     and publish_date != 0
                 ):
                     logger.info("[定时发布] 开始设置定时发布...")
-                    await self._set_schedule_time(page, publish_date)
+                    await set_schedule(page, publish_date, get_params("douyin", "SCHEDULE"))
                     logger.info("[定时发布] 定时发布设置完成")
 
                 # 调试:输出本次发布的全部参数(便于人工核对填写是否正确)

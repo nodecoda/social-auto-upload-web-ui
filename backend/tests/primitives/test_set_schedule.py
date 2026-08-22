@@ -269,7 +269,7 @@ class TestParamsIntegrity:
                 assert s.get("selectors"), f"{platform}: select 策略缺 selectors"
 
     def test_schedule_count_matches_scope(self):
-        # 14 处 _set_schedule_time 平台应有 SCHEDULE 参数
+        # A1/A2 定时原语收敛后：14 平台应有 SCHEDULE 参数表（平台实现已归零，参数表即契约）
         with_schedule = {p for p, v in PARAMS.items() if "SCHEDULE" in v}
         assert len(with_schedule) == 14, f"期望 14 平台有 SCHEDULE,实际 {sorted(with_schedule)}"
 

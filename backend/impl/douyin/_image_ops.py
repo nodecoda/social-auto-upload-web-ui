@@ -11,6 +11,7 @@ from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
 from .._utils import get_account_name_by_cookie_file, parse_schedule_time
+from ..primitives import get_params, set_schedule
 
 logger = get_channel_logger("douyin")
 
@@ -269,7 +270,7 @@ class DouyinImageOps:
                         )[0]
                         if publish_date != 0:
                             logger.info("[定时发布] 开始设置定时发布...")
-                            await self._set_schedule_time(page, publish_date)
+                            await set_schedule(page, publish_date, get_params("douyin", "SCHEDULE"))
                             logger.info("[定时发布] 定时发布设置完成")
 
                     logger.info("[填写完成] 表单填写完成, 模式: %s", "演练(dry_run)" if dry_run else "正式发布")

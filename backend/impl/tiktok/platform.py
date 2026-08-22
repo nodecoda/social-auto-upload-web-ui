@@ -7,10 +7,8 @@ All browser operations go through BasePlatform's CloakBrowser entry points.
 import asyncio
 import re
 import threading
-from datetime import datetime
 from pathlib import Path
 from queue import Queue
-from zoneinfo import ZoneInfo
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -24,6 +22,7 @@ from .._utils import (
     scrape_user_profile,
 )
 from ..base_platform import BasePlatform
+from ..primitives import get_params, set_schedule
 
 logger = get_channel_logger("tiktok")
 
@@ -475,7 +474,7 @@ class TiktokPlatform(BasePlatform):
             # 10. Schedule if needed
             if publish_date != 0:
                 logger.info(f"[上传视频] [step 10] start: publish_date={publish_date}")
-                await self._set_schedule_time(page, publish_date)
+                await set_schedule(page, publish_date, get_params("tiktok", "SCHEDULE"))
                 logger.info("[上传视频] [step 10] done")
             else:
                 logger.info("[上传视频] [step 10] skipped (no schedule)")
@@ -770,99 +769,6 @@ class TiktokPlatform(BasePlatform):
         else:
             logger.info(f"[AI声明] AI declaration already in target state (is_on={is_on})")
 
-    @staticmethod
-    async def _set_schedule_time(page, publish_date) -> None:
-        """Set a scheduled publish date/time on the publish page.
-
-        1. Click the 预约发布 radio label
-        2. Click the date input, navigate the calendar to the target month
-        3. Click the target day
-        4. Click the time input, pick the hour/minute in the time picker
-        """
-        logger.info(f"[定时发布] [_set_schedule_time] start: {publish_date}")
-        # 1. Click "预约发布" radio
-        schedule_label = page.locator('label.Radio__root:has-text("预约发布")').first
-        logger.info("[定时发布] [_set_schedule_time] waiting for 预约发布 label")
-        await schedule_label.wait_for(state="visible", timeout=5_000)
-        await schedule_label.click()
-        logger.info("[定时发布] [_set_schedule_time] clicked 预约发布")
-
-        # 2. Date input — TUXFormField with .TUXInputBox, value="YYYY-MM-DD"
-        date_input = page.locator(
-            'div.TUXFormField.TUXTextInput input.TUXTextInputCore-input'
-        ).nth(1)
-        await date_input.wait_for(state="visible", timeout=5_000)
-        await date_input.click()
-
-        calendar = page.locator('div.calendar-wrapper').first
-        await calendar.wait_for(state="visible", timeout=5_000)
-
-        # --- Navigate to target month ---
-        CN_MONTHS = {
-            "一月": 1, "二月": 2, "三月": 3, "四月": 4,
-            "五月": 5, "六月": 6, "七月": 7, "八月": 8,
-            "九月": 9, "十月": 10, "十一月": 11, "十二月": 12,
-        }
-        month_title = calendar.locator('span.month-title').first
-        current_month_text = (await month_title.inner_text()).strip()
-        current_month = CN_MONTHS.get(current_month_text)
-        if current_month is None:
-            # Fallback — try English parse, else default to current
-            try:
-                current_month = datetime.strptime(current_month_text, "%B").replace(tzinfo=ZoneInfo("Asia/Shanghai")).month
-            except ValueError:
-                logger.info(f"[定时发布] Unknown month title: {current_month_text}")
-                current_month = publish_date.month
-
-        # Click the right-arrow until the displayed month matches the target.
-        # The picker only shows adjacent months (no year jump), so we bail out
-        # after one click to avoid getting stuck.
-        right_arrow = calendar.locator('span.arrow').nth(1)
-        if current_month != publish_date.month:
-            try:  # noqa: SIM105
-                await right_arrow.click(timeout=2_000)
-            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
-                pass
-
-        # --- Day selection ---
-        valid_days = calendar.locator('span.day.valid')
-        day_count = await valid_days.count()
-        target_day = str(publish_date.day)
-        for i in range(day_count):
-            day_el = valid_days.nth(i)
-            text = (await day_el.inner_text()).strip()
-            if text == target_day:
-                await day_el.click()
-                break
-
-        # Wait for calendar to close
-        await calendar.wait_for(state="hidden", timeout=5_000)
-
-        # 3. Time input — first TUXTextInput, value="HH:MM"
-        time_input = page.locator(
-            'div.TUXFormField.TUXTextInput input.TUXTextInputCore-input'
-        ).nth(0)
-        await time_input.wait_for(state="visible", timeout=5_000)
-        await time_input.click()
-
-        time_picker = page.locator(
-            'div.tiktok-timepicker-time-picker-container'
-        ).first
-        await time_picker.wait_for(state="visible", timeout=5_000)
-
-        hour_str = publish_date.strftime("%H")
-        correct_minute = int(publish_date.minute / 5)
-        minute_str = f"{correct_minute:02d}"
-
-        await time_picker.locator(
-            f'span.tiktok-timepicker-left:has-text("{hour_str}")'
-        ).first.click()
-        await time_picker.locator(
-            f'span.tiktok-timepicker-right:has-text("{minute_str}")'
-        ).first.click()
-
-        # Close the time picker by clicking outside
-        await page.keyboard.press("Escape")
 
     @staticmethod
     async def _click_publish(page) -> None:

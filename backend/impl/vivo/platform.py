@@ -28,6 +28,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
+from ..primitives import get_params, set_schedule
 from ._profile import scrape_vivo_profile
 
 logger = get_channel_logger("vivo")
@@ -534,7 +535,7 @@ class VivoPlatform(BasePlatform):
                 # 9. 定时发布(可选)
                 if publish_strategy == "scheduled" and publish_date != 0:
                     logger.info("[定时发布] 设置定时发布时间: %s", publish_date)
-                    await self._set_schedule_time(page, publish_date)
+                    await set_schedule(page, publish_date, get_params("vivo", "SCHEDULE"))
                 else:
                     logger.info("[定时发布] 立即发布,跳过定时设置")
 
@@ -887,96 +888,3 @@ class VivoPlatform(BasePlatform):
             logger.exception("[%s] 设置失败: %s", field_label, e)
 
     # ------------------------------------------------------------------
-    # Helper: 定时发布(element DateTimePicker)
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    async def _set_schedule_time(page, publish_date):
-        """VIVO 定时发布设置(简化方案):
-
-        用户实测 + DOM 分析:Element-plus datetimepicker 在弹窗里直接提供两个 input
-        文本框(选择日期 + 选择时间),直接 fill 文本 + 点确定 即可,不需要走 spinner 滚动。
-        spinner 滚动方案对 Element-plus 虚拟滚动面板不稳定,直接填文本最稳。
-
-        DOM:
-          <input type="text" placeholder="选择日期"> ← 直接 fill yyyy-MM-dd
-          <input type="text" placeholder="选择时间"> ← 直接 fill HH:mm
-          <button class="el-picker-panel__link-btn is-plain">确定</button> ← 点确定关闭
-        """
-        try:
-            # 1. 点「定时发布」radio
-            timer_radio = page.locator(
-                'label[role="radio"]:has(span.el-radio__label:has-text("定时发布"))'
-            ).first
-            if await timer_radio.count():
-                is_checked = await timer_radio.get_attribute("aria-checked") == "true"
-                if not is_checked:
-                    cls = await timer_radio.get_attribute("class") or ""
-                    is_checked = "is-checked" in cls
-                if not is_checked:
-                    await timer_radio.click()
-                    await asyncio.sleep(1.5)
-                    logger.info("[定时发布] 已切换到定时发布")
-            else:
-                logger.warning("[定时发布] 未找到「定时发布」radio")
-                return
-
-            # 2. 点击日期编辑器展开选择器
-            date_editor = page.locator(
-                ".el-date-editor.el-input, .el-date-editor--datetime"
-            ).first
-            if not await date_editor.count():
-                logger.warning("[定时发布] 未找到日期编辑器")
-                return
-            await date_editor.click()
-            await asyncio.sleep(1.5)
-            logger.info("[定时发布] 日期时间选择器已展开")
-
-            # 3. 解析目标时间
-            date_str = publish_date.strftime("%Y-%m-%d")
-            time_str = publish_date.strftime("%H:%M")
-            logger.info("[定时发布] 目标时间: %s %s", date_str, time_str)
-
-            # 4. 直接 fill 日期文本框(yyyy-MM-dd)
-            date_input = page.locator(
-                '.el-date-picker__editor-wrap input[placeholder="选择日期"]'
-            ).first
-            if await date_input.count():
-                await date_input.fill(date_str)
-                await asyncio.sleep(0.3)
-                logger.info("[定时发布] 日期已填: %s", date_str)
-            else:
-                logger.warning("[定时发布] 未找到「选择日期」文本框")
-
-            # 5. 直接 fill 时间文本框(HH:mm)
-            time_input = page.locator(
-                '.el-date-picker__editor-wrap input[placeholder="选择时间"]'
-            ).first
-            if await time_input.count():
-                await time_input.fill(time_str)
-                await asyncio.sleep(0.3)
-                logger.info("[定时发布] 时间已填: %s", time_str)
-            else:
-                logger.warning("[定时发布] 未找到「选择时间」文本框")
-
-            # 6. 点确定按钮(底栏第二个 button,class 含 is-plain)
-            confirm_btn = page.locator(
-                '.el-picker-panel__footer button.is-plain'
-            ).first
-            if not await confirm_btn.count():
-                # 兜底:用文案
-                confirm_btn = page.locator(
-                    '.el-picker-panel__footer button:has-text("确定")'
-                ).first
-            if await confirm_btn.count():
-                await confirm_btn.click()
-                logger.info("[定时发布] 已点击确定")
-                await asyncio.sleep(1)
-            else:
-                logger.warning("[定时发布] 未找到确定按钮")
-
-            logger.info("[定时发布] 定时发布设置完成")
-        except Exception as e:
-            logger.exception("[定时发布] 设置失败: %s", e)
-            import traceback
-            logger.exception("[定时发布] traceback: %s", traceback.format_exc())

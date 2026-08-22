@@ -25,6 +25,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
+from ..primitives import get_params, set_schedule
 from ._profile import scrape_tencent_profile
 
 # ---------------------------------------------------------------------------
@@ -464,7 +465,7 @@ async def _select_mark_tag_option(page, tag_name: str) -> bool:
 async def _fill_shoot_date_in_dialog(dialog, shoot_date: str) -> None:
     """在自行拍摄弹窗内填入拍摄时间(YYYY-MM-DD)。
 
-    复用 weui datepicker 交互(与 _set_schedule_time 同款), 但 scope 限定在
+    复用 weui datepicker 交互(与 primitives.set_schedule 同款), 但 scope 限定在
     弹窗内, 避免误触发表单的定时发布选择器。
     """
     if not shoot_date:
@@ -1058,39 +1059,6 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
     logger.info("[设置封面] all cover images set complete")
 
 
-async def _set_schedule_time(page, publish_date) -> None:
-    """Set the scheduled publish time in the Channels date/time picker."""
-    label_element = page.locator("label").filter(has_text="定时").nth(1)
-    await label_element.click()
-    await page.click('input[placeholder="请选择发表时间"]')
-
-    current_month = publish_date.strftime("%m月")
-    page_month = await page.inner_text(
-        'span.weui-desktop-picker__panel__label:has-text("月")'
-    )
-    if page_month != current_month:
-        await page.click("button.weui-desktop-btn__icon__right")
-
-    elements = await page.query_selector_all("table.weui-desktop-picker__table a")
-    for element in elements:
-        if "weui-desktop-picker__disabled" in await element.evaluate(
-            "el => el.className"
-        ):
-            continue
-        text = await element.inner_text()
-        if text.strip() == str(publish_date.day):
-            await element.click()
-            break
-
-    await page.click('input[placeholder="请选择时间"]')
-    await page.keyboard.press("Control+KeyA")
-    await page.keyboard.press("Delete")
-    # 输入完整时分（HH:MM）。旧代码只输小时导致分钟恒为 00
-    # （如 04:02 被填成 04:00）
-    await page.keyboard.type(publish_date.strftime("%H:%M"))
-    await page.locator("div.input-editor").click()
-
-
 async def _dismiss_i_know_dialog(page) -> bool:
     """Dismiss the '我知道了' popup if present.
 
@@ -1607,7 +1575,7 @@ class ChannelsPlatform(BasePlatform):
 
                             # Set schedule if needed
                             if enable_timer and publish_date != 0:
-                                await _set_schedule_time(page, publish_date)
+                                await set_schedule(page, publish_date, get_params("channels", "SCHEDULE"))
 
                             # Set short title
                             await _set_short_title(page, title)

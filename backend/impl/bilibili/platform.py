@@ -26,6 +26,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
+from ..primitives import get_params, set_schedule
 from ._profile import scrape_bilibili_profile
 
 BILIBILI_UPLOAD_URL = "https://member.bilibili.com/platform/upload/video/frame"
@@ -657,7 +658,7 @@ class BilibiliPlatform(BasePlatform):
                     publish_strategy == BILIBILI_PUBLISH_STRATEGY_SCHEDULED
                     and publish_date != 0
                 ):
-                    await self._set_schedule_time(page, publish_date)
+                    await set_schedule(page, publish_date, get_params("bilibili", "SCHEDULE"))
 
                 # Pre-submit screenshot
                 await page.screenshot(
@@ -1493,87 +1494,3 @@ class BilibiliPlatform(BasePlatform):
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[设置合集] 合集设置失败(非致命): %s", e)
 
-    @staticmethod
-    async def _set_schedule_time(page, publish_date):
-        """Set scheduled publish time via calendar and time picker."""
-
-        if isinstance(publish_date, int) and publish_date == 0:
-            return
-
-        dt = publish_date
-        logger.info(
-            f"[上传视频] setting schedule: "
-            f"{dt.strftime('%Y-%m-%d %H:%M')}"
-        )
-
-        try:
-            # Step 1: Click switch-container to enable scheduled publish
-            switch = page.locator(".switch-container").first
-            await switch.wait_for(state="visible", timeout=10000)
-            await switch.click()
-            await asyncio.sleep(1)
-
-            # Step 2: Open date picker and select date
-            target_day = dt.day
-            date_trigger = page.locator("div.date-picker-date").first
-            await date_trigger.wait_for(state="visible", timeout=10000)
-            await date_trigger.click()
-            await asyncio.sleep(1)
-
-            # Find clickable date in calendar grid
-            target_date_el = page.locator(
-                "div.date-picker-body-item.date-item"
-            ).filter(has_text=str(target_day))
-            date_set = False
-            count = await target_date_el.count()
-            for i in range(count):
-                el = target_date_el.nth(i)
-                classes = await el.get_attribute("class") or ""
-                if "date-item-disabled" in classes:
-                    continue
-                text = (await el.text_content() or "").strip()
-                if text == str(target_day):
-                    await el.click()
-                    date_set = True
-                    break
-            if not date_set:
-                logger.info(
-                    f"[上传视频] could not find clickable date: "
-                    f"{target_day}"
-                )
-            await asyncio.sleep(0.5)
-
-            # Step 3: Open time picker and select hour + minute
-            target_hour = dt.strftime("%H")
-            target_minute = dt.strftime("%M")
-            time_trigger = page.locator("div.date-picker-timer").first
-            await time_trigger.wait_for(state="visible", timeout=10000)
-            await time_trigger.click()
-            await asyncio.sleep(1)
-
-            # Select hour (first panel)
-            hour_panels = page.locator(".time-picker-panel-select-wrp")
-            hour_panel = hour_panels.nth(0)
-            hour_item = hour_panel.locator(
-                "span.time-picker-panel-select-item"
-            ).filter(has_text=target_hour)
-            if await hour_item.count() > 0:
-                await hour_item.first.click()
-            await asyncio.sleep(0.3)
-
-            # Select minute (second panel)
-            minute_panel = hour_panels.nth(1)
-            minute_item = minute_panel.locator(
-                "span.time-picker-panel-select-item"
-            ).filter(has_text=target_minute)
-            if await minute_item.count() > 0:
-                await minute_item.first.click()
-            await asyncio.sleep(0.3)
-
-            # Close time picker
-            await page.keyboard.press("Escape")
-            await asyncio.sleep(0.5)
-
-            logger.info("[定时发布] schedule time set")
-        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-            logger.info(f"[定时发布] schedule time setting failed: {exc}")

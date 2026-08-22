@@ -16,6 +16,7 @@ from util._logger import bind_account_name, get_channel_logger
 from .._browser import close_browser
 from .._utils import clear_and_type, get_account_name_by_cookie_file, parse_schedule_time, save_login_result
 from ..base_platform import BasePlatform
+from ..primitives import get_params, set_schedule
 
 logger = get_channel_logger("iqiyi")
 
@@ -559,7 +560,7 @@ class IqiyiPlatform(BasePlatform):
 
                 # Step 9: Handle scheduled publishing
                 if enableTimer and publish_date != 0:
-                    await self._set_schedule_time(page, publish_date)
+                    await set_schedule(page, publish_date, get_params("iqiyi", "SCHEDULE"))
 
                 # Step 10: Click publish / submit
                 publish_ok = await self._click_publish(page)
@@ -915,50 +916,6 @@ class IqiyiPlatform(BasePlatform):
         except Exception as e:
             logger.exception("[设置封面] 封面上传失败: %s", e)
 
-    @staticmethod
-    async def _set_schedule_time(page, publish_date):
-        """Enable scheduled publishing and set the date/time."""
-        logger.info("[定时发布] Setting schedule time: %s", publish_date)
-        try:
-            # Click "定时发布" radio
-            schedule_radio = page.locator(
-                '.form-publish-block .el-radio-group '
-                'label:has-text("定时发布")'
-            ).first
-            if await schedule_radio.count() > 0:
-                await schedule_radio.click()
-                logger.info("[定时发布] Schedule radio selected")
-                await asyncio.sleep(1)
-
-            # The date picker should appear — find the date input
-            date_input = page.locator(
-                '.form-publish-block input[placeholder*="选择日期"], '
-                '.form-publish-block input[placeholder*="时间"]'
-            ).first
-            if await date_input.count() > 0:
-                await date_input.click()
-                await asyncio.sleep(1)
-
-                # Format datetime
-                date_str = publish_date.strftime("%Y-%m-%d")
-                time_str = publish_date.strftime("%H:%M")
-
-                # Type the date directly
-                await date_input.fill(f"{date_str} {time_str}")
-                logger.info(
-                    "Schedule date set to: %s %s", date_str, time_str
-                )
-                await asyncio.sleep(1)
-
-                # Press Enter to confirm
-                await page.keyboard.press("Enter")
-                await asyncio.sleep(1)
-            else:
-                logger.warning("[定时发布] Schedule date input not found")
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.warning(
-                "Schedule time setup failed (non-blocking): %s", e
-            )
 
     @staticmethod
     async def _click_publish(page) -> bool:

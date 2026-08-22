@@ -22,6 +22,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
+from ..primitives import get_params, set_schedule
 from ._profile import scrape_zhihu_profile
 
 logger = get_channel_logger("zhihu")
@@ -580,7 +581,7 @@ class ZhihuPlatform(BasePlatform):
                     isinstance(publish_date, int) and publish_date != 0
                 ) or (not isinstance(publish_date, int) and publish_date)
                 if is_scheduled:
-                    await self._set_schedule_time(page, publish_date)
+                    await set_schedule(page, publish_date, get_params("zhihu", "SCHEDULE"))
 
                 # 提交前截图
                 try:  # noqa: SIM105
@@ -1185,150 +1186,6 @@ class ZhihuPlatform(BasePlatform):
             except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
-    @staticmethod
-    async def _set_schedule_time(page, publish_date):
-        """定时发布：日历 + 时下拉 + 分下拉（spec 第 66-97 行）。
-
-        前端 UI 已约束 ≥1 小时后且 ≤1 个月内；这里只负责按日期选中。
-        """
-
-        if isinstance(publish_date, int):
-            if publish_date == 0:
-                return
-            return
-        if not publish_date:
-            return
-
-        dt = publish_date
-        logger.info(f"[定时发布] 设置定时: {dt.strftime('%Y-%m-%d %H:%M')}")
-
-        try:
-            # 1. 打开定时发布开关
-            switch = page.locator(
-                '.VideoUploadForm-scheduledPublish--switch input[type="checkbox"], '
-                '.VideoUploadForm-scheduledPublish label'
-            ).first
-            await switch.wait_for(state="attached", timeout=10000)
-            is_on = False
-            try:
-                cb = page.locator(
-                    '.VideoUploadForm-scheduledPublish--switch input[type="checkbox"]'
-                ).first
-                if await cb.count() > 0:
-                    is_on = await cb.is_checked()
-            except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
-                pass
-            if not is_on:
-                await switch.click()
-                logger.info("[定时发布] 已打开开关")
-                await asyncio.sleep(1)
-
-            # 2. 选年月日（日历组件）
-            date_btn = page.locator('.DatePicker-Button').first
-            await date_btn.wait_for(state="visible", timeout=10000)
-            await date_btn.click()
-            await asyncio.sleep(1)
-
-            target_year = dt.year
-            target_month = dt.month
-            target_day = dt.day
-
-            for _ in range(24):
-                tool_text = ""
-                try:
-                    tool = page.locator('.Calendar-topToolDate').first
-                    if await tool.count() > 0:
-                        tool_text = (await tool.text_content() or "").strip()
-                except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
-                    pass
-
-                if str(target_year) in tool_text and str(target_month) in tool_text:
-                    break
-
-                if tool_text:
-                    try:
-                        cur_year = int(_extract_year(tool_text))
-                        cur_month = int(_extract_month(tool_text))
-                        if (cur_year, cur_month) < (target_year, target_month):
-                            await page.locator('.Calendar-topToolButton--nextMonth').first.click()
-                        else:
-                            await page.locator('.Calendar-topToolButton--prevMonth').first.click()
-                        await asyncio.sleep(0.5)
-                        continue
-                    except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
-                        pass
-                await page.locator('.Calendar-topToolButton--nextMonth').first.click()
-                await asyncio.sleep(0.5)
-
-            # 选择具体日期：排除禁用、非当月、占位
-            day_cells = page.locator(
-                'td.Calendar-day:not(.is-disabled):not(.is-not-this-month)'
-            )
-            day_set = False
-            count = await day_cells.count()
-            for i in range(count):
-                cell = day_cells.nth(i)
-                text = (await cell.text_content() or "").strip()
-                if text == str(target_day):
-                    await cell.click()
-                    day_set = True
-                    break
-            if not day_set:
-                logger.info(f"[定时发布] 找不到可点击日期 {target_day}")
-            await asyncio.sleep(0.5)
-
-            # 3. 选小时
-            target_hour_padded = f"{dt.hour:02d}"
-            hour_trigger = page.locator(
-                '.DateTimePicker .Popover:has(.DatePicker) ~ .Popover .Select-button, '
-                '.DateTimePicker button[role="combobox"]'
-            ).nth(0)
-            try:
-                await hour_trigger.click(timeout=5000)
-            except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
-                # 兜底：第二个 Popover 通常是小时
-                hour_trigger = page.locator('.DateTimePicker button[role="combobox"]').nth(0)
-                await hour_trigger.click(timeout=5000)
-            await asyncio.sleep(0.5)
-            hour_opt = page.locator(
-                f'.DateTimePicker-selectList .Select-option:not([disabled]):has-text("{target_hour_padded}")'
-            ).first
-            if await hour_opt.count() > 0:
-                await hour_opt.click()
-                logger.info(f"[定时发布] 小时设为 {target_hour_padded}")
-            else:
-                logger.info(f"[定时发布] 找不到小时选项 {target_hour_padded}")
-            await asyncio.sleep(0.5)
-
-            # 4. 选分钟
-            target_minute = f"{dt.minute:02d}"
-            minute_trigger = page.locator(
-                '.DateTimePicker button[role="combobox"]'
-            ).nth(1)
-            try:
-                await minute_trigger.click(timeout=5000)
-            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info("[定时发布] 分钟下拉点击失败")
-            await asyncio.sleep(0.5)
-            minute_opt = page.locator(
-                f'.DateTimePicker-selectList .Select-option:not([disabled]):has-text("{target_minute}")'
-            ).first
-            if await minute_opt.count() > 0:
-                await minute_opt.click()
-                logger.info(f"[定时发布] 分钟设为 {target_minute}")
-            else:
-                logger.info(f"[定时发布] 找不到分钟选项 {target_minute}")
-            await asyncio.sleep(0.5)
-
-            # 关闭可能仍打开的下拉
-            try:  # noqa: SIM105
-                await page.keyboard.press("Escape")
-            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
-                pass
-            await asyncio.sleep(0.5)
-
-        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-            logger.info(f"[定时发布] 设置失败: {exc}")
 
     @staticmethod
     async def _click_submit(page, is_scheduled: bool) -> tuple[bool, str]:
@@ -1474,7 +1331,7 @@ class ZhihuPlatform(BasePlatform):
 
 
 # ---------------------------------------------------------------------------
-# Calendar label parsing helpers (used by _set_schedule_time)
+# Calendar label parsing helpers（原 _set_schedule_time 使用，保留供外部 DOM 套件）
 # ---------------------------------------------------------------------------
 
 import re as _re_module
