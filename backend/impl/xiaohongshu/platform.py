@@ -68,6 +68,7 @@ class XiaohongshuPlatform(BasePlatform):
     platform_id = 1
     platform_key = "xiaohongshu"
     platform_name = "小红书"
+    supports_image = True  # 图集发布能力（A4 门控）
 
     # 支持 cookie 字符串导入账号
     supports_cookie_import = True

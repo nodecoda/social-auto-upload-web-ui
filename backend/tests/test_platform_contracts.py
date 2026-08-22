@@ -116,6 +116,28 @@ def test_all_registered_publish_video_async():
     assert not offenders, f"publish_video 契约违规: {offenders}"
 
 
+def test_supports_image_matches_publish_image_implementation():
+    """A4: supports_image 元数据必须与 publish_image 实现一致性。
+
+    - supports_image=True 的平台必须真正实现 publish_image（不抛基类默认
+      NotImplementedError）
+    - 其余平台 supports_image 必须为 False（task_queue 分发前会门控拒绝，
+      不允许出现"声称支持图集但实现缺失"的漂移）
+    """
+    offenders = []
+    for cls in _registered_platforms():
+        supports = bool(getattr(cls, "supports_image", False))
+        method = getattr(cls, "publish_image", None)
+        # 有自定义实现 = 方法存在且定义在平台目录（非 base_platform 默认）
+        impl_mod = getattr(method, "__module__", "") if method else ""
+        has_real_impl = bool(method) and impl_mod != "impl.base_platform"
+        if supports and not has_real_impl:
+            offenders.append(f"{cls.__name__}: supports_image=True 但未实现 publish_image")
+        if has_real_impl and not supports:
+            offenders.append(f"{cls.__name__}: 实现了 publish_image 但 supports_image=False")
+    assert not offenders, f"supports_image 与实现不一致: {offenders}"
+
+
 def test_registry_derived_platform_map_consistent():
     """R4: conf 的平台映射必须由 registry 派生且一致（唯一真源=类属性）。"""
     from conf import PLATFORM_ID_TO_KEY, PLATFORM_MAP

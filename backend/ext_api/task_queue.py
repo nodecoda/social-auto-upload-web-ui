@@ -241,6 +241,14 @@ class TaskQueue:
         if not platform:
             raise ValueError(f"不支持的平台类型: {task.platform_type}")
 
+        # A4: 图集能力门控 —— 不支持的平台任务在分发前直接失败，
+        # 避免抛 NotImplementedError 进队列、失败原因不友好。
+        if task.publish_kind == 'image' and not getattr(platform, 'supports_image', False):
+            raise ValueError(
+                f"{platform.platform_name} 不支持图集发布（supports_image=False），"
+                f"task={task.id}"
+            )
+
         publish_fn = (
             platform.publish_image if task.publish_kind == 'image' else platform.publish_video
         )

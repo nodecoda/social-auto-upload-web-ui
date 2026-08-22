@@ -48,6 +48,11 @@ class BasePlatform(ABC):
     #: string (e.g. pasted from browser DevTools).  Subclasses override.
     supports_cookie_import: bool = False
 
+    #: True if this platform implements publish_image (图集发布能力)。
+    #: 契约测试锁定与 publish_image 实现一致性；task_queue 分发前校验，
+    #: 不支持的平台任务直接 failed（不抛 NotImplementedError 进队列）。
+    supports_image: bool = False
+
     #: The wildcard domain to attach imported cookies to, e.g. ``".baidu.com"``
     #: for Baijiahao (cookie issued by passport.baidu.com also applies to
     #: baijiahao.baidu.com).  Subclasses override; most platforms can simply

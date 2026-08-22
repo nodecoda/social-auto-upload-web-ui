@@ -49,6 +49,7 @@ class KuaishouPlatform(BasePlatform):
     platform_id = 4
     platform_key = "kuaishou"
     platform_name = "快手"
+    supports_image = True  # 图集发布能力（A4 门控）
 
     # 支持 cookie 字符串导入账号
     supports_cookie_import = True

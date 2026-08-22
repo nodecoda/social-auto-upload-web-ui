@@ -79,6 +79,7 @@ class WeixinGzhPlatform(BasePlatform):
     platform_id = 17
     platform_key = "weixin_gzh"
     platform_name = "微信公众号"
+    supports_image = True  # 图集发布能力（A4 门控）
 
     # 支持 cookie 字符串导入账号
     supports_cookie_import = True

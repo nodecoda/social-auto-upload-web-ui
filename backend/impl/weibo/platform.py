@@ -46,6 +46,7 @@ class WeiboPlatform(BasePlatform):
     platform_id = 11
     platform_key = "weibo"
     platform_name = "微博"
+    supports_image = True  # 图集发布能力（A4 门控）
 
     # 支持 cookie 字符串导入账号
     supports_cookie_import = True

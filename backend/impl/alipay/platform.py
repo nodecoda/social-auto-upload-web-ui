@@ -68,6 +68,7 @@ _ALIPAY_SHORT_CONTENT_URL = (
 # ======================================================================
 
 class AlipayPlatform(BasePlatform):
+    supports_image = True  # 图集发布能力（A4 门控）
     platform_id = 12
     platform_key = "alipay"
     platform_name = "支付宝"

@@ -40,6 +40,7 @@ class DouyinPlatform(BasePlatform):
     platform_id = 3
     platform_key = "douyin"
     platform_name = "抖音"
+    supports_image = True  # 图集发布能力（A4 门控）
 
     # 支持 cookie 字符串导入账号
     supports_cookie_import = True
