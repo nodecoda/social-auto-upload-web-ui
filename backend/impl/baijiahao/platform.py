@@ -280,7 +280,7 @@ class BaijiahaoPlatform(BasePlatform):
         与 sync_profile 内部共用 _scrape_baijiahao_stats 抓取逻辑。
         """
         try:
-            try:
+            try:  # noqa: SIM105
                 await page.goto("https://baijiahao.baidu.com/", wait_until="domcontentloaded", timeout=30000)
             except Exception:  # noqa: S110, BLE001 -- 页面加载兜底,超时继续后续逻辑
                 pass
@@ -304,12 +304,12 @@ class BaijiahaoPlatform(BasePlatform):
                 context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
+                try:  # noqa: SIM105
                     asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -547,7 +547,7 @@ class BaijiahaoPlatform(BasePlatform):
                 )
                 if not upload_status:
                     logger.error("[上传视频] 发现上传出错了... 文件:%s", file_path)
-                    raise Exception("Video upload failed")
+                    raise Exception("Video upload failed")  # noqa: TRY002 -- 仓库无自定义异常体系,错误消息即失败原因,上层统一兜底
                 logger.info("[上传视频] 视频上传成功!")
 
                 # Wait for cover area to be ready
@@ -615,9 +615,9 @@ class BaijiahaoPlatform(BasePlatform):
                         )
                         logger.info("[发布] 人机校验已完成")
                         await asyncio.sleep(3)
-                    except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                        logger.error("[发布] 人机校验等待超时（120秒），退出")
-                        raise Exception("人机校验等待超时") from None
+                    except Exception:
+                        logger.exception("[发布] 人机校验等待超时（120秒），退出")
+                        raise Exception("人机校验等待超时") from None  # noqa: TRY002 -- 同上,错误消息即失败原因
 
                 # Wait for publish success redirect
                 try:
@@ -626,13 +626,13 @@ class BaijiahaoPlatform(BasePlatform):
                         timeout=30000,
                     )
                     logger.info("[发布] 视频发布成功! 页面跳转到: %s", page.url)
-                except Exception:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
+                except Exception:
                     current_url = page.url
-                    logger.error(
+                    logger.exception(
                         "[发布] 发布后未跳转到成功页面, 当前URL: %s",
                         current_url,
                     )
-                    raise Exception(
+                    raise Exception(  # noqa: TRY002 -- 仓库无自定义异常体系,错误消息即失败原因
                         f"视频发布后未成功跳转, 当前URL: {current_url}"
                     ) from None
 
@@ -795,7 +795,7 @@ class BaijiahaoPlatform(BasePlatform):
                 if await publish_button.count():
                     await publish_button.first.click()
         except Exception as e:
-            logger.error("[发布] 直接发布视频失败: %s", e)
+            logger.exception("[发布] 直接发布视频失败: %s", e)
             raise
 
     # ------------------------------------------------------------------
@@ -1013,8 +1013,8 @@ class BaijiahaoPlatform(BasePlatform):
                 await asyncio.sleep(2)
                 logger.info("[封面] %s设置完成", cover_type)
 
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                logger.error("[封面] 设置%s失败: %s", cover_type, e)
+            except Exception as e:
+                logger.exception("[封面] 设置%s失败: %s", cover_type, e)
 
     # ------------------------------------------------------------------
     # Helper: set creation declaration

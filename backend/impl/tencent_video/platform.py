@@ -180,7 +180,7 @@ class TencentVideoPlatform(BasePlatform):
                         timeout=30000,
                     )
                     # 等数据接口完成(SPA 页面需要等异步请求)
-                    try:
+                    try:  # noqa: SIM105
                         await page.wait_for_load_state("networkidle", timeout=15000)
                     except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                         pass
@@ -300,7 +300,7 @@ class TencentVideoPlatform(BasePlatform):
                     timeout=30000,
                 )
                 # 等数据接口完成(SPA 页面需要等异步请求)
-                try:
+                try:  # noqa: SIM105
                     await page.wait_for_load_state("networkidle", timeout=15000)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
@@ -325,12 +325,12 @@ class TencentVideoPlatform(BasePlatform):
                 context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
+                try:  # noqa: SIM105
                     asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -543,13 +543,13 @@ class TencentVideoPlatform(BasePlatform):
                         current_url = page.url
                         page_title = await page.title()
                         body_text = (await page.locator('body').text_content() or '')[:500]
-                        logger.error(
+                        logger.exception(
                             "[DEBUG] current_url=%s page_title=%s body_excerpt=%s",
                             current_url, page_title, body_text,
                         )
                     except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
-                    raise Exception("未找到视频上传入口") from e
+                    raise Exception("未找到视频上传入口") from e  # noqa: TRY002 -- 同上,错误消息即失败原因
 
                 file_input = page.locator('input[type="file"]').first
                 input_count = await page.locator('input[type="file"]').count()
@@ -991,6 +991,6 @@ class TencentVideoPlatform(BasePlatform):
             logger.info("[发布] Video published successfully")
         else:
             logger.error("[发布] Publish indicator not found within 60s timeout")
-            raise Exception("发布失败：未检测到发布成功信号（页面未跳转，无成功文本）")
+            raise Exception("发布失败：未检测到发布成功信号（页面未跳转，无成功文本）")  # noqa: TRY002 -- 仓库无自定义异常体系,错误消息即失败原因
 
         await asyncio.sleep(2)

@@ -166,7 +166,7 @@ class YoutubePlatform(BasePlatform):
             }))
         finally:
             if context:
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -203,7 +203,7 @@ class YoutubePlatform(BasePlatform):
             return False
         finally:
             if browser:
-                try:
+                try:  # noqa: SIM105
                     await self.close_browser(browser)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -231,7 +231,7 @@ class YoutubePlatform(BasePlatform):
             return "", ""
         finally:
             if browser:
-                try:
+                try:  # noqa: SIM105
                     await self.close_browser(browser)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -251,12 +251,12 @@ class YoutubePlatform(BasePlatform):
                 context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
+                try:  # noqa: SIM105
                     asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -443,7 +443,7 @@ class YoutubePlatform(BasePlatform):
             # Check for upload failure
             fail_text = page.locator("text=upload failed")
             if await fail_text.count() > 0:
-                raise RuntimeError("video upload failed")
+                raise RuntimeError("video upload failed")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
 
             await asyncio.sleep(2)
 
@@ -536,7 +536,7 @@ class YoutubePlatform(BasePlatform):
             raise
         finally:
             if browser:
-                try:
+                try:  # noqa: SIM105
                     await self.close_browser(browser, is_close_by_code=True)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -730,7 +730,7 @@ class YoutubePlatform(BasePlatform):
                 logger.info(_msg("[定时发布] 时区已设为 GMT+8"))
             except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(_msg(f"[定时发布] 时区设置失败, 使用默认: {exc}"))
-                try:
+                try:  # noqa: SIM105
                     await page.keyboard.press("Escape")
                 except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass

@@ -159,11 +159,11 @@ def publish_images():
         platform_map = _derived_platform_map()
         platform_id = platform_map.get(platform_type)
         if not platform_id:
-            raise ValueError(f"不支持的平台: {platform_type}")
+            raise ValueError(f"不支持的平台: {platform_type}")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
 
         platform_obj = get_platform(platform_id)
         if not platform_obj:
-            raise ValueError("无法获取平台实例")
+            raise ValueError("无法获取平台实例")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
 
         dry_run = config.get('dry_run', True)
 
@@ -227,8 +227,8 @@ def publish_images():
         get_task_queue().add_task(task)
         logger.info(f"[image_publish] 已入队: detail_id={detail_id} platform={platform_obj.platform_name} batch={batch_id}")
         return jsonify({"code": 200, "msg": "发布任务已入队", "data": {"batch_id": batch_id, "detail_id": detail_id}})
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"发布失败: {e}")
+    except Exception as e:
+        logger.exception(f"发布失败: {e}")
         err = str(e)
         from services.publish_history import _update_publish_result
         _update_publish_result(detail_id, TaskStatus.FAILED, now, error_message=err)
@@ -304,8 +304,8 @@ def save_draft():
             draft_id = cursor.lastrowid
             conn.close()
         return jsonify({"code": 200, "msg": "草稿保存成功", "data": {"id": draft_id}})
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"保存草稿失败: {e}")
+    except Exception as e:
+        logger.exception(f"保存草稿失败: {e}")
         return jsonify({"code": 500, "msg": f"保存失败: {e!s}"}), 500
 
 
@@ -407,8 +407,8 @@ def delete_draft(draft_id):
             return jsonify({"code": 404, "msg": "草稿不存在"}), 404
 
         return jsonify({"code": 200, "msg": "草稿已删除"})
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"删除草稿失败: {e}")
+    except Exception as e:
+        logger.exception(f"删除草稿失败: {e}")
         return jsonify({"code": 500, "msg": f"删除失败: {e!s}"}), 500
 
 
@@ -481,7 +481,7 @@ def execute_publish():
     try:
         platform = get_platform(platform_type)
         if not platform:
-            raise ValueError(f"不支持的平台类型: {platform_type}")
+            raise ValueError(f"不支持的平台类型: {platform_type}")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
 
         # 从 materials 表读取 stored_path，再解析本地路径
         from storage import get_storage
@@ -501,7 +501,7 @@ def execute_publish():
         conn.close()
 
         if not image_files:
-            raise ValueError("未找到有效的图片文件")
+            raise ValueError("未找到有效的图片文件")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
 
         publish_kwargs = dict(
             title=title,
@@ -543,8 +543,8 @@ def execute_publish():
         get_task_queue().add_task(task)
         logger.info(f"[image_publish] 已入队: detail_id={detail_id} platform={platform_label} batch={batch_id}")
         return jsonify({"code": 200, "msg": "发布任务已入队", "data": {"batch_id": batch_id, "detail_id": detail_id}})
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"执行发布失败: {e}")
+    except Exception as e:
+        logger.exception(f"执行发布失败: {e}")
         err = str(e)
         from services.publish_history import _update_publish_result
         _update_publish_result(detail_id, TaskStatus.FAILED, now, error_message=err)

@@ -156,7 +156,7 @@ async def _upload_images(page, image_paths: list):
                 except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                     logger.warning("[上传图集] 上传异常: %s - %s", img_name, e)
                 finally:
-                    try:
+                    try:  # noqa: SIM105
                         page.remove_listener("response", handle_upload_response)
                     except Exception:  # noqa: S110, BLE001 -- 文件/资源清理兜底,失败可忽略
                         pass
@@ -322,7 +322,7 @@ async def _set_music(page, music_title: str):
 
         if not found:
             logger.warning("[上传图集] 未找到音乐「%s」,跳过音乐设置", music_title)
-            try:
+            try:  # noqa: SIM105
                 await page.keyboard.press("Escape")
             except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
@@ -336,7 +336,7 @@ async def _set_music(page, music_title: str):
             logger.info("[上传图集] 音乐 modal 已关闭")
         except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
             # 兜底:Esc 强关
-            try:
+            try:  # noqa: SIM105
                 await page.keyboard.press("Escape")
             except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
@@ -479,7 +479,7 @@ async def _wait_for_upload_form(page, timeout_s: int = 14400):
             try:
                 # 上传失败检测
                 if await page.get_by_text("上传失败", exact=True).count() > 0:
-                    raise RuntimeError(
+                    raise RuntimeError(  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
                         "[上传视频] 视频上传失败(页面检测到「上传失败」文本)"
                     )
             except RuntimeError:
@@ -565,8 +565,8 @@ async def _set_description_and_tags(
         #   直接打 `#xxx` 逐字符输入时,联想接口可能拿不到话题词,
         #   下拉一直是默认热门推荐。改用 insert_text(模拟粘贴)一次性
         #   注入 `#话题名`,再输一个空格触发话题成型。
-        for tag in (tags or []):
-            tag = (tag or "").strip().lstrip("#")
+        for raw_tag in (tags or []):
+            tag = (raw_tag or "").strip().lstrip("#")
             if not tag:
                 continue
             try:
@@ -629,7 +629,7 @@ async def _set_description_and_tags(
                 await asyncio.sleep(0.3)
             except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
                 logger.warning("[上传视频] 添加话题 #%s 失败: %s", tag, e)
-                try:
+                try:  # noqa: SIM105
                     await page.keyboard.press("Escape")
                 except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
@@ -742,7 +742,7 @@ async def _set_cover(page, cover_path):
 
         if not uploaded:
             logger.warning("[上传视频] 封面上传所有策略均失败,跳过封面")
-            try:
+            try:  # noqa: SIM105
                 await page.keyboard.press("Escape")
             except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
@@ -886,7 +886,7 @@ async def _set_compilation(page, compilation_name: str):
                 "[上传视频] 未找到匹配的合集「%s」,跳过合集设置",
                 compilation_name,
             )
-            try:
+            try:  # noqa: SIM105
                 await page.keyboard.press("Escape")
             except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
@@ -1113,7 +1113,7 @@ async def _set_schedule_time(page, schedule_time_str: str):
                 await asyncio.sleep(0.5)
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info("[上传视频] 点击 picker 确定失败(可能已关): %s", e)
-            try:
+            try:  # noqa: SIM105
                 await page.keyboard.press("Enter")
             except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass

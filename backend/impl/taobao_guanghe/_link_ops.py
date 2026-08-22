@@ -311,7 +311,7 @@ async def switch_tab(frame, tab: str) -> None:
     if is_active:
         return
     await tab_el.click()
-    try:
+    try:  # noqa: SIM105
         await frame.wait_for_function(
             """(text) => {
                 const tabs = document.querySelectorAll('.next-tabs-tab');
@@ -381,7 +381,7 @@ async def load_more(frame) -> bool:
     """
     more_btn = frame.get_by_text("加载更多", exact=True).first
     if await more_btn.count() > 0:
-        try:
+        try:  # noqa: SIM105
             await more_btn.scroll_into_view_if_needed(timeout=3000)
         except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
             pass

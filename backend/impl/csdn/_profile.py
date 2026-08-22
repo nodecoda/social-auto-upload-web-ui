@@ -25,7 +25,7 @@ async def scrape_csdn_profile(page):
     name = ""
     avatar = ""
     try:
-        try:
+        try:  # noqa: SIM105
             await page.wait_for_load_state("domcontentloaded", timeout=10000)
         except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
             pass

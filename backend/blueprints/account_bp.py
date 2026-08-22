@@ -577,7 +577,7 @@ def import_account_start():
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             # import_cookie 内部已经把 error 推过 queue 了；这里是兜底
             logger.info(f"[importAccount] 未捕获异常: {e}")
-            try:
+            try:  # noqa: SIM105
                 status_queue.put(json.dumps({
                     "status": "error", "step": 0, "msg": str(e),
                 }))

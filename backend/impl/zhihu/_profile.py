@@ -64,11 +64,11 @@ async def scrape_zhihu_profile(page):
 
         # 3. 等待跳转完成（URL 应包含 /people/）
         if navigated:
-            try:
+            try:  # noqa: SIM105
                 await page.wait_for_url("**/people/**", timeout=15000)
             except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
-        try:
+        try:  # noqa: SIM105
             await page.wait_for_load_state("domcontentloaded", timeout=10000)
         except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
             pass
@@ -107,7 +107,7 @@ async def scrape_zhihu_profile(page):
                 '.UserAvatar-inner img, .ProfileHeader-avatar img.Avatar, '
                 '.UserAvatar-inner, img.Avatar'
             ).first
-            try:
+            try:  # noqa: SIM105
                 await avatar_el.wait_for(state="attached", timeout=8000)
             except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass

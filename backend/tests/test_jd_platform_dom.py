@@ -235,7 +235,7 @@ class TestLoginAndCookie:
             ctx.new_page = MagicMock(return_value=page)
             with patch('impl._browser.create_browser_sync', return_value=browser), \
                  patch('impl._browser.create_context_sync', return_value=ctx):
-                try:
+                try:  # noqa: SIM105
                     captured['target']()  # goto 异常 → finally 仍 close,异常外抛
                 except RuntimeError:
                     pass

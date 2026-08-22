@@ -131,8 +131,8 @@ async def _search_compilation_via_browser(cookie_file: str, keyword: str) -> dic
     if not empty_video.exists():
         try:
             _create_minimal_mp4(empty_video)
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error(f"[合集搜索] 创建空视频失败: {e}")
+        except Exception as e:
+            logger.exception(f"[合集搜索] 创建空视频失败: {e}")
             return {"success": False, "error": f"创建空视频失败: {e}"}
 
     browser = await create_browser(headless=True)
@@ -158,8 +158,8 @@ async def _search_compilation_via_browser(cookie_file: str, keyword: str) -> dic
                             f"stat={data.get('stat')}, "
                             f"total={data.get('result', {}).get('total')}"
                         )
-                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                        logger.error(f"[浏览器拦截] 解析响应失败: {e}")
+                    except Exception as e:
+                        logger.exception(f"[浏览器拦截] 解析响应失败: {e}")
 
             page.on("response", handle_response)
 

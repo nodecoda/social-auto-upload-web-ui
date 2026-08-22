@@ -107,8 +107,8 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, count: str =
                         data = await response.json()
                         captured = data
                         logger.info(f"[拦截] 解析成功，musicList 长度: {len((data.get('data') or {}).get('musicList', []))}")
-                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                        logger.error(f"[拦截] 解析失败: {e}")
+                    except Exception as e:
+                        logger.exception(f"[拦截] 解析失败: {e}")
 
             page.on("response", handle_response)
 
@@ -162,8 +162,8 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, count: str =
                 logger.info(f"[步骤4] 父级: <{parent_info['tag']}> class=\"{parent_info['cls']}\"")
                 await parent.click()
                 logger.info("[步骤4] 点击成功!")
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                logger.error(f"[步骤4] 点击失败: {e}")
+            except Exception as e:
+                logger.exception(f"[步骤4] 点击失败: {e}")
                 # fallback: 直接 JS 点击
                 logger.info("[步骤4] 尝试 JS fallback...")
                 await page.evaluate("""
@@ -183,8 +183,8 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, count: str =
             try:
                 await drawer.wait_for(state="visible", timeout=10000)
                 logger.info("[步骤5] 音乐抽屉已出现")
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                logger.error(f"[步骤5] 音乐抽屉未出现: {e}")
+            except Exception as e:
+                logger.exception(f"[步骤5] 音乐抽屉未出现: {e}")
                 # 截图看看当前页面状态
                 shot2 = str(Path(BASE_DIR / "debug_no_drawer.png"))
                 await page.screenshot(path=shot2, full_page=True)
@@ -199,8 +199,8 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, count: str =
             search_input = drawer.locator("input[placeholder='搜索音乐']").first
             try:
                 await search_input.click()
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                logger.error(f"[步骤6] 搜索框点击失败: {e}")
+            except Exception as e:
+                logger.exception(f"[步骤6] 搜索框点击失败: {e}")
                 all_inputs = drawer.locator("input")
                 input_count = await all_inputs.count()
                 logger.info(f"[步骤6] 抽屉内 input 数量: {input_count}")

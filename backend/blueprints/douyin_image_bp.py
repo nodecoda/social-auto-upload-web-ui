@@ -174,8 +174,8 @@ def get_mix_list():
         else:
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"获取合集列表失败: {e}")
+    except Exception as e:
+        logger.exception(f"获取合集列表失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -197,8 +197,8 @@ def get_activity_list():
         else:
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"获取活动列表失败: {e}")
+    except Exception as e:
+        logger.exception(f"获取活动列表失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -222,8 +222,8 @@ def search_hotspot():
         else:
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"搜索热点失败: {e}")
+    except Exception as e:
+        logger.exception(f"搜索热点失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -298,8 +298,8 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
                         data = await response.json()
                         captured_response = data
                         logger.info(f"[浏览器拦截] 响应数据: status_code={data.get('status_code')}, music_count={len(data.get('music', []))}")
-                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                        logger.error(f"[浏览器拦截] 解析响应失败: {e}")
+                    except Exception as e:
+                        logger.exception(f"[浏览器拦截] 解析响应失败: {e}")
 
             page.on("response", handle_response)
 
@@ -477,8 +477,8 @@ def search_poi():
         else:
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"搜索位置失败: {e}")
+    except Exception as e:
+        logger.exception(f"搜索位置失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -623,6 +623,6 @@ def search_medium():
             logger.error(f"[影视演绎搜索] 请求失败: {result.get('error')}")
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"[影视演绎搜索] 异常: {e}")
+    except Exception as e:
+        logger.exception(f"[影视演绎搜索] 异常: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500

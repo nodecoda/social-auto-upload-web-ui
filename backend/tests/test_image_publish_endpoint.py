@@ -139,7 +139,7 @@ class TestImagePublishEndpoint(unittest.TestCase):
         """
         # 准备 materials 表里的一张图片,让 image_files 非空,从而走入队分支
         conn = sqlite3.connect(str(DB_PATH))
-        try:
+        try:  # noqa: SIM105
             conn.execute("ALTER TABLE materials ADD COLUMN stored_path TEXT DEFAULT ''")
         except sqlite3.OperationalError:
             pass  # 本测试类的其它用例可能已加过列

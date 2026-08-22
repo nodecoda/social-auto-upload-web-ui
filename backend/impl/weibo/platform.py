@@ -217,12 +217,12 @@ class WeiboPlatform(WeiboImageOps, BasePlatform):
                 context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
+                try:  # noqa: SIM105
                     asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -253,7 +253,7 @@ class WeiboPlatform(WeiboImageOps, BasePlatform):
             try:
                 # 1. 访问微博首页
                 await page.goto("https://weibo.com/", wait_until="domcontentloaded", timeout=20000)
-                try:
+                try:  # noqa: SIM105
                     await page.wait_for_load_state("networkidle", timeout=8000)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
@@ -269,7 +269,7 @@ class WeiboPlatform(WeiboImageOps, BasePlatform):
                 except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[weibo] 点击头像跳转个人主页失败: {exc}")
 
-                try:
+                try:  # noqa: SIM105
                     await page.wait_for_load_state("domcontentloaded", timeout=10000)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass

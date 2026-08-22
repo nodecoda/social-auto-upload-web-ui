@@ -101,7 +101,7 @@ class GuanghePickerSession:
             await asyncio.sleep(3)
             current_url = self.page.url or ""
             if any(m in current_url for m in _COOKIE_INVALID_MARKERS):
-                raise RuntimeError("cookie 失效,请重新登录淘宝光合")
+                raise RuntimeError("cookie 失效,请重新登录淘宝光合")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
 
             # 找到发布页 iframe
             self.frame = await self._find_publish_frame()
@@ -250,7 +250,7 @@ class GuanghePickerSession:
             obj = getattr(self, attr, None)
             if obj is None:
                 continue
-            try:
+            try:  # noqa: SIM105
                 await obj.close()
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass

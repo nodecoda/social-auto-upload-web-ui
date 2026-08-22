@@ -81,7 +81,7 @@ def _ensure_tables(conn):
         )
         """)
         # 迁移：为旧表添加 type 列
-        try:
+        try:  # noqa: SIM105
             conn.execute('ALTER TABLE drafts ADD COLUMN type TEXT DEFAULT "video"')
         except sqlite3.OperationalError:
             pass  # 列已存在
@@ -324,7 +324,7 @@ def task_stream():
         _sse_subscribers.append(q)
 
     def on_status(task: PublishTask):
-        try:
+        try:  # noqa: SIM105
             q.put_nowait(json.dumps({
                 "id": task.id,
                 "status": task.status,
@@ -743,7 +743,7 @@ def get_settings():
         # 转换数值类型
         for key in ['publishInterval', 'maxConcurrent', 'heartbeatInterval', 'autoSaveInterval']:
             if key in defaults:
-                try:
+                try:  # noqa: SIM105
                     defaults[key] = int(defaults[key])
                 except (ValueError, TypeError):
                     pass
@@ -779,8 +779,8 @@ def update_settings():
 
         # 所有设置统一写入 SQLite（包括 storage / proxyUrl）
         conn = _db_conn()
-        for key, value in data.items():
-            value = json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else str(value)
+        for key, raw_value in data.items():
+            value = json.dumps(raw_value, ensure_ascii=False) if isinstance(raw_value, (dict, list)) else str(raw_value)
             conn.execute(
                 """INSERT OR REPLACE INTO settings (key, value, updated_at)
                    VALUES (?, ?, ?)""",

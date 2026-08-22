@@ -136,14 +136,14 @@ class KuaishouPlatform(BasePlatform):
             logger.info(f"[kuaishou] login error: {exc}")
             status_queue.put('{"status": "0", "error": "' + str(exc) + '"}')
         finally:
-            try:
+            try:  # noqa: SIM105
                 # 释放 context 资源
                 await context.close()
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                try:
+                try:  # noqa: SIM105
                     await self.close_browser(browser)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -180,11 +180,11 @@ class KuaishouPlatform(BasePlatform):
             logger.info(f"[kuaishou] cookie check error: {exc}")
             return False
         finally:
-            try:
+            try:  # noqa: SIM105
                 await context.close()
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
-            try:
+            try:  # noqa: SIM105
                 await self.close_browser(browser)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
@@ -218,7 +218,7 @@ class KuaishouPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            try:
+            try:  # noqa: SIM105
                 await self.close_browser(browser)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
@@ -259,7 +259,7 @@ class KuaishouPlatform(BasePlatform):
                 # 点击右上角用户头像触发 popover
                 trigger = page.locator(".user-info-dpd").first
                 if await trigger.count() > 0:
-                    try:
+                    try:  # noqa: SIM105
                         await trigger.click()
                     except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                         pass
@@ -298,7 +298,7 @@ class KuaishouPlatform(BasePlatform):
                         stats.append({"ICON": icon, "COUNT": count, "NAME": name, "SORT": sort_no})
 
                 # 关闭 popover(点击页面其他位置)
-                try:
+                try:  # noqa: SIM105
                     await page.mouse.click(10, 10)
                 except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
@@ -341,12 +341,12 @@ class KuaishouPlatform(BasePlatform):
                 context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
+                try:  # noqa: SIM105
                     asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -860,11 +860,11 @@ class KuaishouPlatform(BasePlatform):
                 except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(2)
-            try:
+            try:  # noqa: SIM105
                 await context.close()
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
-            try:
+            try:  # noqa: SIM105
                 await self.close_browser(browser, is_close_by_code=True)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
@@ -1087,7 +1087,7 @@ class KuaishouPlatform(BasePlatform):
             await asyncio.sleep(2)
 
             # 8. Wait for modal to close
-            try:
+            try:  # noqa: SIM105
                 await modal.wait_for(state="hidden", timeout=30000)
             except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
@@ -1129,7 +1129,7 @@ class KuaishouPlatform(BasePlatform):
             await confirm_btn.click()
             await asyncio.sleep(2)
 
-            try:
+            try:  # noqa: SIM105
                 await modal.wait_for(state="hidden", timeout=30000)
             except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
@@ -1288,7 +1288,7 @@ class KuaishouPlatform(BasePlatform):
                     author_declaration,
                 )
                 # 点击空白处收起下拉框，避免遮挡后续操作
-                try:
+                try:  # noqa: SIM105
                     await page.keyboard.press("Escape")
                 except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass

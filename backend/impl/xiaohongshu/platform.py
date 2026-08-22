@@ -218,7 +218,7 @@ class XiaohongshuPlatform(BasePlatform):
         保证"登录后同步"和"同步按钮"看到的运营数据完全一致。
         """
         try:
-            try:
+            try:  # noqa: SIM105
                 await page.goto(_XHS_CREATOR_URL, wait_until="networkidle", timeout=30000)
             except Exception:  # noqa: S110, BLE001 -- 页面加载兜底,超时继续后续逻辑
                 pass
@@ -242,12 +242,12 @@ class XiaohongshuPlatform(BasePlatform):
                 context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
+                try:  # noqa: SIM105
                     asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -530,8 +530,8 @@ class XiaohongshuPlatform(BasePlatform):
                     )
                     if result:
                         success_count += 1
-                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                    logger.error("[发布图集] 账号 %s 发布失败: %s", cookie_path, e)
+                except Exception as e:
+                    logger.exception("[发布图集] 账号 %s 发布失败: %s", cookie_path, e)
 
         logger.info("[发布图集] 图集发布完成: %d/%d 成功", success_count, total)
         logger.info("=" * 60)
@@ -718,13 +718,13 @@ async def _publish_single_image(
             await context.storage_state(path=account_file)
             logger.info("[发布] Cookie状态已更新")
             return True
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error("[发布图集] 图集发布出错: %s", e)
+        except Exception as e:
+            logger.exception("[发布图集] 图集发布出错: %s", e)
             return False
         finally:
             await context.close()
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error("[发布图集] 图集发布浏览器错误: %s", e)
+    except Exception as e:
+        logger.exception("[发布图集] 图集发布浏览器错误: %s", e)
         return False
     finally:
         await close_browser(browser, is_close_by_code=True)
@@ -1274,8 +1274,8 @@ async def _upload_images(page, files: list[str]) -> bool:
         )
         return len(uploaded) > 0
 
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error("[上传图集] 图片上传失败: %s", e)
+    except Exception as e:
+        logger.exception("[上传图集] 图片上传失败: %s", e)
         return False
 
 

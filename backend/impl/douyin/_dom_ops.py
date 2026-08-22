@@ -180,8 +180,8 @@ async def _set_schedule_time(page, publish_date):
                     )
             except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
-        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error("[定时发布] 设置定时发布时间失败: %s", exc)
+        except Exception as exc:
+            logger.exception("[定时发布] 设置定时发布时间失败: %s", exc)
 
 
 async def _set_product_link(page, product_link: str, product_title: str):

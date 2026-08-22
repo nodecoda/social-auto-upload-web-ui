@@ -208,12 +208,12 @@ class TiktokPlatform(BasePlatform):
                 context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
+                try:  # noqa: SIM105
                     asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -819,7 +819,7 @@ class TiktokPlatform(BasePlatform):
         # after one click to avoid getting stuck.
         right_arrow = calendar.locator('span.arrow').nth(1)
         if current_month != publish_date.month:
-            try:
+            try:  # noqa: SIM105
                 await right_arrow.click(timeout=2_000)
             except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass

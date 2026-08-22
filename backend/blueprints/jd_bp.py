@@ -101,7 +101,7 @@ def picker_open():
         logger.exception("picker open failed")
         released = pool.release(account_id)
         if released is not None:
-            try:
+            try:  # noqa: SIM105
                 run_picker_async(released.close(), timeout=10)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass  # 清理失败不阻塞错误返回
@@ -186,6 +186,6 @@ def picker_close():
     try:
         run_picker_async(session.close(), timeout=20)
         return _ok({"closed": True})
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"picker close 失败: {e}")
+    except Exception as e:
+        logger.exception(f"picker close 失败: {e}")
         return _err(str(e))

@@ -326,7 +326,7 @@ class WeixinGzhPlatform(WeixinGzhImageOps, BasePlatform):
                 token = self._extract_token(page)
                 home_url = self._build_home_url(token)
                 logger.info("[同步资料] 跳转到首页: %s", home_url)
-                try:
+                try:  # noqa: SIM105
                     await page.goto(home_url, wait_until="domcontentloaded", timeout=30000)
                 except Exception:  # noqa: S110, BLE001 -- 页面加载兜底,超时继续后续逻辑
                     pass
@@ -364,7 +364,7 @@ class WeixinGzhPlatform(WeixinGzhImageOps, BasePlatform):
         """
         try:
             current_url = ""
-            try:
+            try:  # noqa: SIM105
                 current_url = page.url or ""
             except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                 pass
@@ -460,12 +460,12 @@ class WeixinGzhPlatform(WeixinGzhImageOps, BasePlatform):
                 page = context.new_page()
                 page.goto(url)
                 logger.info("[打开创作中心] 创作中心已打开")
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
+                try:  # noqa: SIM105
                     asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass

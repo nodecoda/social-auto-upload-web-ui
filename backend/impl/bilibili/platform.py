@@ -268,16 +268,16 @@ class BilibiliPlatform(BasePlatform):
                 logger.info(f"[bilibili] sync profile failed: {e}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
-            try:
+            try:  # noqa: SIM105
                 await self.close_browser(browser)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
@@ -410,12 +410,12 @@ class BilibiliPlatform(BasePlatform):
                 context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
+                try:  # noqa: SIM105
                     asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -779,7 +779,7 @@ class BilibiliPlatform(BasePlatform):
                 if submitted:
                     logger.info("[上传视频] waiting 10s for processing")
                     await asyncio.sleep(10)
-                    try:
+                    try:  # noqa: SIM105
                         await page.screenshot(
                             path=str(
                                 log_dir / "bilibili_after_submit.png"
@@ -852,7 +852,7 @@ class BilibiliPlatform(BasePlatform):
                 # 检测上传失败
                 fail_text = page.get_by_text("上传失败", exact=True)
                 if await fail_text.count() > 0:
-                    raise RuntimeError("视频上传失败:检测到「上传失败」文案")
+                    raise RuntimeError("视频上传失败:检测到「上传失败」文案")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
                 if i % 60 == 0 and i > 0:  # 每 30 秒打一次日志
                     logger.info(
                         "[上传视频] 仍在上传中... (%.0f 秒)", i * 0.5
@@ -1044,7 +1044,7 @@ class BilibiliPlatform(BasePlatform):
                 # click 后等输入框真正可编辑(比固定 sleep 可靠, 避免焦点未稳定
                 # 就输入导致前几个字符被吞——曾出现"杨氏之子"只输入"杨"或"氏之子")。
                 await current_input.click()
-                try:
+                try:  # noqa: SIM105
                     await current_input.wait_for(state="editable", timeout=3000)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
@@ -1215,7 +1215,7 @@ class BilibiliPlatform(BasePlatform):
                     # dialog 用 page 兜底,后续 confirm 按钮查找走 page
                     dialog = page
                 else:
-                    raise RuntimeError("封面编辑弹窗未出现")
+                    raise RuntimeError("封面编辑弹窗未出现")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
             await asyncio.sleep(1)
             await asyncio.sleep(1)
 
@@ -1294,7 +1294,7 @@ class BilibiliPlatform(BasePlatform):
             logger.info("[设置封面] cover set successfully")
 
         except Exception as exc:
-            try:
+            try:  # noqa: SIM105
                 await page.screenshot(
                     path=str(log_dir / "bilibili_cover_error.png"),
                     full_page=True,
@@ -1373,7 +1373,7 @@ class BilibiliPlatform(BasePlatform):
                 'div.statement-content, '
                 'div[class*="statement-content"]'
             ).first.locator('li.bcc-option')
-            try:
+            try:  # noqa: SIM105
                 await scoped_options.first.wait_for(
                     state="attached", timeout=5000
                 )

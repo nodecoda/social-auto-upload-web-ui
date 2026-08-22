@@ -174,8 +174,14 @@ except ApiTimeoutError as e:
 | D6 | RUF006 asyncio 弱引用 | 3 | 官方 set 持有模式（_browser watchdog/jd/taobao 关闭任务） | ✅ 2026-08-21 |
 | D7 | G003/B023/SIM102/B007 零散 | 6 | 日志拼接改 %s、循环变量绑定、合并 if、未用变量下划线 | ✅ 2026-08-21 |
 | D8 | RUF100 冗余 noqa | 24 | per-file-ignores 覆盖后自动清理（app.py E402 等） | ✅ 2026-08-21 |
+| D9 | SIM105 try-except 可 suppress | 183 | 既有 try/except-pass 风格直观,逐处 noqa 注释 + 规则解禁（RUF100 顺带清 44 处冗余 BLE001） | ✅ 2026-08-22 |
+| D10 | TRY400 裸日志重抛 | 54 | except 块 `logger.error` → `logger.exception`（自动附栈）实际修复 + 规则解禁 | ✅ 2026-08-22 |
+| D11 | PLW2901 循环变量复写 | 6 | 逐处重命名循环变量（`pair`→`chunk`/`raw_name` 等）实际修复 + 规则解禁 | ✅ 2026-08-22 |
+| D12 | TRY002 裸 Exception raise | 8 | 无自定义异常体系、错误消息即失败原因,noqa 注释（5 生产 + 3 测试桩）+ 规则解禁 | ✅ 2026-08-22 |
+| D13 | TRY301 try 内主动 raise | 20 | try 内主动 raise 为语义错误/快速失败,noqa 注释 + 规则解禁 | ✅ 2026-08-22 |
 
 > 规则从 `pyproject.toml` ignore 列表移除 = 该批完成（ruff 重新报错即回归）。
+> **2026-08-22 豁免项**：`E501`（243 处超行宽存量）、`TRY003`（193 处 raise 长消息：错误消息即领域数据/任务失败原因，逐消息建异常类过度设计）、`TRY300`（56 处 try/except 后兜底语句：fallback-after-except 惯用法，移 else 语义不符）——整组保留 ignore 豁免，理由已注释在 pyproject。
 
 ---
 

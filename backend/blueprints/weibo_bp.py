@@ -161,12 +161,12 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
             logger.info(f"[合集列表] 解析完成,共 {len(items)} 个合集")
             return {"success": True, "data": {"list": items, "total": len(items)}}
         finally:
-            try:
+            try:  # noqa: SIM105
                 await context.close()
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
     finally:
-        try:
+        try:  # noqa: SIM105
             await close_browser(browser)
         except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
             pass

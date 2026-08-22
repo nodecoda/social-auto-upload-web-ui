@@ -270,12 +270,12 @@ async def _legacy_link_by_title(frame, type_: str, items: list) -> None:
                 {"name": name, "type": type_},
             )
             if result == "disabled":
-                raise RuntimeError(f"商品不可选(disabled): {name}")
+                raise RuntimeError(f"商品不可选(disabled): {name}")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
             if result in ("clicked", "already"):
                 selected += 1
                 logger.info(f"[关联{type_label}] ({idx}/{len(names)}) ✓ {name} ({result})")
             else:
-                raise RuntimeError(f"未找到匹配: {name} ({result})")
+                raise RuntimeError(f"未找到匹配: {name} ({result})")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
         except RuntimeError:
             raise
         except Exception as e:  # 统一兜底并记录调试日志,防御性编码
@@ -345,11 +345,11 @@ class TaobaoGuanghePlatform(BasePlatform):
                 )
                 success = True
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -370,7 +370,7 @@ class TaobaoGuanghePlatform(BasePlatform):
             page = await context.new_page()
             try:
                 await page.goto(_GUANGHE_HOME_URL)
-                try:
+                try:  # noqa: SIM105
                     await page.wait_for_load_state(
                         "domcontentloaded", timeout=20000
                     )
@@ -387,11 +387,11 @@ class TaobaoGuanghePlatform(BasePlatform):
                 logger.info(f"[校验Cookie] cookie 已失效（url={current_url}）")
                 return False
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -421,7 +421,7 @@ class TaobaoGuanghePlatform(BasePlatform):
             page = await context.new_page()
             try:
                 await page.goto(_GUANGHE_HOME_URL, wait_until="domcontentloaded", timeout=30000)
-                try:
+                try:  # noqa: SIM105
                     await page.wait_for_load_state("domcontentloaded", timeout=20000)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
@@ -444,11 +444,11 @@ class TaobaoGuanghePlatform(BasePlatform):
                 logger.info(f"[taobao_guanghe] 同步资料失败: {e}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -776,7 +776,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                     await self._link_products_or_shops(frame, link_type, link_items)
 
                 # 提交前截图（用 page 截全页含 iframe）
-                try:
+                try:  # noqa: SIM105
                     await page.screenshot(
                         path=str(log_dir / "guanghe_before_submit.png"),
                         full_page=True,
@@ -789,7 +789,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                     # 测试模式:跳过实际点击发布,保留浏览器供人工检查
                     logger.info("[上传视频] 🐛 DRY_RUN=1 跳过点击发布,浏览器保持打开,供人工检查")
                     logger.info("[上传视频] 🐛 当前状态: 标题/描述/标签/封面/声明/定时/关联 已填好")
-                    try:
+                    try:  # noqa: SIM105
                         await page.screenshot(
                             path=str(log_dir / "guanghe_dry_run.png"),
                             full_page=True,
@@ -807,7 +807,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                     submitted = await self._click_publish(frame, page)
                     if submitted:
                         logger.info("[上传视频] ✓ 发布成功")
-                        try:
+                        try:  # noqa: SIM105
                             await page.screenshot(
                                 path=str(log_dir / "guanghe_after_submit.png"),
                                 full_page=True,
@@ -816,7 +816,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                             pass
                     else:
                         logger.info("[上传视频] ✗ 发布失败")
-                        try:
+                        try:  # noqa: SIM105
                             await page.screenshot(
                                 path=str(log_dir / "guanghe_submit_failed.png"),
                                 full_page=True,
@@ -832,12 +832,12 @@ class TaobaoGuanghePlatform(BasePlatform):
                         logger.info("[上传视频] cookie 已更新")
                     except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
-                    try:
+                    try:  # noqa: SIM105
                         await context.close()
                     except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                         pass
         finally:
-            try:
+            try:  # noqa: SIM105
                 await self.close_browser(browser, is_close_by_code=True)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
@@ -1038,7 +1038,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                 # 检查新 tab
                 while new_pages:
                     np = new_pages.pop(0)
-                    try:
+                    try:  # noqa: SIM105
                         await np.wait_for_load_state("domcontentloaded", timeout=15000)
                     except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                         pass
@@ -1183,7 +1183,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                 # 上传失败检测
                 fail = page.locator('text=上传失败')
                 if await fail.count() > 0 and await fail.first.is_visible():
-                    raise RuntimeError("视频上传失败")
+                    raise RuntimeError("视频上传失败")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
 
                 # 封面成功状态：[class*="successStatus"] 内有 img（最可靠完成标志）
                 success_cover = page.locator('[class*="successStatus"] img')
@@ -1403,8 +1403,8 @@ class TaobaoGuanghePlatform(BasePlatform):
         parsed_tags = []
         for t in tags or []:
             if isinstance(t, str):
-                for s in _re.split(r"[,，#]", t):
-                    s = s.strip().lstrip("#").strip()
+                for piece in _re.split(r"[,，#]", t):
+                    s = piece.strip().lstrip("#").strip()
                     if s:
                         parsed_tags.append(s)
 
@@ -1713,12 +1713,12 @@ class TaobaoGuanghePlatform(BasePlatform):
                 context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
+                try:  # noqa: SIM105
                     asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass

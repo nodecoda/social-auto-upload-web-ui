@@ -452,7 +452,7 @@ async def _wait_for_upload_form(page, timeout_s: int = 14400):
             # 2. 上传失败检测
             try:
                 if await page.get_by_text("上传失败", exact=True).count() > 0:
-                    raise RuntimeError(
+                    raise RuntimeError(  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
                         "[发布] 视频上传失败(页面检测到「上传失败」文本)"
                     )
             except RuntimeError:

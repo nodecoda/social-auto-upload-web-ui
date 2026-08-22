@@ -187,7 +187,7 @@ async def _wait_for_video_uploaded(page, timeout_s: int = 14400):
                     }"""
                 )
                 if fail_visible:
-                    raise RuntimeError("[阶段①] 视频转码失败,无法继续")
+                    raise RuntimeError("[阶段①] 视频转码失败,无法继续")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
             except RuntimeError:
                 raise
             except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
@@ -528,7 +528,7 @@ async def _fill_publish_title(page, title: str, max_len: int = 64):
         # 图集版: 找 ProseMirror 覆盖层,press_sequentially 逐字符输入
         pm = page.locator(".title-editor-overlay .ProseMirror").first
         await pm.wait_for(state="visible", timeout=10000)
-        try:
+        try:  # noqa: SIM105
             await pm.click()
         except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
             pass
@@ -1096,7 +1096,7 @@ async def _select_schedule_time(page, hour: str, minute: str):
                 await asyncio.sleep(0.3)
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[阶段②][时间] 关闭面板异常: %s, 尝试 Escape", str(e)[:100])
-            try:
+            try:  # noqa: SIM105
                 await page.keyboard.press("Escape")
             except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass

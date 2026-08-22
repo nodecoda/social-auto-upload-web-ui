@@ -162,7 +162,7 @@ class TestJingmaiScrapeStats(unittest.TestCase):
         page.frames = [page.main_frame, child]
 
         async def _page_wait(selector, timeout=None):
-            raise Exception('main page miss')
+            raise Exception('main page miss')  # noqa: TRY002 -- 测试桩模拟页面失败,非生产异常
 
         async def _child_wait(selector, timeout=None):
             return child
@@ -183,10 +183,10 @@ class TestJingmaiScrapeStats(unittest.TestCase):
         page.frames = [page.main_frame, _FakeFrame()]
 
         async def _page_wait(selector, timeout=None):
-            raise Exception('always miss')
+            raise Exception('always miss')  # noqa: TRY002 -- 测试桩模拟页面失败,非生产异常
 
         async def _child_wait(selector, timeout=None):
-            raise Exception('child miss')
+            raise Exception('child miss')  # noqa: TRY002 -- 测试桩模拟页面失败,非生产异常
 
         page.wait_for_selector = _page_wait
         page.frames[1].wait_for_selector = _child_wait

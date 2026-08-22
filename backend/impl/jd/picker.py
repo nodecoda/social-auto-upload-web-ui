@@ -109,7 +109,7 @@ class JdPickerSession:
         try:
             self.frame = await self._wait_publish_frame(timeout=20)
             logger.info(f"[JdPicker] ✓ iframe={self.frame.url}")
-        except Exception:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
+        except Exception:
             # 失败时 dump 整页状态帮助定位
             page_state = await self.page.evaluate(
                 """() => {
@@ -126,24 +126,24 @@ class JdPickerSession:
                     return out;
                 }"""
             )
-            logger.error(
+            logger.exception(
                 f"[JdPicker] 页面状态 dump: url={page_state.get('url')} "
                 f"title={page_state.get('title')} "
                 f"radio_count={page_state.get('radio_count')} "
                 f"drawer_count={page_state.get('drawer_count')} "
                 f"file_inputs={page_state.get('file_inputs')}"
             )
-            logger.error(
+            logger.exception(
                 f"[JdPicker] 页面可见文本前800字:\n{page_state.get('texts', '')}"
             )
-            logger.error(
+            logger.exception(
                 "[JdPicker] 关键 class:\n%s", "\n".join(page_state.get('classes', []))
             )
 
             # iframe 等待失败时的诊断:遍历所有 frame,确认 iframe 是否存在、
             # URL pattern 是否变了(JD 改路由会让 _wait_publish_frame 匹配不到)。
             all_frames = self.page.frames
-            logger.error(
+            logger.exception(
                 f"[JdPicker] === frame tree dump (共 {len(all_frames)} 个 frame) ==="
             )
             for i, f in enumerate(all_frames):
@@ -157,15 +157,15 @@ class JdPickerSession:
                             text_head: (document.body && document.body.innerText || '').slice(0, 200).replace(/\\s+/g, ' '),
                         })"""
                     )
-                    logger.error(
+                    logger.exception(
                         f"[JdPicker] frame[{i}] url={f_state.get('url')} "
                         f"radio={f_state.get('radio_count')} "
                         f"file_inputs={f_state.get('file_inputs')} "
                         f"addgoods={f_state.get('addgoods_count')} "
                         f"text='{f_state.get('text_head')}'"
                     )
-                except Exception as fe:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                    logger.error(
+                except Exception as fe:
+                    logger.exception(
                         f"[JdPicker] frame[{i}] url={f.url} evaluate 失败: {fe}"
                     )
 

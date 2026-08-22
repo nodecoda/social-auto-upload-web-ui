@@ -231,8 +231,8 @@ class BasePlatform(ABC):
         """
         cookies: list[dict] = []
         expires = time.time() + self._IMPORT_COOKIE_EXPIRES_SECONDS
-        for pair in cookie_str.split(";"):
-            pair = pair.strip()
+        for chunk in cookie_str.split(";"):
+            pair = chunk.strip()
             if not pair or "=" not in pair:
                 continue
             name, _, value = pair.partition("=")
@@ -285,7 +285,7 @@ class BasePlatform(ABC):
             }))
             cookies, origins = self._parse_cookie_to_storage_state(cookie_str)
             if not cookies:
-                raise ValueError("未解析到任何 cookie")
+                raise ValueError("未解析到任何 cookie")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
             _base_logger.info(
                 "[import_cookie] %s 解析到 %d 个 cookie",
                 self.platform_name, len(cookies),
@@ -364,7 +364,7 @@ class BasePlatform(ABC):
         if not name and not avatar and not account_id:
             # cookie 验证失败,清理临时文件
             if cookie_path and cookie_path.exists():
-                try:
+                try:  # noqa: SIM105
                     cookie_path.unlink()
                 except Exception:  # noqa: S110, BLE001 -- 文件/资源清理兜底,失败可忽略
                     pass

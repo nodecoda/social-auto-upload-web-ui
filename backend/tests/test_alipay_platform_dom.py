@@ -181,7 +181,7 @@ class TestLoginAndCookie:
                 side_effect=TimeoutError('container never appeared')
             )
             with patch('impl.alipay.platform.save_login_result', AsyncMock()) as slr:
-                try:
+                try:  # noqa: SIM105
                     _run(p.login('acc-1', Queue()))
                 except TimeoutError:
                     pass

@@ -119,11 +119,11 @@ class JdPlatform(BasePlatform):
                 )
                 success = True
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -156,11 +156,11 @@ class JdPlatform(BasePlatform):
                         return False
                 return True
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await ctx.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -195,11 +195,11 @@ class JdPlatform(BasePlatform):
                 logger.warning(f"sync_profile 失败: {e}")
                 return None
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await ctx.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -219,12 +219,12 @@ class JdPlatform(BasePlatform):
                 ctx = self.create_context_sync(browser, storage_state=str(cookie_path))
                 page = ctx.new_page()
                 page.goto(JD_CREATOR_CENTER_URL, wait_until="domcontentloaded")
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
+                try:  # noqa: SIM105
                     asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -417,7 +417,7 @@ class JdPlatform(BasePlatform):
                         await self._set_cover(tmp_cover or cover_path)
                     finally:
                         if tmp_cover is not None:
-                            try:
+                            try:  # noqa: SIM105
                                 tmp_cover.unlink(missing_ok=True)
                             except Exception:  # noqa: S110, BLE001 -- 文件/资源清理兜底,失败可忽略
                                 pass
@@ -440,7 +440,7 @@ class JdPlatform(BasePlatform):
                     await self._set_schedule_time(publish_date)
 
                 # 提交前截图(用 page 截全页含 iframe)
-                try:
+                try:  # noqa: SIM105
                     await page.screenshot(
                         path=str(log_dir / "jd_before_submit.png"), full_page=True,
                     )
@@ -451,7 +451,7 @@ class JdPlatform(BasePlatform):
                 if _DRY_RUN_PUBLISH:
                     logger.info("[上传视频] 🐛 DRY_RUN 跳过点击发布,浏览器保持打开,供人工检查")
                     logger.info("[上传视频] 🐛 当前状态: 标题/封面/关联挂件/声明/定时 已填好")
-                    try:
+                    try:  # noqa: SIM105
                         await page.screenshot(path=str(log_dir / "jd_dry_run.png"), full_page=True)
                     except Exception:  # noqa: S110, BLE001 -- 调试截图兜底,失败可忽略
                         pass
@@ -464,12 +464,12 @@ class JdPlatform(BasePlatform):
                     await self._click_publish()
                     await self._check_publish_success()
             finally:
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
-            try:
+            try:  # noqa: SIM105
                 await self.close_browser(browser, is_close_by_code=True)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass

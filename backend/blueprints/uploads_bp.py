@@ -293,7 +293,7 @@ def merge_chunks():
                 chunk_file = _chunk_path(upload_id, idx)
                 with open(chunk_file, "rb") as f:
                     shutil.copyfileobj(f, out, length=1024 * 1024)  # 1MB buffer
-    except Exception as e:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
+    except Exception as e:
         final_abs_path.unlink(missing_ok=True)
         conn.execute(
             "UPDATE upload_sessions SET status='failed', error_message=?, updated_at=? WHERE upload_id=?",
@@ -301,7 +301,7 @@ def merge_chunks():
         )
         conn.commit()
         conn.close()
-        logger.error(f"[uploads] merge {upload_id} failed: {e}")
+        logger.exception(f"[uploads] merge {upload_id} failed: {e}")
         return jsonify({"code": 500, "msg": f"合并失败: {e}"}), 500
 
     final_size = final_abs_path.stat().st_size

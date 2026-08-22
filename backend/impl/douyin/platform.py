@@ -197,7 +197,7 @@ class DouyinPlatform(DouyinImageOps, BasePlatform):
             context = await self.create_context(browser, storage_state=cookie_path)
             try:
                 page = await context.new_page()
-                try:
+                try:  # noqa: SIM105
                     await page.goto(
                         "https://creator.douyin.com/",
                         wait_until="domcontentloaded",

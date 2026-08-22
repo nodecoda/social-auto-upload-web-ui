@@ -115,11 +115,11 @@ class JingmaiPlatform(BasePlatform):
                 )
                 success = True
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -140,7 +140,7 @@ class JingmaiPlatform(BasePlatform):
             page = await context.new_page()
             try:
                 await page.goto(_JINGMAI_HOME_URL)
-                try:
+                try:  # noqa: SIM105
                     await page.wait_for_load_state(
                         "domcontentloaded", timeout=20000
                     )
@@ -157,11 +157,11 @@ class JingmaiPlatform(BasePlatform):
                 logger.info(f"[校验Cookie] cookie 已失效（url={current_url}）")
                 return False
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -189,7 +189,7 @@ class JingmaiPlatform(BasePlatform):
             page = await context.new_page()
             try:
                 await page.goto(_JINGMAI_HOME_URL, wait_until="domcontentloaded", timeout=30000)
-                try:
+                try:  # noqa: SIM105
                     await page.wait_for_load_state("domcontentloaded", timeout=20000)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
@@ -215,11 +215,11 @@ class JingmaiPlatform(BasePlatform):
                 logger.info(f"[jingmai] 同步资料失败: {e}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -366,12 +366,12 @@ class JingmaiPlatform(BasePlatform):
                 context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
+                try:  # noqa: SIM105
                     asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
