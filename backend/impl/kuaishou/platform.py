@@ -24,6 +24,7 @@ from .._utils import (
     scrape_user_profile,
 )
 from ..base_platform import BasePlatform
+from ..primitives import get_params, set_schedule
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -547,7 +548,7 @@ class KuaishouPlatform(BasePlatform):
                     )[0]
                     if publish_date != 0:
                         logger.info("[定时发布] 开始设置定时发布...")
-                        await self._set_schedule_time(page, publish_date)
+                        await set_schedule(page, publish_date, get_params("kuaishou", "SCHEDULE"))
                         logger.info("[定时发布] 定时发布设置完成")
 
                 logger.info("[填写完成] 表单填写完成, 模式: %s", "演练(dry_run)" if dry_run else "正式发布")
@@ -826,7 +827,7 @@ class KuaishouPlatform(BasePlatform):
             # ------ Set schedule time ------
             if enable_timer and publish_date and publish_date != 0:
                 logger.info("[定时发布] 开始设置定时发布...")
-                await self._set_schedule_time(page, publish_date)
+                await set_schedule(page, publish_date, get_params("kuaishou", "SCHEDULE"))
                 logger.info("[定时发布] 定时发布设置完成")
 
             # ------ Click publish ------
@@ -1303,24 +1304,3 @@ class KuaishouPlatform(BasePlatform):
     # Helper: set schedule time (ant-radio + ant-picker)
     # ------------------------------------------------------------------
 
-    @staticmethod
-    async def _set_schedule_time(page, publish_date):
-        """Set scheduled publish time via ant-radio and ant-picker."""
-        logger.info("[定时发布] 设置定时发布时间: %s", publish_date)
-        date_str = publish_date.strftime("%Y-%m-%d %H:%M:%S")
-
-        # Select the "scheduled" radio option (second one)
-        await page.locator("label:text('发布时间')").locator(
-            "xpath=following-sibling::div"
-        ).locator(".ant-radio-input").nth(1).click()
-        await asyncio.sleep(1)
-
-        # Open picker and type date
-        await page.locator(
-            'div.ant-picker-input input[placeholder="选择日期时间"]'
-        ).click()
-        await asyncio.sleep(1)
-        # 清空后输入(跨平台:Mac 用 Cmd+A,其他用 Ctrl+A)
-        await clear_and_type(page, date_str)
-        await page.keyboard.press("Enter")
-        await asyncio.sleep(1)

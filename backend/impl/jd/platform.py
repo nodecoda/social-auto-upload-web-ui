@@ -25,6 +25,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
+from ..primitives import get_params, set_schedule
 
 logger = get_channel_logger("jingmai")
 
@@ -437,7 +438,7 @@ class JdPlatform(BasePlatform):
 
                 # 6. 定时发布
                 if publish_date and hasattr(publish_date, "strftime"):
-                    await self._set_schedule_time(publish_date)
+                    await set_schedule(self.page, publish_date, get_params("jd", "SCHEDULE"), frame=self.frame)
 
                 # 提交前截图(用 page 截全页含 iframe)
                 try:  # noqa: SIM105
@@ -759,62 +760,6 @@ class JdPlatform(BasePlatform):
         await target.click()
         await asyncio.sleep(0.5)
 
-    async def _set_schedule_time(self, schedule_time):
-        """设定时发布时间。
-
-        京东定时发布:
-        1. 切到 .pro-radio-group 内 value='2' 的 radio('定时发布')
-        2. 点 input[title](DatePicker 输入框),清空,fill 时间
-        3. 在弹出的 DatePicker 中点确定按钮
-
-        schedule_time 是 datetime 对象(parse_schedule_time 返回),也兼容 str。
-        """
-        from datetime import datetime
-
-        # 京东 DatePicker 接受 'YYYY-MM-DD HH:mm' 格式
-        if isinstance(schedule_time, datetime):
-            formatted = schedule_time.strftime("%Y-%m-%d %H:%M")
-        else:
-            try:
-                formatted = datetime.fromisoformat(str(schedule_time)).strftime("%Y-%m-%d %H:%M")
-            except ValueError:
-                formatted = str(schedule_time)
-
-        # 1. 切到定时发布 radio
-        schedule_radio = await self.frame.wait_for_selector(
-            ".jd-radio-wrapper input[value='2']",
-            timeout=10_000,
-        )
-        await schedule_radio.click()
-        await asyncio.sleep(0.5)
-
-        # 2. 等 DatePicker 输入框出现
-        date_input = await self.frame.wait_for_selector(
-            ".pro-radio-extra input[placeholder='请选择日期'], .pro-radio-extra input",
-            timeout=10_000,
-        )
-        await date_input.click()
-        await asyncio.sleep(0.3)
-        await date_input.fill("")
-        await asyncio.sleep(0.3)
-        await date_input.fill(formatted)
-        await asyncio.sleep(0.5)
-
-        # 3. 等 DatePicker 弹层(包含"确定"按钮)
-        await self.frame.wait_for_selector(
-            ".jd-picker-ok",
-            timeout=10_000,
-            state="visible",
-        )
-
-        # 4. 点确定按钮
-        ok_btn = await self.frame.query_selector(".jd-picker-ok .jd-btn-primary")
-        if not ok_btn:
-            ok_btn = await self.frame.query_selector(".jd-picker-ok button")
-        if not ok_btn:
-            raise RuntimeError("DatePicker 确定按钮未找到")
-        await ok_btn.click()
-        await asyncio.sleep(1)
 
     # ---------- 发布 ----------
 

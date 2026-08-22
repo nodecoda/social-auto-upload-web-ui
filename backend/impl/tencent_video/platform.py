@@ -18,6 +18,7 @@ from util._logger import bind_account_name, get_channel_logger
 from .._browser import close_browser
 from .._utils import clear_and_type, get_account_name_by_cookie_file, parse_schedule_time, save_login_result
 from ..base_platform import BasePlatform
+from ..primitives import get_params, set_schedule
 
 logger = get_channel_logger("tencent_video")
 
@@ -597,7 +598,7 @@ class TencentVideoPlatform(BasePlatform):
 
                 # Step 6: Handle scheduled publishing
                 if enableTimer and publish_date != 0:
-                    await self._set_schedule_time(page, publish_date)
+                    await set_schedule(page, publish_date, get_params("tencent_video", "SCHEDULE"))
 
                 # Step 7: Click publish
                 await self._click_publish(page)
@@ -850,76 +851,6 @@ class TencentVideoPlatform(BasePlatform):
                     decl, e,
                 )
 
-    @staticmethod
-    async def _set_schedule_time(page, publish_date):
-        """Enable scheduled publishing and set the date/time."""
-        logger.info("[定时发布] Setting schedule time: %s", publish_date)
-        try:
-            # Find the toggle switch - check if already enabled
-            switch = page.locator('button[role="switch"]').first
-            if await switch.count() > 0:
-                is_checked = await switch.get_attribute("aria-checked")
-                if is_checked != "true":
-                    await switch.click()
-                    logger.info("[定时发布] Scheduled publish toggled ON")
-                    await asyncio.sleep(1)
-
-            # Click the datetime trigger to open the picker
-            datetime_trigger = page.locator(
-                'div[class*="dateTimeSelect"]'
-            ).first
-            if await datetime_trigger.count() == 0:
-                logger.warning("[定时发布] Datetime trigger not found")
-                return
-
-            await datetime_trigger.click()
-            await asyncio.sleep(1)
-
-            # Wait for the popup to appear
-            popup = page.locator('div[class*="popupWrap"]').first
-            if await popup.count() == 0:
-                logger.warning("[定时发布] Datetime popup not found")
-                return
-
-            # Format date components as they appear in the popup
-            date_str = publish_date.strftime("%Y-%m-%d")
-            hour_str = f"{publish_date.hour}时"
-            minute_str = f"{publish_date.minute}分"
-
-            # Select date in the first list
-            date_item = popup.locator(
-                f'div[class*="itemWrap"]:has-text("{date_str}")'
-            ).first
-            if await date_item.count() > 0:
-                await date_item.click()
-                await asyncio.sleep(0.3)
-
-            # Select hour in the second list
-            hour_item = popup.locator(
-                f'div[class*="itemWrap"]:has-text("{hour_str}")'
-            ).first
-            if await hour_item.count() > 0:
-                await hour_item.click()
-                await asyncio.sleep(0.3)
-
-            # Select minute in the third list
-            minute_item = popup.locator(
-                f'div[class*="itemWrap"]:has-text("{minute_str}")'
-            ).first
-            if await minute_item.count() > 0:
-                await minute_item.click()
-                await asyncio.sleep(0.3)
-
-            # Click "确定" (confirm) button in the popup footer
-            confirm_btn = popup.locator('button:has-text("确定")').first
-            if await confirm_btn.count() > 0:
-                await confirm_btn.click()
-                logger.info("[定时发布] Schedule time confirmed: %s", publish_date)
-                await asyncio.sleep(1)
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.warning(
-                "Schedule time setup failed (non-blocking): %s", e
-            )
 
     @staticmethod
     async def _click_publish(page):

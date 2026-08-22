@@ -20,6 +20,7 @@ from .._utils import (
     scrape_user_profile,
 )
 from ..base_platform import BasePlatform
+from ..primitives import get_params, set_schedule
 
 logger = get_channel_logger("xiaohongshu")
 
@@ -688,7 +689,7 @@ async def _publish_single_image(
             is_scheduled = enableTimer and publish_date and publish_date != 0
             if is_scheduled:
                 logger.info("[定时发布] 开始设置定时发布...")
-                await _set_schedule_time(page, publish_date)
+                await set_schedule(page, publish_date, get_params("xiaohongshu", "SCHEDULE"))
                 logger.info("[定时发布] 定时发布设置完成")
 
             # Wait for publish button to hydrate
@@ -868,7 +869,7 @@ async def _upload_video_content(
     # --- Set schedule time ---
     if publish_strategy == _PUBLISH_STRATEGY_SCHEDULED and publish_date != 0:
         logger.info("[定时发布] 开始设置定时发布...")
-        await _set_schedule_time(page, publish_date)
+        await set_schedule(page, publish_date, get_params("xiaohongshu", "SCHEDULE"))
         logger.info("[定时发布] 定时发布设置完成")
 
     # --- Set AI content declaration ---
@@ -1331,23 +1332,6 @@ async def _set_collection(page, collection_id: str, collection_name: str) -> Non
         await asyncio.sleep(1)
     except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
         logger.warning("[设置合集] 合集设置失败(非致命): %s", e)
-
-
-async def _set_schedule_time(page, publish_date) -> None:
-    """Enable timed publishing and set the target date/time."""
-    logger.info("[定时发布] 设置定时发布时间: %s", publish_date)
-    await (
-        page.locator(".custom-switch-card")
-        .filter(has_text="定时发布")
-        .locator(".d-switch")
-        .click()
-    )
-    await asyncio.sleep(1)
-    date_str = publish_date.strftime("%Y-%m-%d %H:%M")
-    time_input = page.locator(".d-datepicker-input-filter input.d-text")
-    await time_input.fill(str(date_str))
-    await asyncio.sleep(1)
-
 
 async def _set_content_declaration(
     page,

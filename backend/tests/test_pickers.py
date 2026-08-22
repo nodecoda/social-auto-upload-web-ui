@@ -27,6 +27,43 @@ def _run(coro):
     return asyncio.run(coro)
 
 
+def _patch_loop_time():
+    """打桩当前 running loop 的 time()（get_running_loop 是 C 函数无法直接 patch）。
+
+    背景：_find_publish_frame 用 asyncio.get_running_loop().time() 算 20s deadline；
+    旧测试 patch 了 get_event_loop（死代码），while 在真实时间下紧循环空转
+    （asyncio.sleep 已 mock 为即时返回），20s 内 mock 分配爆炸触发 OOM
+    （本机 3.7GB 内存，曾拖垮整机）。本打桩：前 WINDOW 次调用返回真实时间
+    （deadline 与首轮 while 检查都落在窗口内，保证至少扫一遍 frame），之后
+    返回 t0+1000 使 while 立即超时退出。asyncio 内部对 time() 的调用不受影响
+    （返回偏移值不影响事件循环的相对时序）。
+    """
+    from contextlib import asynccontextmanager
+
+    WINDOW = 200
+    calls = {"n": 0}
+
+    @asynccontextmanager
+    async def _ctx():
+        loop = asyncio.get_running_loop()
+        orig_time = loop.time
+        t0 = orig_time()
+
+        def _time():
+            calls["n"] += 1
+            if calls["n"] <= WINDOW:
+                return t0
+            return t0 + 1000
+
+        loop.time = _time
+        try:
+            yield
+        finally:
+            loop.time = orig_time
+
+    return _ctx()
+
+
 def _fake_db_conn(row):
     conn = MagicMock()
     cur = conn.cursor.return_value
@@ -611,11 +648,11 @@ class TestGuangheSession:
         page.main_frame = MagicMock()
         page.frames = [page.main_frame, frame]
         s.page = page
-        fake_loop = MagicMock()
-        fake_loop.time.side_effect = [0, 0]  # deadline + 首轮检查即命中
-        with patch('asyncio.get_event_loop', return_value=fake_loop), \
-             patch('asyncio.sleep', AsyncMock()):
-            assert _run(s._find_publish_frame()) is frame
+        async def _scenario():
+            with patch('asyncio.sleep', AsyncMock()):  # 紧循环不真实等待
+                async with _patch_loop_time():  # deadline + 首轮检查即命中
+                    return await s._find_publish_frame()
+        assert _run(_scenario()) is frame
 
     def test_find_publish_frame_timeout_returns_main(self):
         s = GuanghePickerSession('sid', '/cookies/x.json')
@@ -624,11 +661,11 @@ class TestGuangheSession:
         page.frames = [page.main_frame]
         page.main_frame.locator.return_value.count = AsyncMock(return_value=0)
         s.page = page
-        fake_loop = MagicMock()
-        fake_loop.time.side_effect = [0, 0, 100]  # deadline + 首轮进入 + 二轮超时退出
-        with patch('asyncio.get_event_loop', return_value=fake_loop), \
-             patch('asyncio.sleep', AsyncMock()):
-            assert _run(s._find_publish_frame()) is page.main_frame
+        async def _scenario():
+            with patch('asyncio.sleep', AsyncMock()):  # 紧循环不真实等待
+                async with _patch_loop_time():  # 首轮进入扫描，超时后退出
+                    return await s._find_publish_frame()
+        assert _run(_scenario()) is page.main_frame
 
     def test_find_publish_frame_locator_exception_falls_back(self):
         """非 main frame 的 locator.count 异常 → 跳过并继续,超时兜底返回 main_frame。"""
@@ -640,11 +677,11 @@ class TestGuangheSession:
         bad.locator.return_value.count = AsyncMock(side_effect=RuntimeError('boom'))
         page.frames = [page.main_frame, bad]
         s.page = page
-        fake_loop = MagicMock()
-        fake_loop.time.side_effect = [0, 0, 100]  # deadline + 首轮进入 + 二轮超时退出
-        with patch('asyncio.get_event_loop', return_value=fake_loop), \
-             patch('asyncio.sleep', AsyncMock()):
-            assert _run(s._find_publish_frame()) is page.main_frame
+        async def _scenario():
+            with patch('asyncio.sleep', AsyncMock()):  # 紧循环不真实等待
+                async with _patch_loop_time():  # 首轮进入扫描，超时后退出
+                    return await s._find_publish_frame()
+        assert _run(_scenario()) is page.main_frame
 
     def test_scrape_delegates(self):
         s = GuanghePickerSession('sid', '/cookies/x.json')

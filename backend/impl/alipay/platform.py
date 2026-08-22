@@ -40,8 +40,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
-from ..primitives import get_params, parse_publish_dt
-from ..primitives import set_schedule as _primitives_set_schedule
+from ..primitives import get_params, parse_publish_dt, set_schedule
 
 # A8 拆分后模块级函数 re-export, 兼容 tests/test_alipay_platform_dom.py 导入
 from ._dom_ops import (
@@ -63,18 +62,6 @@ from ._image_ops import AlipayImageOps
 from ._profile import scrape_alipay_profile
 
 __all__ = ["_parse_schedule_dt"]
-
-
-async def _set_schedule_time(page, schedule_time_str: str):
-    """设置定时发布（委托原语库 set_schedule，参数来自 alipay 参数表）。
-
-    与原实现行为等价：解析失败/切换失败均非致命跳过；antd5 picker 输入框
-    直接 fill 文本 + 点「确定」（找不到则 Enter 兜底）。
-    """
-    await _primitives_set_schedule(
-        page, schedule_time_str, get_params("alipay", "SCHEDULE")
-    )
-
 
 # 解析器收编至原语库 parse_publish_dt，此处 re-export 保持向后兼容
 _parse_schedule_dt = parse_publish_dt
@@ -109,7 +96,6 @@ class AlipayPlatform(AlipayImageOps, BasePlatform):
     _set_compilation = staticmethod(_set_compilation)
     _set_author_statement = staticmethod(_set_author_statement)
     _set_reprint_url = staticmethod(_set_reprint_url)
-    _set_schedule_time = staticmethod(_set_schedule_time)
     _click_publish = staticmethod(_click_publish)
     _wait_for_publish_success = staticmethod(_wait_for_publish_success)
 
@@ -587,7 +573,7 @@ class AlipayPlatform(AlipayImageOps, BasePlatform):
 
                 # 8. 定时发布(可选)
                 if enable_timer and schedule_time_str:
-                    await self._set_schedule_time(page, schedule_time_str)
+                    await set_schedule(page, schedule_time_str, get_params("alipay", "SCHEDULE"))
 
                 # 9. 点击"确认发布"
                 await self._click_publish(page)

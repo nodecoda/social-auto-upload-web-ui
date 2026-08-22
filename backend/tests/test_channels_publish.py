@@ -20,7 +20,7 @@ _HELPERS = [
     '_upload_video_file', '_fill_description', '_fill_title_and_tags',
     '_apply_collection', '_apply_location', '_apply_activity',
     '_apply_original_statement', '_apply_mark_tag', '_wait_for_upload_complete',
-    '_set_thumbnail', '_set_schedule_time', '_set_short_title', '_submit_publish',
+    '_set_thumbnail', 'set_schedule', '_set_short_title', '_submit_publish',
 ]
 
 
@@ -123,20 +123,20 @@ class TestPublishVideoOrchestration:
         assert set_thumb.args[1:] == ('/legacy.png', '/l.png', '/p.png')
 
     def test_schedule_time_conditional(self):
-        """enableTimer + publish_date != 0 → 调 _set_schedule_time; immediate → 不调。"""
+        """enableTimer + publish_date != 0 → 调原语 set_schedule; immediate → 不调。"""
         inst = _make_platform()
         _, mocks, _ = _run_publish(
             inst, title='T', files=['/v.mp4'], account_file=['a.json'],
             enableTimer=True, schedule_time_str='2026-08-21 10:00',
         )
-        assert mocks['_set_schedule_time'].await_count == 1
-        assert mocks['_set_schedule_time'].await_args.args[1] == datetime(
+        assert mocks['set_schedule'].await_count == 1
+        assert mocks['set_schedule'].await_args.args[1] == datetime(
             2026, 8, 21, 10, 0, tzinfo=ZoneInfo('Asia/Shanghai'))
 
     def test_no_schedule_no_timer_call(self):
         inst = _make_platform()
         _, mocks, _ = _run_publish(inst, title='T', files=['/v.mp4'], account_file=['a.json'])
-        assert mocks['_set_schedule_time'].await_count == 0
+        assert mocks['set_schedule'].await_count == 0
 
     def test_submit_publish_draft_flag(self):
         inst = _make_platform()
@@ -166,7 +166,7 @@ class TestPublishVideoOrchestration:
              patch('impl.channels.platform._apply_mark_tag', AsyncMock()), \
              patch('impl.channels.platform._wait_for_upload_complete', AsyncMock()), \
              patch('impl.channels.platform._set_thumbnail', AsyncMock()), \
-             patch('impl.channels.platform._set_schedule_time', AsyncMock()), \
+             patch('impl.channels.platform.set_schedule', AsyncMock()), \
              patch('impl.channels.platform._set_short_title', AsyncMock()), \
              patch('impl.channels.platform._submit_publish', AsyncMock()), \
              patch('impl.channels.platform.parse_schedule_time', MagicMock(return_value=[0])), \

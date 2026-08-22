@@ -24,6 +24,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
+from ..primitives import get_params, set_schedule
 from . import _link_ops
 from ._profile import scrape_taobao_guanghe_profile
 
@@ -769,7 +770,7 @@ class TaobaoGuanghePlatform(BasePlatform):
                 # 8. 定时发布（可选）
                 import datetime as _dt_mod
                 if publish_date and isinstance(publish_date, _dt_mod.datetime):
-                    await self._set_schedule_time(frame, publish_date)
+                    await set_schedule(frame, publish_date, get_params("taobao_guanghe", "SCHEDULE"))
 
                 # 8.5 关联商品/店铺(可选,最多 6 个)
                 if link_type in ("product", "shop") and link_items:
@@ -1472,165 +1473,6 @@ class TaobaoGuanghePlatform(BasePlatform):
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[创作者声明] 选择失败（非致命）: {e}")
 
-    @staticmethod
-    async def _set_schedule_time(page, publish_date):
-        """定时发布：点定时 radio → 选年月日时分 → 确定。
-
-        光合用 Next DatePicker（#date-picker），弹出日历（.next-calendar-cell）
-        + 时间选择器（.next-time-picker-menu-item）。
-        """
-        import datetime as _dt
-
-        if not publish_date or not isinstance(publish_date, _dt.datetime):
-            return
-
-        logger.info(f"[定时发布] 设置时间: {publish_date}")
-        try:
-            # 1. 启用「定时发布」radio
-            # 光合 DOM 结构：<label class="next-radio-wrapper">radio</label><span>定时发布</span>
-            # radio 和文字是兄弟节点。文字 span 不带 click 事件，必须点 label.radio-wrapper。
-            # 用 JS 精确定位：找文本为"定时发布"的 span，点它的前一个兄弟 label。
-            schedule_radio_clicked = False
-            try:
-                schedule_radio_clicked = await page.evaluate(
-                    """() => {
-                        // 找所有含"定时发布"文本的 span
-                        const spans = document.querySelectorAll('span');
-                        for (const sp of spans) {
-                            if ((sp.textContent || '').trim() === '定时发布') {
-                                // 前一个兄弟是 label.next-radio-wrapper
-                                let prev = sp.previousElementSibling;
-                                if (prev && prev.classList.contains('next-radio-wrapper')) {
-                                    prev.click();
-                                    return true;
-                                }
-                                // 兜底：父容器内的 radio-wrapper
-                                const parent = sp.parentElement;
-                                if (parent) {
-                                    const radio = parent.querySelector('.next-radio-wrapper');
-                                    if (radio) { radio.click(); return true; }
-                                }
-                            }
-                        }
-                        return false;
-                    }"""
-                )
-                if schedule_radio_clicked:
-                    logger.info("[定时发布] ✓ 已通过 JS 点击 radio（定时发布）")
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info(f"[定时发布] JS 点击 radio 失败: {e}")
-
-            if not schedule_radio_clicked:
-                # 兜底：直接对 radio input 派发 click
-                try:
-                    await page.evaluate(
-                        """() => {
-                            const inputs = document.querySelectorAll('#date-picker');
-                            // date-picker 前面的 radio input
-                            const radios = document.querySelectorAll('input[type="radio"]');
-                            for (const r of radios) {
-                                const wrap = r.closest('.next-radio-wrapper');
-                                const parent = wrap ? wrap.parentElement : null;
-                                if (parent && parent.textContent.includes('定时发布')) {
-                                    wrap.click();
-                                    return true;
-                                }
-                            }
-                            return false;
-                        }"""
-                    )
-                    schedule_radio_clicked = True
-                    logger.info("[定时发布] ✓ 兜底 radio 点击已执行")
-                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                    logger.info(f"[定时发布] 兜底 radio 点击失败: {e}")
-
-            if not schedule_radio_clicked:
-                logger.info("[定时发布] ✗ 无法启用定时发布 radio")
-                return
-
-            await asyncio.sleep(1)
-
-            # 确认日期选择器已启用（disabled 属性消失）
-            try:
-                await page.wait_for_function(
-                    "() => { const el = document.querySelector('#date-picker input'); "
-                    "return el && !el.disabled; }",
-                    timeout=8000,
-                )
-                logger.info("[定时发布] ✓ 日期选择器已启用")
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info(f"[定时发布] 日期选择器仍 disabled: {e}")
-
-            # 2. 点日期选择输入框（force=True 绕过 disabled 检查以防万一）
-            date_input = page.locator('#date-picker input').first
-            await date_input.wait_for(state="visible", timeout=10000)
-            await date_input.click(force=True)
-            await asyncio.sleep(1)
-
-            # 3. 选年月日（点击对应 calendar cell）
-            date_str = publish_date.strftime("%Y/%m/%d")
-            try:
-                # 先点年月日输入框，再选日历
-                ymd_input = page.locator(
-                    '.next-date-picker-panel-input input[placeholder="YYYY/MM/DD"]'
-                ).first
-                if await ymd_input.count() > 0:
-                    await ymd_input.click()
-                    await asyncio.sleep(0.5)
-            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
-                pass
-
-            # 直接用 JS 把日期填入并触发选择（日历 cell 用 title 匹配）
-            target_cell = page.locator(
-                f'.next-calendar-cell[title="{date_str}"]'
-            ).first
-            try:
-                await target_cell.wait_for(state="visible", timeout=8000)
-                await target_cell.click()
-                logger.info(f"[定时发布] ✓ 已选日期 {date_str}")
-                await asyncio.sleep(1)
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info(f"[定时发布] 日历选日失败: {e}")
-
-            # 4. 选时分
-            try:
-                hms_input = page.locator(
-                    '.next-date-picker-panel-input input[placeholder="HH:mm"]'
-                ).first
-                if await hms_input.count() > 0:
-                    await hms_input.click()
-                    await asyncio.sleep(1)
-                    hour_str = str(publish_date.hour)
-                    minute_str = str(publish_date.minute)
-                    # 选时
-                    hour_item = page.locator(
-                        f'.next-time-picker-menu-hour .next-time-picker-menu-item[title="{hour_str}"]'
-                    ).first
-                    if await hour_item.count() > 0:
-                        await hour_item.click()
-                        await asyncio.sleep(0.5)
-                    # 选分
-                    minute_item = page.locator(
-                        f'.next-time-picker-menu-minute .next-time-picker-menu-item[title="{minute_str}"]'
-                    ).first
-                    if await minute_item.count() > 0:
-                        await minute_item.click()
-                        await asyncio.sleep(0.5)
-                    logger.info(f"[定时发布] ✓ 已选时间 {hour_str}:{minute_str}")
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info(f"[定时发布] 时分选择异常: {e}")
-
-            # 5. 点确定
-            try:
-                ok_btn = page.locator('.next-date-picker-panel button:has-text("确定"), .next-btn-primary:has-text("确定")').first
-                if await ok_btn.count() > 0:
-                    await ok_btn.click()
-                    logger.info("[定时发布] ✓ 已确认时间")
-                    await asyncio.sleep(1)
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info(f"[定时发布] 确定按钮异常: {e}")
-        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-            logger.info(f"[定时发布] 设置失败（非致命）: {exc}")
 
     @staticmethod
     async def _link_products_or_shops(frame, link_type: str, items: list) -> None:
