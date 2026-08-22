@@ -101,7 +101,7 @@ def test_image_batch_publish_draft_not_found(tmp_path, monkeypatch):
 
 
 def test_image_batch_publish_empty(tmp_path, monkeypatch):
-    monkeypatch.setattr('app._get_db_path', lambda: None)
+    monkeypatch.setattr('app._get_db_path', lambda: tmp_path / 'missing-empty.db')
     monkeypatch.setattr('app._ensure_db', lambda: None)
     from app import app
     client = app.test_client()

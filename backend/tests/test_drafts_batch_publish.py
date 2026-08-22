@@ -334,7 +334,7 @@ def test_batch_publish_wrong_type(tmp_path, monkeypatch):
 
 def test_batch_publish_too_many(tmp_path, monkeypatch):
     """>30 个 → 400。"""
-    monkeypatch.setattr('app._get_db_path', lambda: None)
+    monkeypatch.setattr('app._get_db_path', lambda: tmp_path / 'missing-empty.db')
     monkeypatch.setattr('app._ensure_db', lambda: None)
     from app import app
     client = app.test_client()
@@ -344,7 +344,7 @@ def test_batch_publish_too_many(tmp_path, monkeypatch):
 
 def test_batch_publish_empty(tmp_path, monkeypatch):
     """空列表 → 400。"""
-    monkeypatch.setattr('app._get_db_path', lambda: None)
+    monkeypatch.setattr('app._get_db_path', lambda: tmp_path / 'missing-empty.db')
     monkeypatch.setattr('app._ensure_db', lambda: None)
     from app import app
     client = app.test_client()
