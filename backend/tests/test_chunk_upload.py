@@ -5,6 +5,7 @@ import sqlite3
 import sys
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -71,6 +72,7 @@ def _make_zip_bytes(size_mb: int) -> bytes:
 
 
 class TestChunkUpload(unittest.TestCase):
+    app: Any
     @classmethod
     def setUpClass(cls):
         _setup()

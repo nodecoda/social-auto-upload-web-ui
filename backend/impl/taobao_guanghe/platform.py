@@ -72,7 +72,7 @@ _CLAIM_OPTIONS = [
 
 def _group_by_trace(items: list) -> list:
     """按 trace_signature 分组,返回 [(trace, [item, ...]), ...]。"""
-    groups = {}
+    groups: dict[tuple, dict] = {}
     order = []
     for it in items:
         tr = it.get("trace") or {}

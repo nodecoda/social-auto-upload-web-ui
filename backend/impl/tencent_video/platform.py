@@ -11,6 +11,7 @@ import os
 import threading
 from pathlib import Path
 from queue import Queue
+from typing import Any
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -202,7 +203,7 @@ class TencentVideoPlatform(BasePlatform):
         Returns:
             list[dict]: 按 SORT 排序的运营数据列表
         """
-        stats = []
+        stats: list[dict[str, Any]] = []
 # 用 data-name 属性作为索引(比 class 稳定,class 带 CSS modules hash)
         # label_map: data-name 值 -> (ICON, SORT, 标准化 NAME)
         # SORT 1-3 是卡片显示的优先项(粉丝/总点赞/总评论);4-8 进悬浮窗

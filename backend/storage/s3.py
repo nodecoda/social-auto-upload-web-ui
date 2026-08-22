@@ -56,7 +56,7 @@ class S3Storage(StorageBackend):
                     # 一次性读完（boto3 罕见调用）
                     return b''.join(self._it)
                 try:
-                    return next(self._it)
+                    return next(iter(self._it))
                 except StopIteration:
                     return b''
             def close(self) -> None:

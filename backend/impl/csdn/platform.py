@@ -712,7 +712,7 @@ class CsdnPlatform(BasePlatform):
         """
         import re as _re
 
-        parsed_tags = []
+        parsed_tags: list = []
         for t in tags or []:
             if isinstance(t, str):
                 parsed_tags.extend(

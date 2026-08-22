@@ -11,6 +11,7 @@ import re
 import threading
 from pathlib import Path
 from queue import Queue
+from typing import Any
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -302,7 +303,7 @@ class BilibiliPlatform(BasePlatform):
             Returns:
                 list[dict]: 按 SORT 排序的运营数据列表
             """
-            stats = []
+            stats: list[dict[str, Any]] = []
             # label_map: B 站页面上的中文名 -> (ICON, SORT, 标准化 NAME)
             # 8 项全部写入 stats;卡片只展示前 3 项(粉丝/点赞/收藏),
             # 鼠标悬停"更多"占位时通过悬浮窗展示全部 8 项。
@@ -938,7 +939,7 @@ class BilibiliPlatform(BasePlatform):
             return
 
         # Parse tags: support "#tag1 #tag2" or "tag1,tag2" or mixed
-        parsed = []
+        parsed: list = []
         for t in tags:
             if isinstance(t, str) and t.strip():
                 parsed.extend(

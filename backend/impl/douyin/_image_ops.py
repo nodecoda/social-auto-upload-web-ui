@@ -6,6 +6,7 @@
 """
 import asyncio
 from pathlib import Path
+from typing import Any
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -16,6 +17,19 @@ from ..primitives import get_params, set_schedule
 logger = get_channel_logger("douyin")
 
 class DouyinImageOps:
+    # A8 拆分: 下列成员由宿主平台类绑定(_dom_ops staticmethod)或
+    # BasePlatform 提供,经 MRO 运行时可达;此处仅作 mypy 类型声明(Any 放宽),
+    # 不产生运行时属性(纯注解)。
+    _select_music: Any
+    _set_declaration: Any
+    _set_hotspot: Any
+    _set_image_cover: Any
+    _set_image_mix: Any
+    _set_tag: Any
+    close_browser: Any
+    create_browser: Any
+    create_context: Any
+
 
     async def publish_image(self, **kwargs) -> bool:
             """Publish an image note to Douyin via CloakBrowser.

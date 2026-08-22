@@ -12,6 +12,7 @@ import threading
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from conf import BASE_DIR
@@ -182,7 +183,7 @@ class BaijiahaoPlatform(BasePlatform):
         Returns:
             list[dict]: 按 SORT 排序的运营数据列表
         """
-        stats = []
+        stats: list[dict[str, Any]] = []
         # label_map: 百家号页面上的中文指标名 -> (ICON, SORT, 标准化 NAME)
         # SORT 1-3 是卡片显示的优先项(粉丝/播放量/搜索量);4-6 进悬浮窗
         label_map = {

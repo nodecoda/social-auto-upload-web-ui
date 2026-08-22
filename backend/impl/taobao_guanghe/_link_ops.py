@@ -484,7 +484,7 @@ async def locate_and_check(frame, type_: str, target_ids: set) -> dict:
     items, _ = await scrape(frame, type_)
     found = {str(it.get("id", "")): it for it in items}
 
-    result = {"checked": [], "already": [], "disabled": [], "missing": []}
+    result: dict[str, list] = {"checked": [], "already": [], "disabled": [], "missing": []}
     for tid in target_ids:
         tid_str = str(tid)
         item = found.get(tid_str)

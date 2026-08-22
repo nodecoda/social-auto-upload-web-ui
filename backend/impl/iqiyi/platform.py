@@ -9,6 +9,7 @@ import asyncio
 import threading
 from pathlib import Path
 from queue import Queue
+from typing import Any
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -204,7 +205,7 @@ class IqiyiPlatform(BasePlatform):
         Returns:
             list[dict]: 按 SORT 排序的运营数据列表
         """
-        stats = []
+        stats: list[dict[str, Any]] = []
         # label_map: label 文本 -> (ICON, SORT, 标准化 NAME)
         # SORT 顺序: 粉丝最重要(1)、获赞(2)、关注(3)
         label_map = {
@@ -742,7 +743,7 @@ class IqiyiPlatform(BasePlatform):
                 )
                 # 轮询等待卡片消失(最长 30 分钟,大文件慢网络留余量)
                 deadline = asyncio.get_running_loop().time() + 1800
-                last_percent = -1
+                last_percent: str = ""
                 while asyncio.get_running_loop().time() < deadline:
                     try:
                         if await upload_card.count() == 0:

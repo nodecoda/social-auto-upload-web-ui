@@ -405,6 +405,8 @@ async def save_login_result(
         cookie_filename = f"{uuid_v1}.json"
 
     # 2. Save cookie file
+    # 兜底: 上方 !cookie_filename → account_id=None → 必走重新生成分支
+    assert cookie_filename is not None
     await context.storage_state(path=cookies_dir / cookie_filename)
 
     # 3. Write to database

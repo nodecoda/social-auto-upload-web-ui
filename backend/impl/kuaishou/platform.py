@@ -9,6 +9,7 @@ import asyncio
 import threading
 from pathlib import Path
 from queue import Queue
+from typing import Any
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -214,7 +215,7 @@ class KuaishouPlatform(BasePlatform):
             Returns:
                 list[dict]: 按 SORT 排序的运营数据列表
             """
-            stats = []
+            stats: list[dict[str, Any]] = []
             label_map = {
                 "粉丝": ("user",   1, "粉丝"),
                 "关注": ("follow", 2, "关注"),
@@ -271,7 +272,7 @@ class KuaishouPlatform(BasePlatform):
             except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(f"[kuaishou stats] 抓取失败: {exc}")
 
-            stats.sort(key=lambda x: x.get("SORT", 999))
+            stats.sort(key=lambda x: int(x.get("SORT") or 999))
             return stats
 
     async def _login_stats_fn(self, page, account_id) -> list:
