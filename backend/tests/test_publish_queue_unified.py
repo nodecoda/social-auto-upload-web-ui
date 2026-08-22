@@ -156,7 +156,7 @@ def _run_worker_with_fake_execute(q, tasks, execute_impl):
 
     async def main():
         try:  # noqa: SIM105
-            await asyncio.wait_for(q._worker('test-worker'), timeout=2.0)
+            await asyncio.wait_for(q._worker('test-worker'), timeout=0.5)  # worker 全 mock 处理毫秒级,超时只用于结束阻塞等待
         except (TimeoutError, asyncio.CancelledError):
             pass  # 正常：无更多任务时 worker 一直阻塞
 
@@ -241,7 +241,7 @@ def test_worker_survives_browser_watchdog_cancel():
     async def main():
         with patch.object(tq, 'get_platform', return_value=fake_platform):
             try:  # noqa: SIM105
-                await asyncio.wait_for(q._worker('test-worker'), timeout=3.0)
+                await asyncio.wait_for(q._worker('test-worker'), timeout=0.5)  # 同上:仅结束阻塞,任务处理毫秒级
             except (TimeoutError, asyncio.CancelledError):
                 pass
 

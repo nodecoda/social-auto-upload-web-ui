@@ -322,7 +322,8 @@ class TestNovelScraping:
         opt.click = AsyncMock()
         frame = _make_frame()
         frame.query_selector_all = AsyncMock(return_value=[opt])
-        _run(select_novel(frame, '目标小说'))
+        with patch('impl.jd._jd_link_ops.sleep', AsyncMock()):  # 生产真实 sleep 累积 2.5s
+            _run(select_novel(frame, '目标小说'))
         opt.click.assert_awaited_once()
 
 
