@@ -18,7 +18,7 @@ from util._logger import bind_account_name, get_channel_logger
 from .._browser import close_browser
 from .._utils import get_account_name_by_cookie_file, parse_schedule_time, save_login_result
 from ..base_platform import BasePlatform
-from ..primitives import fill_title, get_params, set_schedule
+from ..primitives import fill_title, get_params, set_schedule, upload_cover
 
 logger = get_channel_logger("tencent_video")
 
@@ -577,8 +577,9 @@ class TencentVideoPlatform(BasePlatform):
 
                 # Step 4: Upload cover image (按视频方向选主封面 + 选填)
                 if primary_cover:
-                    await self._upload_cover(
-                        page, primary_cover, aspect=primary_aspect
+                    await upload_cover(
+                        page, get_params("tencent_video", "THUMBNAIL"),
+                        cover_path=primary_cover, aspect=primary_aspect,
                     )
                 # 竖版视频: 上传选填的横版封面(16:9) + 选填的竖版封面(9:16)
                 if extra_landscape_cover:
@@ -612,85 +613,6 @@ class TencentVideoPlatform(BasePlatform):
             await self.close_browser(browser, is_close_by_code=True)
 
 
-    @staticmethod
-    async def _upload_cover(page, cover_path: str, aspect: str = "16:9"):
-        """Upload cover image via the cover modal.
-
-        腾讯视频发布页有 2 种封面入口:
-        - 首次无封面: 含"上传横版封面"文本的 div
-        - 已自动生成封面(从视频抽帧): 含"替换"文本的 div (role="button")
-        两种情况都点开同一个 ReactModal, 走相同的上传 + 确认流程。
-
-        选择器策略: 不用含随机后缀的 class(CSS Modules 风格, 代码更新会变),
-        用 role + 文本 + 稳定属性(dt-mpid/id) 定位。
-
-        aspect: "16:9" (横版视频) | "portrait" (竖版视频), 仅用于日志标识,
-        实际封面比例由弹窗内控件决定。
-        """
-        logger.info("[设置封面] Uploading cover image: %s (aspect=%s)", cover_path, aspect)
-        try:
-            # 优先找首次上传入口(无封面时的 + 上传横版封面)。
-            # 不依赖 class 随机后缀, 用 role="button" + 文本"上传横版封面"匹配。
-            upload_area = page.locator(
-                '[role="button"]:has-text("上传横版封面")'
-            ).first
-            if await upload_area.count() == 0:
-                # 兜底: 页面已自动生成封面, 找"替换"按钮打开同一个 modal
-                replace_btn = page.locator(
-                    '[role="button"]:has-text("替换")'
-                ).first
-                if await replace_btn.count() == 0:
-                    logger.warning("[设置封面] Cover upload area / replace button not found")
-                    return
-                await replace_btn.wait_for(state="visible", timeout=10000)
-                await replace_btn.click()
-                logger.info("[设置封面] 点击'替换'按钮打开封面弹窗")
-            else:
-                await upload_area.wait_for(state="visible", timeout=10000)
-                await upload_area.click()
-                logger.info("[设置封面] 点击'上传横版封面'按钮打开封面弹窗")
-            await asyncio.sleep(1)
-
-            # Wait for the ReactModal to appear
-            modal = page.locator('div.ReactModal__Content').first
-            await modal.wait_for(state="visible", timeout=10000)
-            logger.info("[设置封面] Cover upload modal opened")
-
-            # Find the hidden file input inside the modal by id
-            # The input is: <input accept=".jpg,.jpeg,.png,.webp" id="uploadCoverBtn" type="file">
-            cover_input = modal.locator('input#uploadCoverBtn')
-            await cover_input.wait_for(state="attached", timeout=10000)
-
-            # Use evaluate to set the file since input is display:none
-            await cover_input.evaluate(
-                "el => el.style.display = 'block'"
-            )
-            await cover_input.set_input_files(cover_path)
-            logger.info("[设置封面] Cover image uploaded to modal")
-            await asyncio.sleep(3)
-
-            # Click the "使用" button to confirm the cover
-            # From the DOM: button with dt-mpid="上传封面确定"
-            use_btn = modal.locator(
-                'button[dt-mpid="上传封面确定"]'
-            ).first
-            if await use_btn.count() > 0:
-                await use_btn.click()
-                logger.info("[设置封面] Cover confirmed with '上传封面确定' button")
-                await asyncio.sleep(1)
-            else:
-                # Fallback: try any "使用" button
-                use_btn_fallback = modal.locator(
-                    'button:has-text("使用")'
-                ).first
-                if await use_btn_fallback.count() > 0:
-                    await use_btn_fallback.click()
-                    logger.info("[设置封面] Cover confirmed with '使用' button")
-                    await asyncio.sleep(1)
-                else:
-                    logger.warning("[设置封面] Cover '使用' button not found in modal")
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.warning("[设置封面] Cover upload failed (non-blocking): %s", e)
 
     @staticmethod
     async def _upload_extra_landscape_cover(page, cover_path: str):

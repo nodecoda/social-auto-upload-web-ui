@@ -59,11 +59,20 @@ async def set_thumbnail(page, params, paths=None, thumbnail_path=None, frame=Non
 
 
 async def _do_upload(page, params, paths, frame, strategy, orientations):
+    # 入口模式：每个方向独立点开封面入口（channels 横/竖封面入口）
+    if any(o.get("entry_selector") for o in orientations):
+        for orient in orientations:
+            key = orient.get("path_key", "default")
+            path = paths.get(key)
+            if not path:
+                continue
+            await _upload_via_entry(page, params, orient, path)
+        return
     # 打开封面入口（click / hover 两种触发方式）
     if params.get("direct_file_first"):
         # bilibili 探测①：页面上直接存在封面 file input，无需点任何按钮
         direct = await _find_file_input(page, params, None)
-        if direct is not None:
+        if direct is not None and await direct.first.count() > 0:
             for path in paths.values():
                 if path:
                     await direct.first.set_input_files(path)
@@ -76,6 +85,16 @@ async def _do_upload(page, params, paths, frame, strategy, orientations):
         if params.get("file_input_selector") or params.get("file_input_candidates"):
             await _upload_file_input(page, params, paths, frame)
         return
+
+    # 打开后、多方向循环前：切换一次「本地上传/上传封面」tab（kuaishou/toutiao/zhihu）
+    if params.get("open_tab_selector"):
+        try:
+            tab = page.locator(params["open_tab_selector"]).first
+            if await tab.count():
+                await tab.click()
+                await asyncio.sleep(params.get("open_tab_sleep", 1.0))
+        except Exception as exc:  # noqa: BLE001 -- tab 切换失败不阻塞上传
+            logger.info("[封面] 上传tab切换失败: %s", exc)
 
     for orient in orientations:
         key = orient.get("path_key", "default")
@@ -130,6 +149,32 @@ async def upload_cover(page, params, cover_path=None, paths=None, aspect=None):
 
 
 async def _open_trigger(page, params, strategy) -> bool:
+    # 先悬停封面预览露出操作按钮（xiaohongshu/kuaishou hover 式入口）
+    hover_sel = params.get("hover_trigger_selector")
+    if hover_sel:
+        try:
+            el = page.locator(hover_sel).first
+            await el.wait_for(state="attached", timeout=10_000)
+            await el.hover()
+            await asyncio.sleep(params.get("hover_sleep", 1.0))
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
+            logger.info("[封面] 封面预览悬停失败: %s", exc)
+
+    # 候选入口逐个尝试（bilibili 由稳到脆探测链）
+    if params.get("trigger_candidates"):
+        for sel in params["trigger_candidates"]:
+            loc = page.locator(sel).first
+            try:
+                if await loc.count() == 0:
+                    continue
+                await loc.wait_for(state="visible", timeout=3_000)
+                await loc.click()
+                await asyncio.sleep(params.get("trigger_sleep", 1.0))
+                return True
+            except Exception as exc:  # noqa: BLE001 -- 单候选失败,记录后继续
+                logger.info("[封面] 封面入口候选点击失败(%s): %s", sel, exc)
+        return False
+
     selector = params.get("trigger_selector")
     if not selector:
         # 无触发入口：直接文件输入模式
@@ -142,10 +187,64 @@ async def _open_trigger(page, params, strategy) -> bool:
             await el.wait_for(state="visible", timeout=10_000)
             await el.click()
         await asyncio.sleep(params.get("trigger_sleep", 1.0))
+        if params.get("dialog_sleep"):
+            await asyncio.sleep(params["dialog_sleep"])
         return True
     except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
         logger.info("[封面] 封面入口触发失败: %s", exc)
         return False
+
+
+async def _upload_via_entry(page, params, orient, path):
+    """单入口模式：点开封面入口 → 弹窗内上传 → 裁剪确认 → 封面确认（channels）。"""
+    entry_sel = orient.get("entry_selector")
+    if not entry_sel:
+        return
+    try:
+        entry = page.locator(entry_sel).first
+        if not await entry.count():
+            logger.info("[封面] 封面入口不存在,跳过: %s", entry_sel)
+            return
+        await entry.wait_for(state="visible", timeout=params.get("entry_timeout", 3_000))
+        with contextlib.suppress(Exception):  # UI 操作兜底,失败走后续逻辑
+            await entry.hover()
+        await page.wait_for_timeout(500)
+        await entry.click()
+        await asyncio.sleep(0.8)
+
+        # 横版入口：推荐素材 popover 需点「直接编辑」才会出现上传弹窗
+        popover_sel = orient.get("popover_selector")
+        if popover_sel:
+            pop = page.locator(popover_sel).first
+            try:
+                if await pop.count() and await pop.is_visible():
+                    await pop.click()
+                    await asyncio.sleep(0.8)
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
+                logger.info("[封面] popover 处理失败: %s", exc)
+
+        target = await _find_file_input(page, params, True)
+        if target is None:
+            logger.warning("[封面] 未找到封面 file input,跳过上传")
+            return
+        await target.first.set_input_files(path)
+        logger.info("[封面] 已上传封面: %s", path)
+        await asyncio.sleep(params.get("upload_sleep", 2.0))
+
+        # 裁剪弹窗确认（channels 上传后先出现「裁剪封面图」）
+        crop_sel = params.get("crop_confirm_selector")
+        if crop_sel:
+            crop = page.locator(crop_sel).first
+            try:
+                if await crop.count() and await crop.is_visible():
+                    await crop.click()
+                    await asyncio.sleep(1.0)
+            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
+                logger.info("[封面] 裁剪确认失败: %s", exc)
+
+        await _confirm(page, params)
+    except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
+        logger.warning("[封面] 封面入口上传失败(非致命): %s", exc)
 
 
 async def _upload_file_input(page, params, paths, frame=None, modal=False):
@@ -184,7 +283,7 @@ async def _find_file_input(page, params, modal):
         return None
     if modal and params.get("modal_selector"):
         modal_el = page.locator(params["modal_selector"]).first
-        await modal_el.wait_for(state="visible", timeout=10_000)
+        await modal_el.wait_for(state="visible", timeout=params.get("modal_timeout", 10_000))
         return modal_el.locator(selector)
     return page.locator(selector)
 
@@ -213,14 +312,18 @@ async def _upload_via_file_chooser(page, params, paths, orient=None):
 
 
 async def _confirm(page, params):
-    selector = params.get("confirm_selector")
-    if not selector:
+    selectors = params.get("confirm_selector")
+    if isinstance(selectors, str):
+        selectors = [selectors]
+    if not selectors:
         return
-    try:
-        btn = page.locator(selector).first
-        if await btn.count() > 0:
-            await btn.click()
-            logger.info("[封面] 已确认封面")
-            await asyncio.sleep(0.5)
-    except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-        logger.info("[封面] 确认按钮点击失败(可能已关闭): %s", exc)
+    # 多级确认依次执行（bilibili: 完成→弹窗确认; toutiao: 完成裁剪→确定→二次确认）
+    for selector in selectors:
+        try:
+            btn = page.locator(selector).first
+            if await btn.count() > 0:
+                await btn.click()
+                logger.info("[封面] 已确认封面: %s", selector)
+                await asyncio.sleep(0.5)
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
+            logger.info("[封面] 确认按钮点击失败(可能已关闭): %s", exc)

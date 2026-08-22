@@ -17,7 +17,10 @@ FILL_TITLE = {
 THUMBNAIL = {
     "strategy": "click_modal",
     "trigger_selector": '[role="button"]:has-text("上传横版封面"), [role="button"]:has-text("替换")',
+    "trigger_sleep": 1.0,
     "modal_selector": '[class*="ReactModal"]',
-    "file_input_selector": 'input[type="file"][accept*="image"]',
-    "confirm_selector": 'button:has-text("完成")',
+    "file_input_selector": 'input#uploadCoverBtn',
+    "upload_sleep": 3.0,
+    "confirm_selector": 'button[dt-mpid="上传封面确定"], button:has-text("使用")',
 }
+

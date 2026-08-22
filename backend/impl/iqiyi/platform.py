@@ -16,7 +16,7 @@ from util._logger import bind_account_name, get_channel_logger
 from .._browser import close_browser
 from .._utils import clear_and_type, get_account_name_by_cookie_file, parse_schedule_time, save_login_result
 from ..base_platform import BasePlatform
-from ..primitives import fill_title, get_params, set_schedule
+from ..primitives import fill_title, get_params, set_schedule, upload_cover
 
 logger = get_channel_logger("iqiyi")
 
@@ -549,11 +549,13 @@ class IqiyiPlatform(BasePlatform):
                 )
                 if cover_path or landscape_cover or landscape_cover_169:
                     logger.info(">>> Calling _upload_cover <<<")
-                    await self._upload_cover(
-                        page,
-                        portrait_path=cover_path,
-                        landscape_path=landscape_cover,
-                        landscape_169_path=landscape_cover_169,
+                    await upload_cover(
+                        page, get_params("iqiyi", "THUMBNAIL"),
+                        paths={
+                            "portrait": cover_path,
+                            "landscape": landscape_cover,
+                            "landscape_169": landscape_cover_169,
+                        },
                     )
                 else:
                     logger.warning("[上传视频] Step 8: SKIPPED — no cover paths provided")
@@ -731,162 +733,6 @@ class IqiyiPlatform(BasePlatform):
                 logger.info("[现金活动] Cash activity already checked or not found")
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
             logger.warning("[现金活动] Failed to click cash activity (non-blocking): %s", e)
-
-    @staticmethod
-    async def _upload_cover(
-        page,
-        portrait_path=None,
-        landscape_path=None,
-        landscape_169_path=None,
-        **kwargs,
-    ):
-        """Upload cover images on the iQiyi publish page.
-
-        Dialog DOM structure (image-crop-dialog):
-          - Tab bar: "竖封面" (portrait, default active) | "横封面" (landscape)
-          - Two ``.crop-content`` panels — first visible (portrait), second hidden (landscape)
-          - Each panel has a hidden ``input[type=file]`` (via Plupload/moxie shim)
-          - Footer: "完成" (confirm) | "设置横封面" (alternative switch, NOT used here)
-
-        Workflow:
-          1. Click "选择封面" trigger → opens the crop dialog
-          2. Upload portrait cover via the visible file input (first panel)
-          3. Wait for server-side upload to complete
-          4. Click the "横封面" tab to switch to the landscape panel
-          5. Upload landscape cover via the now-visible file input (second panel)
-          6. Wait for server-side upload to complete
-          7. Click "完成" to confirm and close the dialog
-        """
-        portrait_path = portrait_path or kwargs.get("cover_path")
-        landscape_path = landscape_path or kwargs.get("landscape_path")
-        landscape_169_path = landscape_169_path or kwargs.get("landscape_169_path")
-
-        logger.info(
-            "[设置封面] 封面上传: 竖版=%s, 4:3横版=%s, 16:9横版=%s",
-            portrait_path, landscape_path, landscape_169_path,
-        )
-
-        try:
-            # ---------------------------------------------------------------
-            # Step 1: Click "选择封面" to open the cover crop dialog
-            # ---------------------------------------------------------------
-            logger.info("[设置封面] Step 1: Opening cover dialog...")
-            trigger = page.locator('div.main-edit-bar').first
-            if await trigger.count() == 0:
-                logger.warning("'选择封面' trigger not found, aborting cover upload")
-                return
-            await trigger.scroll_into_view_if_needed()
-            await trigger.wait_for(state="visible", timeout=10000)
-            await trigger.evaluate("el => el.click()")
-
-            dialog = page.locator('.image-crop-dialog')
-            await dialog.wait_for(state="visible", timeout=10000)
-            logger.info("[设置封面] Step 1: Cover dialog opened")
-            # 首次打开弹窗: React 渲染/3 个 tab lazy init, 等 10s 充分就绪
-            await asyncio.sleep(10)
-
-            # ---------------------------------------------------------------
-            # Step 2: Upload portrait cover (竖封面)
-            # ---------------------------------------------------------------
-            if portrait_path:
-                logger.info("[设置封面] Step 2: Uploading portrait cover: %s", portrait_path)
-                # The first visible .crop-content panel contains the portrait upload
-                portrait_panel = page.locator(
-                    '.crop-content:not([style*="display: none"])'
-                ).first
-                await portrait_panel.wait_for(state="visible", timeout=5000)
-
-                upload_btn = portrait_panel.locator('.upload-btn-wrap').first
-                async with page.expect_file_chooser() as fc_info:
-                    await upload_btn.click()
-                file_chooser = await fc_info.value
-                await file_chooser.set_files(portrait_path)
-                logger.info("[设置封面] Step 2: Portrait file set, waiting for upload...")
-                # 首次上传后等稍长(组件正在响应文件), 后续 tab 已熟可缩短
-                await asyncio.sleep(3)
-                logger.info("[设置封面] Step 2: Portrait upload complete")
-            else:
-                logger.info("[设置封面] Step 2: SKIPPED — no portrait_path")
-
-            # ---------------------------------------------------------------
-            # Step 3: Switch to landscape tab and upload (横封面)
-            # ---------------------------------------------------------------
-            if landscape_path:
-                logger.info("[设置封面] Step 3: Switching to landscape (4:3) tab...")
-                # 4:3 横封面 tab 文本是 "横封面（4:3 必填）", 用 "4:3" 精确匹配
-                # 避免和 16:9 tab 同时匹配
-                landscape_tab = page.locator('.tab-item:has-text("4:3")').first
-                if await landscape_tab.count() > 0:
-                    await landscape_tab.click()
-                    logger.info("[设置封面] Step 3: Landscape tab clicked")
-                    # tab 切换: 组件已就绪, 2s 足够
-                    await asyncio.sleep(2)
-
-                    logger.info("[设置封面] Step 3: Uploading landscape cover: %s", landscape_path)
-                    landscape_panel = page.locator(
-                        '.crop-content:not([style*="display: none"])'
-                    ).first
-                    await landscape_panel.wait_for(state="visible", timeout=5000)
-
-                    upload_btn = landscape_panel.locator('.upload-btn-wrap').first
-                    async with page.expect_file_chooser() as fc_info:
-                        await upload_btn.click()
-                    file_chooser = await fc_info.value
-                    await file_chooser.set_files(landscape_path)
-                    logger.info("[设置封面] Step 3: Landscape file set, waiting for upload...")
-                    await asyncio.sleep(3)
-                    logger.info("[设置封面] Step 3: Landscape upload complete")
-                else:
-                    logger.warning("[设置封面] Step 3: Landscape tab not found")
-            else:
-                logger.info("[设置封面] Step 3: SKIPPED — no landscape_path")
-
-            # ---------------------------------------------------------------
-            # Step 3.5: 切到第三个 tab "横封面（16:9 必填）" 上传 16:9 横封面
-            # ---------------------------------------------------------------
-            if landscape_169_path:
-                logger.info("[设置封面] Step 3.5: Switching to 16:9 landscape tab...")
-                # 第三个 tab 文本是 "横封面（16:9 必填）", 精确匹配 16:9
-                landscape_169_tab = page.locator(
-                    '.tab-item:has-text("16:9")'
-                ).first
-                if await landscape_169_tab.count() > 0:
-                    await landscape_169_tab.click()
-                    logger.info("[设置封面] Step 3.5: 16:9 landscape tab clicked")
-                    # tab 切换: 组件已就绪, 2s 足够
-                    await asyncio.sleep(2)
-
-                    landscape_169_panel = page.locator(
-                        '.crop-content:not([style*="display: none"])'
-                    ).first
-                    await landscape_169_panel.wait_for(state="visible", timeout=5000)
-
-                    upload_btn = landscape_169_panel.locator('.upload-btn-wrap').first
-                    async with page.expect_file_chooser() as fc_info:
-                        await upload_btn.click()
-                    file_chooser = await fc_info.value
-                    await file_chooser.set_files(landscape_169_path)
-                    logger.info("[设置封面] Step 3.5: 16:9 landscape file set, waiting for upload...")
-                    await asyncio.sleep(3)
-                    logger.info("[设置封面] Step 3.5: 16:9 landscape upload complete")
-                else:
-                    logger.warning("[设置封面] Step 3.5: 16:9 landscape tab not found")
-            else:
-                logger.info("[设置封面] Step 3.5: SKIPPED — no landscape_169_path")
-
-            # ---------------------------------------------------------------
-            # Step 4: Click "完成" to confirm
-            # ---------------------------------------------------------------
-            logger.info("[设置封面] Step 4: Clicking '完成'...")
-            done_btn = page.locator('button:has-text("完成")').first
-            if await done_btn.count() > 0:
-                await done_btn.click()
-                logger.info("[设置封面] Step 4: '完成' clicked — cover upload complete")
-                await asyncio.sleep(2)
-            else:
-                logger.warning("[设置封面] Step 4: '完成' button not found")
-        except Exception as e:
-            logger.exception("[设置封面] 封面上传失败: %s", e)
 
 
     @staticmethod

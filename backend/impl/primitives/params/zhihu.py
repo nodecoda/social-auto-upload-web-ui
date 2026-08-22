@@ -28,6 +28,15 @@ FILL_TITLE = {
 THUMBNAIL = {
     "strategy": "file_chooser",
     "trigger_selector": '.VideoUploadForm-imageEditButton, [class*="VideoUploadForm-imageEditButton"]',
-    "confirm_selector": 'button:has-text("保存"), [class*="confirm"]',
+    "trigger_sleep": 1.0,
+    "open_tab_selector": "text=本地上传",
+    "open_tab_sleep": 1.0,
+    "orientations": [
+        {"key": "default", "path_key": "default",
+         "trigger_selector": '.Modal-content [class*="Dropzone"], .Modal-content [class*="dropzone"], .Modal-content [class*="upload"], [role="dialog"] [class*="Dropzone"], [role="dialog"] [class*="upload"]',
+         "upload_sleep": 5.0},
+    ],
+    "confirm_selector": '.Modal-content button:has-text("确认选择"), [role="dialog"] button:has-text("确认选择"), .Modal-content button.Button--primary:has-text("确认"), [role="dialog"] button.Button--primary:has-text("确认")',
     "close_escape": True,
 }
+

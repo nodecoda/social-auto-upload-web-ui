@@ -7,7 +7,6 @@ CloakBrowser via ``_browser.py``.
 """
 
 import asyncio
-import os
 import re
 import threading
 from pathlib import Path
@@ -26,7 +25,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
-from ..primitives import fill_title, get_params, set_schedule
+from ..primitives import fill_title, get_params, set_schedule, set_thumbnail
 from ._profile import scrape_bilibili_profile
 
 BILIBILI_UPLOAD_URL = "https://member.bilibili.com/platform/upload/video/frame"
@@ -636,7 +635,7 @@ class BilibiliPlatform(BasePlatform):
                 await self._fill_desc(page, desc)
 
                 # 7. Set cover/thumbnail
-                await self._set_thumbnail(page, thumbnail_path)
+                await set_thumbnail(page, get_params("bilibili", "THUMBNAIL"), thumbnail_path=thumbnail_path)
 
                 # 8. Set creation declaration (bcc-select dropdown)
                 # B 站新版已废弃"更多设置/声明与权益"，保留创作声明即可
@@ -1074,219 +1073,6 @@ class BilibiliPlatform(BasePlatform):
         else:
             logger.info("[填写简介] description editor not found")
 
-    @staticmethod
-    async def _set_thumbnail(page, thumbnail_path: str | None):
-        """Upload cover image via the Bilibili cover editor modal.
-
-        兼容性策略：避免硬编码 class 名 / scoped hash / 固定文案。
-        按"由稳到脆"顺序探测：
-        1. 页面上直接存在的 cover file input（无需点任何按钮）
-        2. 任意可点击的"封面"语义按钮（基于 role / aria-label / 文本）
-        3. class 模糊匹配（不依赖 scoped hash）
-        """
-        if not thumbnail_path:
-            return
-        if not os.path.exists(thumbnail_path):
-            logger.info(f"[设置封面] cover file not found: {thumbnail_path}")
-            return
-
-        log_dir = Path(BASE_DIR / "logs")
-        logger.info("[设置封面] 开始设置封面")
-
-        try:
-            await page.screenshot(
-                path=str(log_dir / "bilibili_cover_before.png"),
-                full_page=True,
-            )
-
-            # Step 1: Open cover editor dialog
-            # 不使用 data-v-* scoped hash（每次发版会变）
-            dialog_opened = False
-            trigger_selectors = [
-                # 新版 B 站(2026): cover-module 改版后的封面触发
-                # DOM: .cover-module .cover-empty .cover-empty-pill > (.add-icon + .add-text "添加封面")
-                # 优先点内部 .add-text / .add-icon: 直接点 .cover-empty-pill 时 hit-test
-                # 落在 icon 与 text 之间的缝隙, Vue @click 若绑在子元素则不触发
-                '[data-reporter-id="80"] .cover-empty-pill .add-text',
-                '[data-reporter-id="80"] .cover-empty-pill .add-icon',
-                '.cover-empty-pill .add-text',
-                '.cover-empty-pill .add-icon',
-                'span.add-text:has-text("添加封面")',
-                '.cover-empty-pill',
-                '.cover-empty .cover-empty-pill',
-                '.cover-module .cover-empty-pill',
-                'div[class*="cover-empty"]:has-text("封面")',
-                # 旧版(保留兼容): 完整路径,不依赖 scoped hash
-                'div.cover-main div.cover-item div.cover-img span.edit-text',
-                # class 子串 + 文本
-                '[class*="cover-main"] [class*="cover-item"] [class*="cover-img"] [class*="edit-text"]',
-                'span[class*="edit-text"]:has-text("封面设置")',
-                'span.edit-text:has-text("封面设置")',
-                '[class*="edit-text"]:has-text("封面设置")',
-                # 文本兜底
-                'span:has-text("封面设置")',
-                'button:has-text("封面设置")',
-                'text=封面设置',
-                # 旧版 B 站（保留兼容）
-                "div.cover-item",
-                ".cover-item",
-                ".video-cover-container",
-                ".cover-wrap",
-                ".cover-add",
-                '[data-reporter-id="112"]',
-                ".upload-video-cover",
-                'div[class*="cover"] >> text=选择封面',
-                'div[class*="cover"] >> text=封面',
-            ]
-            # 三档点击策略: 普通 click → force click(绕过 hit-test) → dispatch_event(合成事件)
-            # 同一 selector 失败后,先升级策略再换下一个 selector,避免漏掉命中元素
-            for sel in trigger_selectors:
-                loc = page.locator(sel).first
-                if await loc.count() == 0:
-                    continue
-                for strategy in ("normal", "force", "dispatch"):
-                    try:
-                        if strategy == "normal":
-                            await loc.click(timeout=3000)
-                        elif strategy == "force":
-                            await loc.click(timeout=3000, force=True)
-                        else:
-                            await loc.dispatch_event("click")
-                        dialog_opened = True
-                        logger.info(
-                            "[设置封面] trigger clicked via %s strategy: %s",
-                            strategy, sel,
-                        )
-                        break
-                    except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
-                        continue
-                if dialog_opened:
-                    break
-
-            if not dialog_opened:
-                logger.info(
-                    "[上传视频] all cover triggers failed, "
-                    "skipping cover"
-                )
-                return
-
-            # Wait for cover editor dialog
-            # 兼容旧版"封面制作"/"封面设置"(bcc-dialog)和新版弹窗(可能改用别的容器)
-            dialog = None
-            for dialog_sel in [
-                'div.bcc-dialog:has-text("封面制作")',
-                'div.bcc-dialog:has-text("封面设置")',
-                'div.bcc-dialog',
-                # 新版可能用的弹窗容器
-                'div[class*="cover-editor"]:visible',
-                'div[class*="cover-dialog"]:visible',
-                'div[class*="upload-cover"]:visible',
-            ]:
-                cand = page.locator(dialog_sel).first
-                try:
-                    await cand.wait_for(state="visible", timeout=5000)
-                    dialog = cand
-                    break
-                except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
-                    continue
-            if dialog is None:
-                # 兜底:弹窗容器选择器都没命中,但若页面已出现图片上传 input,
-                # 说明封面编辑器其实已打开(只是 DOM 结构变了),继续往下走
-                has_input = await page.locator(
-                    'input[type="file"][accept*="image"]'
-                ).count()
-                if has_input > 0:
-                    logger.info("[设置封面] 弹窗容器选择器未命中,但检测到图片上传 input,继续")
-                    # dialog 用 page 兜底,后续 confirm 按钮查找走 page
-                    dialog = page
-                else:
-                    raise RuntimeError("封面编辑弹窗未出现")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
-            await asyncio.sleep(1)
-            await asyncio.sleep(1)
-
-            await page.screenshot(
-                path=str(log_dir / "bilibili_cover_editor.png"),
-                full_page=True,
-            )
-
-            # Step 2: Select 4:3 area
-            editor_4_3 = page.locator(
-                "div.cover-editor-panel-canvas-image.editor_4_3"
-            ).first
-            if await editor_4_3.count() > 0:
-                await editor_4_3.click()
-                await asyncio.sleep(0.5)
-
-            # Step 3: Check "sync both ratios" checkbox
-            sync_checkbox = page.locator(
-                '.sync-checkbox input[type="checkbox"]'
-            ).first
-            if await sync_checkbox.count() > 0:
-                is_checked = await sync_checkbox.is_checked()
-                if not is_checked:
-                    sync_label = page.locator(".sync-checkbox").first
-                    await sync_label.click()
-                await asyncio.sleep(0.5)
-
-            await page.screenshot(
-                path=str(log_dir / "bilibili_cover_sync_checked.png"),
-                full_page=True,
-            )
-
-            # Step 4: Upload cover file
-            file_input = page.locator(
-                '.cover-upload input[type="file"]'
-            ).first
-            file_count = await file_input.count()
-
-            if file_count > 0:
-                await file_input.set_input_files(thumbnail_path)
-                logger.info(
-                    f"[上传视频] cover file selected: "
-                    f"{os.path.basename(thumbnail_path)}"
-                )
-            else:
-                fallback_input = page.locator(
-                    'input[accept*="image"]'
-                ).first
-                if await fallback_input.count() > 0:
-                    await fallback_input.set_input_files(thumbnail_path)
-                else:
-                    logger.info("[设置封面] cover file input not found")
-                    return
-
-            # Wait for image processing
-            await asyncio.sleep(3)
-
-            # Step 5: Click done button
-            submit_btn = page.locator("div.button.submit").first
-            if await submit_btn.count() > 0:
-                await submit_btn.click()
-            await asyncio.sleep(1)
-
-            # Step 6: Click confirm button inside dialog
-            confirm_btn = dialog.locator(
-                "button.bcc-button--primary"
-            ).first
-            if await confirm_btn.count() > 0:
-                await confirm_btn.click()
-            await asyncio.sleep(1)
-
-            # Ensure any stray dialogs are closed
-            await page.keyboard.press("Escape")
-            await asyncio.sleep(0.5)
-
-            logger.info("[设置封面] cover set successfully")
-
-        except Exception as exc:
-            try:  # noqa: SIM105
-                await page.screenshot(
-                    path=str(log_dir / "bilibili_cover_error.png"),
-                    full_page=True,
-                )
-            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
-                pass
-            raise RuntimeError(f"cover setting failed: {exc}") from exc
 
     @staticmethod
     async def _set_creation_declaration(page, creation_declaration: str, repost_source: str = ""):

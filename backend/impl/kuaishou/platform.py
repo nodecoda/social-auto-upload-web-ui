@@ -24,7 +24,7 @@ from .._utils import (
     scrape_user_profile,
 )
 from ..base_platform import BasePlatform
-from ..primitives import get_params, set_schedule
+from ..primitives import get_params, set_schedule, set_thumbnail
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -812,7 +812,9 @@ class KuaishouPlatform(BasePlatform):
             logger.info("[设置封面] 封面路径: %s", thumbnail_path)
             if thumbnail_path:
                 logger.info("[设置封面] 开始设置视频封面...")
-                await self._set_thumbnail(page, thumbnail_path, video_format)
+                # video_format 决定裁剪比例方向: 竖版→3:4, 横版→4:3
+                cover_paths = {"portrait" if video_format == "portrait" else "landscape": thumbnail_path}
+                await set_thumbnail(page, get_params("kuaishou", "THUMBNAIL"), paths=cover_paths)
                 logger.info("[设置封面] 封面设置完成")
             else:
                 logger.info("[设置封面] 未提供封面路径, 跳过封面设置")
@@ -1010,96 +1012,6 @@ class KuaishouPlatform(BasePlatform):
     # Helper: set thumbnail
     # ------------------------------------------------------------------
 
-    @staticmethod
-    async def _set_thumbnail(page, thumbnail_path: str, video_format: str = "landscape"):
-        """Upload custom cover image.
-
-        Flow: hover cover area -> click "封面设置" -> modal ->
-        "上传封面" tab -> select crop ratio (横版4:3/竖版3:4) ->
-        upload image -> confirm.
-        """
-        logger.info("[封面] 开始设置视频封面: %s (方向=%s)", thumbnail_path, video_format)
-        try:
-            # 1. Hover over cover area to reveal "封面设置" overlay
-            cover_area = page.locator("div[class*='default-cover']").first
-            logger.info("[封面] 正在悬停封面区域...")
-            await cover_area.hover()
-            await asyncio.sleep(1.5)
-
-            # 2. Click "封面设置" text to open modal
-            cover_editor = page.locator("div[class*='cover-full-editor']").first
-            logger.info("[封面] 正在点击 '封面设置'...")
-            await cover_editor.wait_for(state="visible", timeout=10000)
-            await cover_editor.click()
-
-            # 3. Wait for modal
-            modal = page.locator('div[role="document"].ant-modal:visible')
-            logger.info("[封面] 等待弹窗出现...")
-            await modal.wait_for(state="visible", timeout=30000)
-            await asyncio.sleep(1)
-
-            # 4. Click "上传封面" tab
-            upload_tab = modal.locator("div[class*='header-title-item']").nth(1)
-            logger.info("[封面] 正在点击 '上传封面' tab...")
-            await upload_tab.wait_for(state="visible", timeout=10000)
-            await upload_tab.click()
-            await asyncio.sleep(1)
-
-            # 5. Select crop ratio (裁剪比例)
-            #    快手封面弹窗右侧有「裁剪比例」选项(原始比例/4:3/3:4/1:1/9:16),
-            #    DOM: div[class*='_ratio-item'] 内 <span> 文案为比例值。
-            #    按视频方向点对应比例: 横版→4:3, 竖版→3:4。
-            #    失败仅 warning, 不阻塞上传。
-            target_ratio = "3:4" if video_format == "portrait" else "4:3"
-            logger.info("[封面] 正在选择裁剪比例: %s", target_ratio)
-            try:
-                # 精确定位: ratio-item 内 span 文本 == 目标比例, 取其父级 item 点击。
-                # DOM: div[class*='_ratio-item'] > span(比例文案) + div[class*='_tag'](推荐标签)
-                ratio_item = modal.locator(
-                    f"div[class*='_ratio-item']:has(span:text-is('{target_ratio}'))"
-                ).first
-                # 注意: wait_for 成功时返回 None(不能用作 if 条件!),
-                # 匹配失败才抛异常 → 由外层 except 捕获。
-                await ratio_item.wait_for(state="visible", timeout=5000)
-                # 已是 _active 态则无需重复点击
-                cls = await ratio_item.get_attribute("class") or ""
-                if "_active" in cls:
-                    logger.info("[封面] 裁剪比例 %s 已是选中态, 跳过点击", target_ratio)
-                else:
-                    await ratio_item.click()
-                    logger.info("[封面] 已选择裁剪比例: %s", target_ratio)
-                    await asyncio.sleep(1)
-            except Exception as ratio_exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info("[封面] 选择裁剪比例失败(继续上传): %s", ratio_exc)
-
-            # 6. Find hidden file input and upload image
-            file_input = modal.locator("input[type='file']")
-            logger.info("[封面] 正在上传封面图片...")
-            await file_input.wait_for(state="attached", timeout=30000)
-            await file_input.set_input_files(thumbnail_path)
-            logger.info("[封面] 封面图片已上传, 等待处理...")
-            await asyncio.sleep(3)
-
-            # 7. Click "确认" or "完成" button
-            confirm_btn = modal.locator("button:has-text('确认'), button:has-text('完成')").first
-            logger.info("[封面] 正在点击确认按钮...")
-            await confirm_btn.wait_for(state="visible", timeout=10000)
-            await confirm_btn.click()
-            await asyncio.sleep(2)
-
-            # 8. Wait for modal to close
-            try:  # noqa: SIM105
-                await modal.wait_for(state="hidden", timeout=30000)
-            except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
-                pass
-
-            logger.info("[封面] 封面设置成功")
-        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-            logger.info("[封面] 封面设置失败 (非致命): %s", exc)
-
-    # ------------------------------------------------------------------
-    # Helper: set image cover (image note)
-    # ------------------------------------------------------------------
 
     @staticmethod
     async def _set_image_cover(page, cover_path: str):

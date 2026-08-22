@@ -20,7 +20,7 @@ from .._utils import (
     scrape_user_profile,
 )
 from ..base_platform import BasePlatform
-from ..primitives import fill_title, get_params, set_schedule
+from ..primitives import fill_title, get_params, set_schedule, set_thumbnail
 
 logger = get_channel_logger("xiaohongshu")
 
@@ -859,7 +859,7 @@ async def _upload_video_content(
 
     # --- Set cover / thumbnail ---
     logger.info("[设置封面] 开始设置视频封面...")
-    await _set_thumbnail(page, thumbnail_path)
+    await set_thumbnail(page, get_params("xiaohongshu", "THUMBNAIL"), thumbnail_path=thumbnail_path)
 
     # --- Set collection (合集) ---
     if collection_id or collection_name:
@@ -1067,106 +1067,6 @@ async def _fill_tags(page, tags: list) -> None:
         # 给 React 一点时间消化 Space,把 #xxx 渲染成话题芯片,避免下一标签粘连
         await asyncio.sleep(0.3)
 
-
-async def _set_thumbnail(page, thumbnail_path: str) -> None:
-    """Upload a custom cover image via the cover modal.
-
-    New XHS UI (2026): the cover modal has a hidden file input directly
-    accessible; there is no '上传封面' tab anymore.  The file input is
-    ``input[type=file][accept*="image"]`` with ``display: none``.
-    """
-    if not thumbnail_path:
-        return
-    if not os.path.exists(thumbnail_path):
-        logger.info("[封面] 封面不存在: %s, 跳过", thumbnail_path)
-        return
-
-    logger.info("[封面] 开始设置封面图片")
-
-    try:
-        # The cover editor modal opens only after hovering the cover
-        # preview then clicking the "修改封面" overlay that appears.
-        # Step 1: hover the cover preview to reveal the operator overlay
-        cover_sel = 'div[style*="background-image"]'
-        cover_loc = page.locator(cover_sel).first
-        try:
-            await cover_loc.wait_for(state="attached", timeout=10_000)
-            await cover_loc.hover()
-            await page.wait_for_timeout(1000)
-            logger.info("[封面] 已悬停封面预览, 查找操作按钮...")
-
-            # Step 2: click the operator overlay
-            op_loc = page.locator("div.operator.pointer").first
-            await op_loc.click(force=True, timeout=5_000)
-            logger.info("[封面] 已点击封面操作遮罩")
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-            logger.info("[封面] 封面悬停/点击失败: %s, 跳过", e)
-            return
-
-        # Find the cover modal — retry once with an extra click if needed
-        modal_selectors = [
-            "div.d-modal.cover-modal",
-            "div.cover-modal",
-            "div[class*='cover-modal']",
-            "div.d-modal",
-        ]
-        modal = None
-        for attempt in range(2):
-            await page.wait_for_timeout(3000)
-            for sel in modal_selectors:
-                if await page.locator(sel).count() > 0:
-                    modal = page.locator(sel).first
-                    break
-            if modal:
-                break
-            if attempt == 0:
-                logger.info("[封面] 第1次未找到封面弹窗, 重试...")
-                try:
-                    await cover_loc.hover()
-                    await page.wait_for_timeout(500)
-                    await page.locator("div.operator.pointer").first.click(force=True, timeout=5_000)
-                except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
-                    pass
-
-        if not modal:
-            logger.info("[封面] 重试后仍未找到封面弹窗, 跳过")
-            try:
-                await page.screenshot(path="debug_cover_modal_missing.png")
-                logger.info("[封面] 已保存 debug_cover_modal_missing.png")
-            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
-                pass
-            return
-
-        # Set the file directly on the hidden file input
-        file_input = modal.locator('input[type="file"][accept*="image"]').first
-        await file_input.wait_for(state="attached", timeout=10000)
-        logger.info("[封面] 正在上传封面: %s", os.path.basename(thumbnail_path))
-        await file_input.set_input_files(thumbnail_path)
-        await page.wait_for_timeout(3000)
-
-        # Click confirm button
-        confirm_selectors = [
-            "button.mojito-button:has-text('确定')",
-            "button:has-text('确定')",
-            ".d-modal-footer button:has-text('确定')",
-        ]
-        confirm_button = None
-        for sel in confirm_selectors:
-            if await modal.locator(sel).count() > 0:
-                confirm_button = modal.locator(sel).first
-                break
-
-        if confirm_button:
-            await confirm_button.click()
-            try:
-                await modal.wait_for(state="hidden", timeout=15000)
-                logger.info("[封面] 封面设置成功")
-            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info("[封面] 封面弹窗未关闭, 继续执行")
-        else:
-            logger.info("[封面] 未找到确定按钮, 跳过封面")
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-        logger.info("[封面] 封面上传失败: %s", e)
 
 
 async def _upload_images(page, files: list[str]) -> bool:
