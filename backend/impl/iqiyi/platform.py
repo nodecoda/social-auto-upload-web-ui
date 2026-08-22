@@ -16,7 +16,7 @@ from util._logger import bind_account_name, get_channel_logger
 from .._browser import close_browser
 from .._utils import clear_and_type, get_account_name_by_cookie_file, parse_schedule_time, save_login_result
 from ..base_platform import BasePlatform
-from ..primitives import get_params, set_schedule
+from ..primitives import fill_title, get_params, set_schedule
 
 logger = get_channel_logger("iqiyi")
 
@@ -519,7 +519,7 @@ class IqiyiPlatform(BasePlatform):
                 await asyncio.sleep(3)
 
                 # Step 3: Fill title
-                await self._fill_title(page, title or desc)
+                await fill_title(page, title or desc, get_params("iqiyi", "FILL_TITLE"))
 
                 # Step 4: Fill description (tags 以 #XXX 格式追加)
                 full_desc = desc or ""
@@ -614,34 +614,6 @@ class IqiyiPlatform(BasePlatform):
 
     # ------------------------------------------------------------------
 
-    @staticmethod
-    async def _fill_title(page, title: str):
-        """Fill the video title."""
-        if not title:
-            return
-
-        # Target: input.catalog-desc-title-input input[type="text"]
-        # or just find by placeholder
-        title_input = page.locator(
-            'input[placeholder*="标题字数"]'
-        ).first
-        if await title_input.count() == 0:
-            # Fallback: any title-related input
-            title_input = page.locator(
-                '.catalog-desc-title-input input[type="text"]'
-            ).first
-        if await title_input.count() == 0:
-            logger.warning("[填写标题] 未找到标题输入框")
-            return
-
-        await title_input.wait_for(state="visible", timeout=10000)
-        await title_input.click()
-        await asyncio.sleep(0.3)
-
-        # 清空后输入(跨平台:Mac 用 Cmd+A,其他用 Ctrl+A)
-        # 传 element= 让 clear_and_type 走 fill('') 稳定路径(原生 <input> 元素)
-        await clear_and_type(page, title[:30], element=title_input)
-        logger.info("[填写标题] 标题已填写: %s", title[:30])
 
     @staticmethod
     async def _fill_description(page, desc: str):

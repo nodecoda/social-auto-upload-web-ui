@@ -25,7 +25,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
-from ..primitives import get_params, set_schedule
+from ..primitives import fill_title, get_params, set_schedule
 
 logger = get_channel_logger("jingmai")
 
@@ -423,8 +423,18 @@ class JdPlatform(BasePlatform):
                             except Exception:  # noqa: S110, BLE001 -- 文件/资源清理兜底,失败可忽略
                                 pass
 
-                # 3. 标题
-                await self._fill_title(title)
+                # 3. 标题（原语 fill_title，frame 场景；保留原防御性校验日志）
+                await fill_title(self.page, title, get_params("jd", "FILL_TITLE"), frame=self.frame)
+                try:
+                    _has_success = await self.frame.query_selector("input#title")
+                    if _has_success:
+                        _parent = await _has_success.evaluate_handle("el => el.closest('.jd-form-item')")
+                        _cls = await _parent.get_property("className")
+                        _cls_str = await _cls.json_value()
+                        if "jd-form-item-has-success" not in _cls_str:
+                            logger.warning(f"标题校验未通过: {_cls_str}")
+                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走后续逻辑
+                    pass
 
                 # 4. 关联挂件
                 if related_type == "product" and link_items:
@@ -590,35 +600,6 @@ class JdPlatform(BasePlatform):
 
     # ---------- 标题 ----------
 
-    async def _fill_title(self, title: str):
-        """填写标题(最多 27 字,超长截断)。
-
-        DOM: input#title (京东标题 input 有 id='title')
-        """
-        title = title.strip()[:27]  # 京东最多 27 字
-
-        title_input = await self.frame.wait_for_selector(
-            "input#title",
-            timeout=10_000,
-        )
-        await title_input.click()
-        await title_input.fill("")  # 清空
-        await asyncio.sleep(0.3)
-        await title_input.fill(title)
-        await asyncio.sleep(0.5)
-
-        # 验证:jd-form-item-has-success 类出现
-        has_success = await self.frame.query_selector(
-            "input#title"
-        )
-        if has_success:
-            parent = await has_success.evaluate_handle(
-                "el => el.closest('.jd-form-item')"
-            )
-            cls = await parent.get_property("className")
-            cls_str = await cls.json_value()
-            if "jd-form-item-has-success" not in cls_str:
-                logger.warning(f"标题校验未通过: {cls_str}")
 
     # ---------- 关联挂件 ----------
 

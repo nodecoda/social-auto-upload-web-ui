@@ -26,7 +26,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
-from ..primitives import get_params, set_schedule
+from ..primitives import fill_title, get_params, set_schedule
 from ._profile import scrape_bilibili_profile
 
 BILIBILI_UPLOAD_URL = "https://member.bilibili.com/platform/upload/video/frame"
@@ -624,7 +624,7 @@ class BilibiliPlatform(BasePlatform):
                 )
 
                 # 3. Fill title
-                await self._fill_title(page, title)
+                await fill_title(page, title, get_params("bilibili", "FILL_TITLE"))
 
                 # 4. Set category
                 await self._set_category(page, category)
@@ -866,22 +866,6 @@ class BilibiliPlatform(BasePlatform):
             await asyncio.sleep(0.5)
         raise TimeoutError("视频上传超时(超过 4 小时):未检测到「上传完成」")
 
-    @staticmethod
-    async def _fill_title(page, title: str):
-        """Fill the video title (max 80 chars, no emoji/special chars)."""
-        # 先去掉 emoji 和特殊字符,再截断 80 字
-        safe_title = _sanitize_title(title)[:80]
-        if safe_title != title:
-            logger.info("[填写标题] 标题已过滤特殊字符: %r -> %r", title, safe_title)
-        logger.info("[填写标题] 开始填写标题: %s", safe_title[:30])
-        title_input = page.locator(
-            'input[placeholder*="标题"], input[placeholder*="Title"], '
-            '.video-title input, [class*="title"] input[type="text"]'
-        ).first
-        await title_input.wait_for(state="visible", timeout=15000)
-        await title_input.click()
-        await title_input.fill("")
-        await title_input.fill(safe_title)
 
     @staticmethod
     async def _set_category(page, category):

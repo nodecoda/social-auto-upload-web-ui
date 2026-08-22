@@ -24,6 +24,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
+from ..primitives import fill_title, get_params
 from ._profile import scrape_csdn_profile
 
 logger = get_channel_logger("csdn")
@@ -559,7 +560,7 @@ class CsdnPlatform(BasePlatform):
                     await self._set_thumbnail(page, thumbnail_path)
 
                 # 4. 填写标题（≤30 字符）
-                await self._fill_title(page, title)
+                await fill_title(page, title, get_params("csdn", "FILL_TITLE"))
 
                 # 5. 填写简介（≤150 字符）
                 await self._fill_desc(page, desc)
@@ -823,23 +824,6 @@ class CsdnPlatform(BasePlatform):
             except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
 
-    @staticmethod
-    async def _fill_title(page, title: str):
-        """标题（spec: ``input#title.el-input__inner``，maxlength=30）。"""
-        if not title:
-            return
-        title_text = title[:CSDN_MAX_TITLE_LEN]
-        logger.info(f"[填写标题] 标题: {title_text}")
-        title_input = page.locator(
-            '#title.el-input__inner, '
-            'input#title, '
-            '.Management-content input.el-input__inner'
-        ).first
-        await title_input.wait_for(state="visible", timeout=15000)
-        await title_input.click()
-        await title_input.fill("")
-        await title_input.fill(title_text)
-        await asyncio.sleep(0.5)
 
     @staticmethod
     async def _fill_desc(page, desc: str):
