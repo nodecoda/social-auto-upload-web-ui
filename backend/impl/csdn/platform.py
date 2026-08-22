@@ -24,7 +24,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
-from ..primitives import fill_title, get_params
+from ..primitives import fill_title, get_params, set_thumbnail
 from ._profile import scrape_csdn_profile
 
 logger = get_channel_logger("csdn")
@@ -557,7 +557,7 @@ class CsdnPlatform(BasePlatform):
 
                 # 3. 设置封面（隐藏 input=file + 裁剪弹窗确认）
                 if thumbnail_path:
-                    await self._set_thumbnail(page, thumbnail_path)
+                    await set_thumbnail(page, get_params("csdn", "THUMBNAIL"), thumbnail_path=thumbnail_path)
 
                 # 4. 填写标题（≤30 字符）
                 await fill_title(page, title, get_params("csdn", "FILL_TITLE"))
@@ -710,119 +710,6 @@ class CsdnPlatform(BasePlatform):
                 logger.info(f"[上传视频] 上传中... ({retry * 3}s)")
             await asyncio.sleep(3)
             retry += 1
-
-    @staticmethod
-    async def _set_thumbnail(page, thumbnail_path: str):
-        """设置视频封面（spec 第 35-38 行）。
-
-        封面区有隐藏的 ``input[type=file][accept=".png,.jpg,..."]`` 在
-        ``.essential-uploader`` 内；set_input_files 后会弹出「图片剪裁」弹窗，
-        点击弹窗内 ``.dialog-footer .el-button--primary``（「确认」）即可。
-        任何异常 Escape 关弹窗，不阻塞后续步骤。
-        """
-        import os
-
-        if not thumbnail_path or not os.path.exists(thumbnail_path):
-            logger.info(f"[设置封面] 封面文件不存在: {thumbnail_path}")
-            return
-
-        log_dir = Path(BASE_DIR / "logs")
-        logger.info("[设置封面] 开始设置封面")
-
-        try:
-            # 1. 定位封面 input（.essential-uploader 内的图片 input）
-            cover_input = None
-            try:
-                candidate = page.locator(
-                    '.essential-uploader input[type="file"][accept*="png"], '
-                    '.essential-uploader input[type="file"][accept*="image"], '
-                    '.essential-uploader input[type="file"]'
-                ).first
-                await candidate.wait_for(state="attached", timeout=10000)
-                cover_input = candidate
-                logger.info("[设置封面] ✓ 封面 input 命中")
-            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info("[设置封面] .essential-uploader 内未找到 input，兜底全页")
-
-            if cover_input is None:
-                # 兜底：全页找 accept 含图片的 input（排除视频 input）
-                try:
-                    candidate = page.locator(
-                        'input[type="file"][accept*="png"], '
-                        'input[type="file"][accept*="jpg"], '
-                        'input[type="file"][accept*="image"]'
-                    ).first
-                    await candidate.wait_for(state="attached", timeout=5000)
-                    cover_input = candidate
-                    logger.info("[设置封面] ✓ 全页兜底命中图片 input")
-                except Exception as e:  # 捕获后重新抛出,统一异常出口
-                    raise RuntimeError(f"未找到封面 input: {e}") from e
-
-            # 2. 设置封面文件 → 触发裁剪弹窗
-            await cover_input.set_input_files(thumbnail_path)
-            logger.info("[设置封面] 封面文件已选择，等待裁剪弹窗")
-            await asyncio.sleep(2)
-
-            # 3. 裁剪弹窗出现，点击「确认」(.dialog-footer .el-button--primary)
-            confirm_btn = page.locator(
-                '.dialog-footer .el-button--primary:has-text("确认"), '
-                '.el-dialog__footer .el-button--primary:has-text("确认")'
-            ).first
-            try:
-                await confirm_btn.wait_for(state="visible", timeout=15000)
-                # 多策略点击确保点中
-                clicked = False
-                for attempt, click_kwargs in enumerate(
-                    [{"timeout": 5000}, {"timeout": 5000, "force": True}]
-                ):
-                    try:
-                        await confirm_btn.click(**click_kwargs)
-                        clicked = True
-                        logger.info(
-                            f"[设置封面] ✓ 已点击裁剪确认 (attempt={attempt + 1})"
-                        )
-                        break
-                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                        logger.info(
-                            f"[设置封面] 点击 attempt={attempt + 1} 失败: {e}"
-                        )
-                if not clicked:
-                    try:
-                        await confirm_btn.evaluate("el => el.click()")
-                        clicked = True
-                        logger.info("[设置封面] ✓ JS evaluate click 命中")
-                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                        logger.info(f"[设置封面] JS evaluate click 失败: {e}")
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info(f"[设置封面] 未出现裁剪弹窗（可能无需裁剪）: {e}")
-
-            # 4. 等弹窗消失
-            for _ in range(15):
-                try:
-                    still_open = await page.locator(
-                        '.el-dialog__wrapper:not([style*="display: none"])'
-                    ).count()
-                    if still_open == 0:
-                        logger.info("[设置封面] ✓ 裁剪弹窗已关闭")
-                        break
-                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
-                    pass
-                await asyncio.sleep(1)
-            await asyncio.sleep(1)
-        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-            logger.info(f"[设置封面] 设置封面失败（非致命）: {exc}")
-            try:  # noqa: SIM105
-                await page.screenshot(
-                    path=str(log_dir / "csdn_cover_error.png"),
-                    full_page=True,
-                )
-            except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
-                pass
-            try:
-                await page.keyboard.press("Escape")
-                await asyncio.sleep(0.5)
-            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
-                pass
 
 
     @staticmethod

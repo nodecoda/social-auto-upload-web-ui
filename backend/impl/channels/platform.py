@@ -25,7 +25,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
-from ..primitives import get_params, set_schedule
+from ..primitives import get_params, set_schedule, set_thumbnail
 from ._profile import scrape_tencent_profile
 
 # ---------------------------------------------------------------------------
@@ -849,216 +849,6 @@ async def _wait_for_cover_ready(page, *, action: str = "") -> None:
             logger.info(f"[设置封面] 封面阻塞等待中({action}):「{still_blocking}」... ({waited}s)")
 
 
-async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_path: str | None = None, thumbnail_portrait_path: str | None = None) -> None:
-    """Set the video cover/thumbnail.
-
-    视频号发布页的封面入口数量取决于视频方向：
-    - 竖版视频：只有竖版封面入口（个人主页卡片 3:4）
-    - 横版视频：同时有横版封面入口（分享卡片 4:3）+ 竖版封面入口（个人主页卡片 3:4）
-
-    本函数遍历页面上**所有可见**的封面入口，对每个入口分别上传对应方向的封面：
-    - horizontal 入口 → thumbnail_landscape_path（4:3）
-    - vertical 入口   → thumbnail_portrait_path（3:4）
-    没有对应封面图的入口跳过。
-    """
-    if not thumbnail_path and not thumbnail_landscape_path and not thumbnail_portrait_path:
-        return
-
-    logger.info("[设置封面] setting cover image")
-
-    # Step 1: 检测封面预览区是否存在
-    cover_preview = page.locator('div:has(> .label):has-text("封面预览")').first
-    try:
-        if await cover_preview.count():
-            await cover_preview.wait_for(state="visible", timeout=5000)
-            logger.info("[设置封面] found cover preview area")
-    except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-        logger.info("[设置封面] no cover preview area found, trying direct cover detection")
-
-    cover_dialog_selectors = [
-        ("div.weui-desktop-dialog", "编辑个人主页卡片"),
-        ("div.weui-desktop-dialog", "封面"),
-        ("div.weui-desktop-dialog", "上传"),
-        ("div.weui-desktop-dialog", "卡片"),
-    ]
-
-    async def _find_cover_dialog():
-        """按既定选择器找当前可见的封面对话框，找不到返回 None。"""
-        for selector, text_hint in cover_dialog_selectors:
-            try:
-                dialog = page.locator(selector).filter(has_text=text_hint).first
-                if await dialog.count() and await dialog.is_visible():
-                    logger.info(f"[设置封面] found cover dialog (text: {text_hint})")
-                    return dialog
-            except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
-                continue
-        try:
-            fallback = page.locator("div.weui-desktop-dialog").first
-            if await fallback.count() and await fallback.is_visible():
-                logger.info("[设置封面] using fallback dialog match")
-                return fallback
-        except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
-            pass
-        return None
-
-    async def _do_one_cover(cover_entry, cover_type, effective_thumbnail):
-        """对单个封面入口执行：点击→(横版多一步 popover 点"直接编辑")→等对话框→上传→裁剪确认→确认。"""
-        logger.info(f"[设置封面] 开始点击 {cover_type} 封面入口，直到对话框出现（无限重试）")
-        cover_dialog = None
-        attempt = 0
-        while cover_dialog is None:
-            attempt += 1
-            try:
-                try:  # noqa: SIM105
-                    await cover_entry.hover()
-                except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
-                    pass
-                await page.wait_for_timeout(500)
-                await _wait_for_cover_ready(page, action=f"{cover_type}封面入口 hover(第{attempt}轮)")
-                await cover_entry.click()
-                await page.wait_for_timeout(800)
-                await _wait_for_cover_ready(page, action=f"{cover_type}封面入口 click(第{attempt}轮)")
-
-                # 横版封面：点击后先弹出 ant-popover「使用此素材作为封面？」，
-                # 需点「直接编辑」才会出现封面上传弹窗；竖版点击后直接出弹窗。
-                if cover_type == 'horizontal':
-                    popover_edit_btn = page.locator(
-                        '.ant-popover .btn-directly-edit button, '
-                        '.ant-popover button:has-text("直接编辑")'
-                    ).first
-                    try:
-                        if await popover_edit_btn.count() and await popover_edit_btn.is_visible():
-                            logger.info(f"[设置封面] {cover_type} 检测到推荐素材 popover，点击「直接编辑」")
-                            await popover_edit_btn.click()
-                            await page.wait_for_timeout(800)
-                            await _wait_for_cover_ready(page, action=f"{cover_type}封面 popover「直接编辑」后")
-                    except Exception as pop_exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                        logger.info(f"[设置封面] {cover_type} popover 处理异常(第{attempt}轮): {pop_exc}")
-
-                cover_dialog = await _find_cover_dialog()
-            except Exception as retry_exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info(f"[设置封面] {cover_type}封面入口重试异常(第{attempt}轮): {retry_exc}")
-            if cover_dialog is None:
-                if attempt == 1 or attempt % 5 == 0:
-                    logger.info(f"[上传视频] {cover_type}封面对话框未出现，继续重试(第{attempt}轮)")
-                await page.wait_for_timeout(1000)
-
-        # 上传封面文件
-        file_input_selectors = [
-            '.single-cover-uploader-wrap input[type="file"]',
-            'input[type="file"][accept*="image"]',
-            '.cover-uploader-wrap input[type="file"]',
-            'input[type="file"]',
-        ]
-        file_input = None
-        for selector in file_input_selectors:
-            try:
-                locator = cover_dialog.locator(selector).first
-                if await locator.count():
-                    file_input = locator
-                    logger.info(f"[设置封面] found file input: {selector}")
-                    break
-            except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
-                continue
-        if not file_input:
-            try:
-                file_input = page.locator("div.weui-desktop-dialog input[type='file']").first
-                if not await file_input.count():
-                    logger.info(f"[设置封面] WARNING: no file input for {cover_type} cover, skipping")
-                    return
-            except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
-                return
-
-        await file_input.wait_for(state="attached", timeout=10000)
-        await _wait_for_cover_ready(page, action=f"上传{cover_type}封面文件前")
-        logger.info(f"[设置封面] uploading {cover_type} cover: {effective_thumbnail}")
-        await file_input.set_input_files(effective_thumbnail)
-        await page.wait_for_timeout(2000)
-
-        # 裁剪对话框
-        crop_dialog = page.locator("div.weui-desktop-dialog").filter(has_text="裁剪封面图").first
-        if await crop_dialog.count():
-            try:
-                await crop_dialog.wait_for(state="visible", timeout=10000)
-                logger.info(f"[设置封面] {cover_type} crop dialog appeared")
-                for selector in (
-                    'div.weui-desktop-dialog__ft button.weui-desktop-btn_primary:has-text("确定")',
-                    'button:has-text("确定")',
-                    "button.weui-desktop-btn_primary",
-                ):
-                    try:
-                        btn = crop_dialog.locator(selector).first
-                        if await btn.count() and await btn.is_visible():
-                            await btn.click()
-                            logger.info(f"[设置封面] {cover_type} crop confirmed: {selector}")
-                            await page.wait_for_timeout(1000)
-                            break
-                    except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
-                        continue
-            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info(f"[设置封面] WARNING: {cover_type} crop confirm error: {exc}")
-
-        # 确认封面
-        confirmed = False
-        for selector in (
-            'div.weui-desktop-dialog__ft button.weui-desktop-btn_primary:has-text("确认")',
-            'div.weui-desktop-dialog__ft button:has-text("确认")',
-            'div.weui-desktop-dialog__ft button.weui-desktop-btn_primary:has-text("确定")',
-            "div.weui-desktop-dialog__ft button.weui-desktop-btn_primary",
-            'button:has-text("确认")',
-        ):
-            try:
-                btn = cover_dialog.locator(selector).first
-                if await btn.count() and await btn.is_visible():
-                    await btn.click()
-                    logger.info(f"[设置封面] {cover_type} cover confirmed: {selector}")
-                    confirmed = True
-                    await page.wait_for_timeout(1000)
-                    break
-            except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
-                continue
-        if not confirmed:
-            logger.info(f"[设置封面] WARNING: {cover_type} cover confirm button not found")
-        logger.info(f"[设置封面] {cover_type} cover image set complete")
-
-    # Step 2: 收集所有可见的封面入口及其类型
-    cover_entry_defs = [
-        # Vertical cover (个人主页卡片, 3:4)
-        ('div.vertical-cover-wrap', 'vertical', thumbnail_portrait_path),
-        # Horizontal cover (分享卡片, 4:3)
-        ('div.horizon-cover-wrap', 'horizontal', thumbnail_landscape_path),
-    ]
-    # thumbnail_path 作为兜底：若没有对应方向的封面，用它
-    for entry in cover_entry_defs:
-        if not entry[2] and thumbnail_path:
-            cover_entry_defs[cover_entry_defs.index(entry)] = (entry[0], entry[1], thumbnail_path)
-
-    visible_entries = []
-    for selector, ctype, thumb in cover_entry_defs:
-        candidate = page.locator(selector).first
-        try:
-            if not await candidate.count():
-                continue
-            await candidate.wait_for(state="visible", timeout=3000)
-            visible_entries.append((candidate, ctype, thumb))
-            logger.info(f"[设置封面] cover entry found: {selector} ({ctype})")
-        except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
-            continue
-
-    if not visible_entries:
-        logger.info("[设置封面] WARNING: no cover entry found, skipping cover")
-        return
-
-    # Step 3: 对每个可见入口依次设置封面（横版视频会有两个，竖版视频只有一个）
-    for cover_entry, cover_type, effective_thumbnail in visible_entries:
-        if not effective_thumbnail:
-            logger.info(f"[设置封面] no thumbnail for {cover_type} cover, skipping")
-            continue
-        await _do_one_cover(cover_entry, cover_type, effective_thumbnail)
-
-    logger.info("[设置封面] all cover images set complete")
-
-
 async def _dismiss_i_know_dialog(page) -> bool:
     """Dismiss the '我知道了' popup if present.
 
@@ -1571,7 +1361,17 @@ class ChannelsPlatform(BasePlatform):
                             await _wait_for_upload_complete(page, file_path)
 
                             # Set cover image
-                            await _set_thumbnail(page, thumbnail_path, thumbnail_landscape_path, thumbnail_portrait_path)
+                                                        # thumbnail_path 作为方向缺图时的兜底（与原实现一致）
+                            cover_paths = {}
+                            if thumbnail_portrait_path:
+                                cover_paths["portrait"] = thumbnail_portrait_path
+                            elif thumbnail_path:
+                                cover_paths["portrait"] = thumbnail_path
+                            if thumbnail_landscape_path:
+                                cover_paths["landscape"] = thumbnail_landscape_path
+                            elif thumbnail_path:
+                                cover_paths["landscape"] = thumbnail_path
+                            await set_thumbnail(page, get_params("channels", "THUMBNAIL"), paths=cover_paths)
 
                             # Set schedule if needed
                             if enable_timer and publish_date != 0:

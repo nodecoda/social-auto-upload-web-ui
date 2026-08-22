@@ -25,7 +25,7 @@ from .._utils import (
     save_login_result,
 )
 from ..base_platform import BasePlatform
-from ..primitives import get_params, set_schedule
+from ..primitives import get_params, set_schedule, set_thumbnail
 from ._profile import scrape_toutiao_profile
 
 logger = get_channel_logger("toutiao")
@@ -614,14 +614,16 @@ class ToutiaoPlatform(BasePlatform):
                 if (thumbnail_landscape_path or thumbnail_portrait_path
                         or thumbnail_landscape_169_path or thumbnail_portrait_916_path):
                     logger.info("[设置封面] 开始设置封面...")
-                    await self._set_thumbnail(
-                        page,
-                        thumbnail_landscape_path,
-                        thumbnail_portrait_path,
-                        thumbnail_landscape_169_path,
-                        thumbnail_portrait_916_path,
-                        is_portrait,
-                    )
+                    # 按视频方向优先选新尺寸, 没有才回退（与原实现一致, 只传一张）
+                    if is_portrait:
+                        cover_path = (thumbnail_portrait_916_path
+                                      or thumbnail_portrait_path
+                                      or thumbnail_landscape_path)
+                    else:
+                        cover_path = (thumbnail_landscape_169_path
+                                      or thumbnail_landscape_path
+                                      or thumbnail_portrait_path)
+                    await set_thumbnail(page, get_params("toutiao", "THUMBNAIL"), thumbnail_path=cover_path)
                     logger.info("[设置封面] 封面设置完成")
                 else:
                     logger.info("[设置封面] 无自定义封面")
@@ -744,175 +746,6 @@ class ToutiaoPlatform(BasePlatform):
     # Helper: set thumbnail (cover images)
     # ------------------------------------------------------------------
 
-    @staticmethod
-    async def _set_thumbnail(
-        page,
-        thumbnail_landscape_path=None,
-        thumbnail_portrait_path=None,
-        thumbnail_landscape_169_path=None,
-        thumbnail_portrait_916_path=None,
-        is_portrait=False,
-    ):
-        """Set video cover/thumbnail.
-
-        封面尺寸选择策略(按视频方向):
-        - 横版视频 → 优先 16:9 横封面(thumbnail_landscape_169_path),
-                    没有则回退到 4:3 横封面(thumbnail_landscape_path)
-        - 竖版视频 → 优先 9:16 竖封面(thumbnail_portrait_916_path),
-                    没有则回退到 3:4 竖封面(thumbnail_portrait_path)
-        两者都为空才跳过。
-        """
-        if (not thumbnail_landscape_path and not thumbnail_portrait_path
-                and not thumbnail_landscape_169_path and not thumbnail_portrait_916_path):
-            return
-
-        logger.info("[封面] 开始设置视频封面")
-        try:
-            cover_editor = page.locator('div.xigua-poster-editor')
-            if not await cover_editor.count():
-                logger.warning("[封面] 未找到封面编辑器!")
-                return
-
-            await cover_editor.click()
-            await asyncio.sleep(2)
-            logger.info("[封面] 封面编辑器已打开")
-
-            # Switch to "本地上传" tab
-            upload_tab = page.locator('li:has-text("本地上传")')
-            if await upload_tab.count():
-                await upload_tab.click()
-                await asyncio.sleep(1)
-                logger.info("[封面] 已切换到本地上传")
-
-            # Find hidden file input and upload
-            cover_input = page.locator('input[type="file"][accept*="image"]')
-            if not await cover_input.count():
-                cover_input = page.locator('input[type="file"]').first
-
-            # 按视频方向优先选 16:9 / 9:16 新尺寸,没有才回退到 4:3 / 3:4
-            if is_portrait:
-                thumb_path = (thumbnail_portrait_916_path
-                              or thumbnail_portrait_path
-                              or thumbnail_landscape_path)
-                size_label = "9:16 竖封面" if thumbnail_portrait_916_path else "3:4 竖封面(回退)"
-            else:
-                thumb_path = (thumbnail_landscape_169_path
-                              or thumbnail_landscape_path
-                              or thumbnail_portrait_path)
-                size_label = "16:9 横封面" if thumbnail_landscape_169_path else "4:3 横封面(回退)"
-
-            logger.info("[封面] 上传封面图片[%s]: %s", size_label, thumb_path)
-            await cover_input.set_input_files(thumb_path)
-            await asyncio.sleep(2)
-
-            # 上传后头条会进入裁剪/预览页,依次尝试点击「完成裁剪」「确定」按钮。
-            # 注意:不能用 class 定位(antd/头条自有 hash 会漂移),改用
-            # button + 文字精确定位 + role=button 兜底。
-            #
-            # 规则:如果上传的图片就是头条规定比例(16:9 / 9:16),
-            # 头条不会弹「完成裁剪」,直接显示「确定」→ 这时必须立刻跳过
-            # 「完成裁剪」步骤,不能傻等。
-            async def _click_btn_by_text(text, wait_timeout_ms=5000):
-                """按可见文字点击按钮(button / [role=button]),不依赖 class。
-
-                先用 count() 毫秒级探测元素是否存在,不存在立即返回 False
-                (避免 wait_for 把整个 timeout 浪费在等一个不会出现的按钮上)。
-                存在才 wait_for + click。返回 True/False。
-                """
-                candidates = [
-                    f"button:has-text('{text}')",
-                    f"[role='button']:has-text('{text}')",
-                ]
-                for sel in candidates:
-                    loc = page.locator(sel).first
-                    # 毫秒级探测:不存在直接跳下一个,不浪费时间
-                    if await loc.count() == 0:
-                        continue
-                    try:
-                        await loc.wait_for(state="visible", timeout=wait_timeout_ms)
-                        if await loc.is_enabled():
-                            await loc.click(timeout=wait_timeout_ms)
-                            logger.info("[封面] 已点击「%s」(选择器=%s)", text, sel)
-                            return True
-                    except Exception:  # noqa: S112, BLE001 -- 单个候选源探测失败,跳过继续
-                        continue
-                logger.info("[封面] 未找到「%s」按钮,跳过", text)
-                return False
-
-            # 1. 完成裁剪(可选):图片符合规定比例时不会出现,直接跳过
-            #    用 count() 探测,不存在立即跳过,不会卡 3 秒
-            if await page.locator("button:has-text('完成裁剪')").count() > 0:
-                await _click_btn_by_text("完成裁剪", wait_timeout_ms=5000)
-                await asyncio.sleep(1)
-            else:
-                logger.info("[封面] 未出现「完成裁剪」(图片符合规定比例),直接点确定")
-
-            # 2. 确定(必点,关闭封面编辑弹窗)
-            ok = await _click_btn_by_text("确定", wait_timeout_ms=8000)
-            if not ok:
-                logger.warning("[封面] 未点到「确定」按钮,封面可能未生效")
-            await asyncio.sleep(2)
-
-            # 3. 二次确认对话框(可选)
-            #    DOM 结构(用户提供的真实 DOM):
-            #      <div class="m-xigua-dialog m-modal m-dialog-edit">  ← 弹窗容器
-            #        <div class="mask"></div>                          ← 遮罩
-            #        <div class="m-content">
-            #          <svg class="close">...</svg>
-            #          <div class="content">
-            #            <div class="body">完成后无法继续编辑,是否确定完成？</div>
-            #            <div class="footer">
-            #              <button class="m-button">取消</button>
-            #              <button class="m-button red">确定</button>   ← 要点这个
-            #            </div>
-            #          </div>
-            #        </div>
-            #      </div>
-            #
-            # 定位策略(全程不依赖 class):
-            # 1) 先用 body 文字"完成后无法继续编辑"找到对话框(产品文案稳定)
-            # 2) 在该对话框范围内找 footer 里第 2 个 button(第 1 个是取消,第 2 个是确定)
-            #    不能用 button:has-text('确定') —— 主弹窗也含同名按钮会误匹配
-            # 3) 直接用 force=True 点击(避免被遮罩层/动画拦截)
-            try:
-                # 用 XPath 精确定位二次确认弹窗的「确定」按钮:
-                # 1) 找同时含「完成后无法继续编辑」+「取消」+「确定」的元素(会匹配祖先链)
-                # 2) 排除有更深层匹配的祖先(not(.//*[...])),只留最深一层的弹窗容器
-                #    避免 Playwright 把 <html>/<body> 当匹配导致点中遮罩层
-                # 3) 在该容器内定位同时含「取消」「确定」的 footer 的确定按钮
-                #    (主弹窗只有「确定」无「取消」,不会误匹配)
-                cond = (
-                    ".//*[contains(normalize-space(.), '完成后无法继续编辑')] "
-                    "and .//button[normalize-space()='取消'] "
-                    "and .//button[normalize-space()='确定']"
-                )
-                dialog_ok_btn = page.locator(
-                    f"xpath=//*[{cond} and not(.//*[{cond}])]"
-                    "//div[button[normalize-space()='取消'] "
-                    "and button[normalize-space()='确定']]"
-                    "//button[normalize-space()='确定']"
-                ).first
-                if await dialog_ok_btn.count() > 0:
-                    try:  # noqa: SIM105
-                        await dialog_ok_btn.wait_for(state="visible", timeout=5000)
-                    except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
-                        # 弹窗动画中可能 is_visible=False,继续 force click
-                        pass
-                    await dialog_ok_btn.click(force=True, timeout=5000)
-                    logger.info("[封面] 已点击二次确认弹窗「确定」")
-                    await asyncio.sleep(1)
-                else:
-                    logger.info("[封面] 未出现二次确认弹窗,流程结束")
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                logger.warning("[封面] 二次确认弹窗处理失败: %s", e)
-
-            logger.info("[封面] 封面设置完成")
-        except Exception as e:
-            logger.exception("[封面] 设置封面失败: %s", e)
-
-    # ------------------------------------------------------------------
-    # Helper: set creation declaration (multi-select)
-    # ------------------------------------------------------------------
 
     @staticmethod
     async def _set_creation_declaration(page, declarations: list):

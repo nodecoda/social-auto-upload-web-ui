@@ -20,10 +20,30 @@ FILL_TITLE = {
 THUMBNAIL = {
     "strategy": "click_modal",
     "direct_file_first": True,
-    "trigger_selector": 'button:has-text("编辑封面"), [class*="cover"]:has-text("编辑封面")',
+    "trigger_candidates": [
+        '[data-reporter-id="80"] .cover-empty-pill .add-text',
+        '[data-reporter-id="80"] .cover-empty-pill .add-icon',
+        '.cover-empty-pill .add-text',
+        '.cover-empty-pill .add-icon',
+        '.cover-empty-pill',
+        'div[class*="cover-empty"]:has-text("封面")',
+        'span[class*="edit-text"]:has-text("封面设置")',
+        'span:has-text("封面设置")',
+        'button:has-text("封面设置")',
+        'div.cover-item',
+        '.cover-item',
+        'div[class*="cover"] >> text=选择封面',
+    ],
+    "trigger_sleep": 1.0,
+    "modal_selector": (
+        "div.bcc-dialog:has-text('封面制作'), div.bcc-dialog:has-text('封面设置'), "
+        "div.bcc-dialog, div[class*='cover-editor']:visible, "
+        "div[class*='cover-dialog']:visible, div[class*='upload-cover']:visible"
+    ),
     "file_input_selector": '.cover-upload input[type="file"], input[accept*="image"]',
-    "confirm_selector": "div.button.submit",
-    "confirm_selector2": "button.bcc-button--primary",
     "upload_sleep": 3.0,
+    # 两级确认: 先点「完成」(div.button.submit), 再点弹窗内确认按钮
+    "confirm_selector": ["div.button.submit", "button.bcc-button--primary"],
     "close_escape": True,
 }
+

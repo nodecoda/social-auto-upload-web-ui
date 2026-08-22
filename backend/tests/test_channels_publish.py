@@ -20,7 +20,7 @@ _HELPERS = [
     '_upload_video_file', '_fill_description', '_fill_title_and_tags',
     '_apply_collection', '_apply_location', '_apply_activity',
     '_apply_original_statement', '_apply_mark_tag', '_wait_for_upload_complete',
-    '_set_thumbnail', 'set_schedule', '_set_short_title', '_submit_publish',
+    'set_thumbnail', 'set_schedule', '_set_short_title', '_submit_publish',
 ]
 
 
@@ -119,8 +119,28 @@ class TestPublishVideoOrchestration:
             thumbnail_path='/legacy.png', thumbnail_landscape_path='/l.png',
             thumbnail_portrait_path='/p.png',
         )
-        set_thumb = mocks['_set_thumbnail'].await_args
-        assert set_thumb.args[1:] == ('/legacy.png', '/l.png', '/p.png')
+        call = mocks['set_thumbnail'].await_args
+        # 方向图优先, thumbnail_path 作兜底: 有横竖图时直接透传
+        assert call.kwargs['paths'] == {'portrait': '/p.png', 'landscape': '/l.png'}
+
+    def test_cover_thumbnail_path_fallback(self):
+        """方向图缺失时用 thumbnail_path 兜底（与原实现 cover_entry_defs 一致）。"""
+        inst = _make_platform()
+        _, mocks, _ = _run_publish(
+            inst, title='T', files=['/v.mp4'], account_file=['a.json'],
+            thumbnail_path='/legacy.png',
+        )
+        call = mocks['set_thumbnail'].await_args
+        assert call.kwargs['paths'] == {'portrait': '/legacy.png', 'landscape': '/legacy.png'}
+
+    def test_cover_missing_skips(self):
+        """无任何封面参数时 paths 为空, 原语内部跳过上传。"""
+        inst = _make_platform()
+        _, mocks, _ = _run_publish(
+            inst, title='T', files=['/v.mp4'], account_file=['a.json'],
+        )
+        call = mocks['set_thumbnail'].await_args
+        assert call.kwargs['paths'] == {}
 
     def test_schedule_time_conditional(self):
         """enableTimer + publish_date != 0 → 调原语 set_schedule; immediate → 不调。"""
@@ -165,7 +185,7 @@ class TestPublishVideoOrchestration:
              patch('impl.channels.platform._apply_original_statement', AsyncMock()), \
              patch('impl.channels.platform._apply_mark_tag', AsyncMock()), \
              patch('impl.channels.platform._wait_for_upload_complete', AsyncMock()), \
-             patch('impl.channels.platform._set_thumbnail', AsyncMock()), \
+             patch('impl.channels.platform.set_thumbnail', AsyncMock()), \
              patch('impl.channels.platform.set_schedule', AsyncMock()), \
              patch('impl.channels.platform._set_short_title', AsyncMock()), \
              patch('impl.channels.platform._submit_publish', AsyncMock()), \

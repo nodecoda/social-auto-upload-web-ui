@@ -21,7 +21,7 @@ from .._utils import (
     scrape_user_profile,
 )
 from ..base_platform import BasePlatform
-from ..primitives import get_params, set_schedule
+from ..primitives import get_params, set_schedule, set_thumbnail
 from ._dom_ops import (
     _count_hashtags,
     _fill_title_and_description,
@@ -34,7 +34,6 @@ from ._dom_ops import (
     _set_location_tag,
     _set_product_link,
     _set_tag,
-    _set_thumbnail,
     _validate_publish_params,
 )
 from ._image_ops import DouyinImageOps
@@ -55,7 +54,6 @@ class DouyinPlatform(DouyinImageOps, BasePlatform):
     _validate_publish_params = staticmethod(_validate_publish_params)
     _fill_title_and_description = staticmethod(_fill_title_and_description)
     _set_product_link = staticmethod(_set_product_link)
-    _set_thumbnail = staticmethod(_set_thumbnail)
     _handle_auto_video_cover = staticmethod(_handle_auto_video_cover)
     _set_image_cover = staticmethod(_set_image_cover)
     _set_image_mix = staticmethod(_set_image_mix)
@@ -594,8 +592,13 @@ class DouyinPlatform(DouyinImageOps, BasePlatform):
 
                 # Set thumbnail / cover
                 logger.info("[设置封面] 开始设置视频封面...")
-                await self._set_thumbnail(
-                    page, thumbnail_landscape_path, thumbnail_portrait_path
+                await set_thumbnail(
+                    page,
+                    get_params("douyin", "THUMBNAIL"),
+                    paths={
+                        "landscape": thumbnail_landscape_path,
+                        "portrait": thumbnail_portrait_path,
+                    },
                 )
                 logger.info("[设置封面] 封面设置完成")
 

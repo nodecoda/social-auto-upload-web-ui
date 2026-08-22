@@ -169,67 +169,6 @@ async def _set_product_link(page, product_link: str, product_title: str):
             return False
 
 
-async def _set_thumbnail(
-        page, thumbnail_landscape_path=None, thumbnail_portrait_path=None
-    ):
-        if not thumbnail_landscape_path and not thumbnail_portrait_path:
-            return
-
-        logger.info("[封面] 开始设置视频封面")
-        await page.click('text="选择封面"')
-        cover_locator_str = 'div[id*="creator-content-modal"]'
-        cover_locator = page.locator(cover_locator_str)
-        await page.wait_for_selector(cover_locator_str)
-        logger.info("[封面] 封面编辑器已打开")
-
-        # 读取 tab 文本识别横版/竖版各自在第几个 tab
-        tab_locator = cover_locator.locator("div[class*='steps'] div")
-        tab_count = await tab_locator.count()
-        portrait_tab_idx = None
-        landscape_tab_idx = None
-        for i in range(tab_count):
-            try:
-                text = await tab_locator.nth(i).inner_text()
-                if "竖" in text:
-                    portrait_tab_idx = i
-                if "横" in text:
-                    landscape_tab_idx = i
-            except Exception:  # noqa: S112, BLE001 -- 单次探测失败,跳过继续
-                continue
-        logger.info("[封面] 封面tab索引 - 竖版: %s, 横版: %s", portrait_tab_idx, landscape_tab_idx)
-
-        # 通用函数：切换到指定 tab → 取当前可见的 upload input → 上传
-        async def _upload_to_tab(tab_index, file_path):
-            await cover_locator.locator("div[class*='steps'] div").nth(tab_index).click()
-            await page.wait_for_timeout(1500)
-            # 每次切 tab 后重新定位，当前 tab 只有一个可见的 upload input
-            inp = cover_locator.locator(
-                "div[class^='semi-upload upload'] >> input.semi-upload-hidden-input"
-            ).first
-            await inp.set_input_files(file_path)
-            await page.wait_for_timeout(2000)
-
-        if thumbnail_portrait_path and portrait_tab_idx is not None:
-            await _upload_to_tab(portrait_tab_idx, thumbnail_portrait_path)
-            logger.info("[封面] 竖版封面上传成功 (tab %s)", portrait_tab_idx)
-        elif thumbnail_portrait_path:
-            # 没找到竖版 tab，尝试默认第一个
-            await page.wait_for_timeout(1000)
-            await cover_locator.locator(
-                "div[class^='semi-upload upload'] >> input.semi-upload-hidden-input"
-            ).first.set_input_files(thumbnail_portrait_path)
-            await page.wait_for_timeout(2000)
-            logger.info("[封面] 竖版封面上传成功 (默认)")
-
-        if thumbnail_landscape_path and landscape_tab_idx is not None:
-            await _upload_to_tab(landscape_tab_idx, thumbnail_landscape_path)
-            logger.info("[封面] 横版封面上传成功 (tab %s)", landscape_tab_idx)
-
-        await cover_locator.locator('button:visible:has-text("完成")').click()
-        logger.info("[封面] 封面设置完成")
-        await page.wait_for_selector("div.extractFooter", state="detached")
-
-
 async def _handle_auto_video_cover(page):
         try:
             if await page.get_by_text("请设置封面后再发布").first.is_visible():

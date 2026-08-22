@@ -7,6 +7,8 @@ FILL_TITLE = {
 THUMBNAIL = {
     "strategy": "file_input",
     "file_input_selector": '.essential-uploader input[type="file"][accept*="image"], input[type="file"]',
+    "upload_sleep": 2.0,
     "confirm_selector": '.dialog-footer .el-button--primary:has-text("确认")',
     "close_escape": True,
 }
+

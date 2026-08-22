@@ -15,7 +15,13 @@ FILL_TITLE = {
 }
 THUMBNAIL = {
     "strategy": "click_modal",
+    "hover_trigger_selector": 'div[style*="background-image"]',
+    "hover_sleep": 1.0,
     "trigger_selector": "div.operator.pointer",
-    "modal_selector": 'div[class*="upload-modal"]',
+    "trigger_sleep": 3.0,
+    "modal_selector": "div.d-modal.cover-modal, div.cover-modal, div[class*='cover-modal'], div.d-modal",
     "file_input_selector": 'input[type=file][accept*="image"]',
+    "upload_sleep": 3.0,
+    "confirm_selector": "button.mojito-button:has-text('确定'), button:has-text('确定'), .d-modal-footer button:has-text('确定')",
 }
+
