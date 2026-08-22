@@ -42,6 +42,10 @@ _UPLOAD_MAX_WAIT = 4 * 60 * 60
 
 
 class VivoPlatform(BasePlatform):
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://www.kaixinkan.com.cn/#/home"
+    CHECK_SLEEP = 3.0
+    CHECK_VALID_SELECTOR = ".user-info-area"
     platform_id = 16
     platform_key = "vivo"
     platform_name = "VIVO"
@@ -147,36 +151,6 @@ class VivoPlatform(BasePlatform):
     # check_cookie — verify stored cookie is still valid
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        """Return True if the saved cookie file is still valid."""
-        logger.info("[Cookie检查] 开始检查cookie有效性: %s", cookie_file)
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            try:
-                page = await context.new_page()
-                await page.goto(
-                    _VIVO_HOME_URL,
-                    wait_until="domcontentloaded",
-                    timeout=15000,
-                )
-                await asyncio.sleep(3)
-
-                if await page.locator(".user-info-area").count() > 0:
-                    logger.info("[Cookie检查] Cookie有效,用户资料卡存在")
-                    return True
-
-                logger.warning("[Cookie检查] Cookie无效,未找到用户资料卡")
-                return False
-            finally:
-                await context.close()
-        finally:
-            await self.close_browser(browser)
-
-    # ------------------------------------------------------------------
-    # sync_profile — refresh user name / avatar / fans / likes / follows
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> dict:
         """Sync profile info from VIVO creator centre.

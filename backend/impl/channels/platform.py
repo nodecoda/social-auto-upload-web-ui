@@ -923,6 +923,12 @@ async def _submit_publish(page, is_draft: bool = False) -> None:
 # ---------------------------------------------------------------------------
 
 class ChannelsPlatform(BasePlatform):
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://channels.weixin.qq.com/platform"
+    CHECK_SLEEP = 3.0
+    CHECK_INVALID_URL_MARKERS = (
+        "login",
+    )
     platform_id = 2
     platform_key = "channels"
     platform_name = "视频号"
@@ -1004,72 +1010,6 @@ class ChannelsPlatform(BasePlatform):
     # check_cookie — open upload URL, look for login markers
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        """Check whether the saved cookie file is still valid.
-
-        访问 https://channels.weixin.qq.com/platform,
-        如果页面停留没有重定向到登录页,就代表登录成功。
-        """
-        logger.info("=== check_cookie 开始 === cookie_file=%s", cookie_file)
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-
-        cookie_file_path = Path(cookie_path)
-        if not cookie_file_path.exists():
-            logger.warning("check_cookie: cookie 文件不存在: %s", cookie_path)
-            return False
-
-        logger.info("check_cookie: cookie 文件存在，大小=%d", cookie_file_path.stat().st_size)
-
-        browser = await self.create_browser(headless=True)
-        logger.info("check_cookie: browser created, headless=True")
-
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            logger.info("check_cookie: context created")
-
-            try:
-                page = await context.new_page()
-                # 访问 /platform 页面(不是 /platform/post/create)
-                check_url = "https://channels.weixin.qq.com/platform"
-                logger.info("check_cookie: 正在跳转到: %s", check_url)
-
-                await page.goto(check_url, wait_until="domcontentloaded")
-                logger.info("check_cookie: domcontentloaded 完成")
-
-                await asyncio.sleep(3)
-
-                final_url = page.url
-                logger.info("check_cookie: 最终 URL = %s", final_url)
-
-                # 如果重定向到登录页(含 login),说明 cookie 失效
-                if "login" in final_url.lower():
-                    logger.info("check_cookie: [FAIL] 已重定向到登录页，Cookie 失效 | URL: %s", final_url)
-                    return False
-
-                # 如果页面停留(没有重定向到登录页),说明 cookie 有效
-                logger.info("check_cookie: [SUCCESS] 页面停留未重定向，Cookie 有效 | URL: %s", final_url)
-                return True
-            except Exception as exc:
-                logger.exception("check_cookie: [EXCEPTION] 发生异常: %s", exc)
-                import traceback
-                logger.exception("check_cookie: traceback: %s", traceback.format_exc())
-                return False
-            finally:
-                logger.info("check_cookie: 正在关闭 context")
-                await context.close()
-        except Exception as e:
-            logger.exception("check_cookie: [EXCEPTION] browser/context 创建失败: %s", e)
-            import traceback
-            logger.exception("check_cookie: traceback: %s", traceback.format_exc())
-            return False
-        finally:
-            logger.info("check_cookie: 正在关闭 browser")
-            await self.close_browser(browser)
-        logger.info("=== check_cookie 结束 ===")
-
-    # ------------------------------------------------------------------
-    # sync_profile — open platform URL with cookies, scrape profile
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> dict:
         """Sync profile info (name, avatar, stats) from Channels creator centre.

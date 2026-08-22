@@ -37,6 +37,10 @@ DEBUG_DRY_RUN_SUBMIT = False
 
 
 class ZhihuPlatform(BasePlatform):
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://www.zhihu.com/settings/account"
+    CHECK_SLEEP = 2.0
+    CHECK_VALID_SELECTOR = ".AppHeader-profileEntry"
     platform_id = 14
     platform_key = "zhihu"
     platform_name = "知乎"
@@ -97,37 +101,6 @@ class ZhihuPlatform(BasePlatform):
     # check_cookie
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            page = await context.new_page()
-            try:
-                await page.goto(ZHIHU_LOGIN_URL)
-                try:
-                    await page.wait_for_load_state(
-                        "domcontentloaded", timeout=10000
-                    )
-                    await asyncio.sleep(2)
-                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
-                    pass
-                profile_entry = page.locator(".AppHeader-profileEntry").first
-                if await profile_entry.count() > 0:
-                    logger.info("[校验Cookie] cookie 有效")
-                    return True
-                logger.info("[校验Cookie] cookie 已失效")
-                return False
-            finally:
-                await page.close()
-                await context.close()
-        finally:
-            await self.close_browser(browser)
-
-    # ------------------------------------------------------------------
-    # sync_profile
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> dict:
         """同步知乎昵称、头像、运营数据(stats)。

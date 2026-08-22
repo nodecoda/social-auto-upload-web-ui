@@ -297,6 +297,13 @@ async def _legacy_link_by_title(frame, type_: str, items: list) -> None:
 
 
 class TaobaoGuanghePlatform(BasePlatform):
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://creator.guanghe.taobao.com/"
+    CHECK_SLEEP = 3.0
+    CHECK_INVALID_URL_MARKERS = (
+        "login.taobao.com",
+    )
+    CHECK_VALID_HOST = "creator.guanghe.taobao.com"
     platform_id = 18
     platform_key = "taobao_guanghe"
     platform_name = "淘宝光合"
@@ -362,46 +369,6 @@ class TaobaoGuanghePlatform(BasePlatform):
     # check_cookie
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            page = await context.new_page()
-            try:
-                await page.goto(_GUANGHE_HOME_URL)
-                try:  # noqa: SIM105
-                    await page.wait_for_load_state(
-                        "domcontentloaded", timeout=20000
-                    )
-                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
-                    pass
-                await asyncio.sleep(3)
-                current_url = page.url or ""
-                if any(m in current_url for m in _COOKIE_INVALID_MARKERS):
-                    logger.info("[校验Cookie] cookie 已失效（重定向到登录页）")
-                    return False
-                if _HOME_HOST in current_url:
-                    logger.info("[校验Cookie] cookie 有效")
-                    return True
-                logger.info(f"[校验Cookie] cookie 已失效（url={current_url}）")
-                return False
-            finally:
-                try:  # noqa: SIM105
-                    await page.close()
-                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
-                    pass
-                try:  # noqa: SIM105
-                    await context.close()
-                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
-                    pass
-        finally:
-            await self.close_browser(browser)
-
-    # ------------------------------------------------------------------
-    # sync_profile
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> dict:
         """同步淘宝光合昵称、头像、运营数据(stats)。

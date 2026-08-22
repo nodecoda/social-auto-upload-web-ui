@@ -32,6 +32,10 @@ logger = get_channel_logger("toutiao")
 
 
 class ToutiaoPlatform(BasePlatform):
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://mp.toutiao.com/profile_v4/index"
+    CHECK_SLEEP = 3.0
+    CHECK_VALID_SELECTOR = "div.user-panel"
     platform_id = 13
     platform_key = "toutiao"
     platform_name = "今日头条"
@@ -136,37 +140,6 @@ class ToutiaoPlatform(BasePlatform):
     # check_cookie — verify stored cookie is still valid
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        """Return True if the saved cookie file is still valid."""
-        logger.info("[Cookie检查] 开始检查cookie有效性: %s", cookie_file)
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            try:
-                page = await context.new_page()
-                await page.goto(
-                    "https://mp.toutiao.com/profile_v4/index",
-                    wait_until="domcontentloaded",
-                    timeout=15000,
-                )
-                await asyncio.sleep(3)
-
-                user_panel = page.locator('div.user-panel')
-                if await user_panel.count():
-                    logger.info("[Cookie检查] Cookie有效，用户面板存在")
-                    return True
-
-                logger.warning("[Cookie检查] Cookie无效，未找到用户面板")
-                return False
-            finally:
-                await context.close()
-        finally:
-            await self.close_browser(browser)
-
-    # ------------------------------------------------------------------
-    # sync_profile — refresh user name / avatar
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> dict:
         """同步头条昵称、头像、运营数据(stats)。

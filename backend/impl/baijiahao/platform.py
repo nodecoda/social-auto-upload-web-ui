@@ -31,6 +31,17 @@ logger = get_channel_logger("baijiahao")
 
 
 class BaijiahaoPlatform(BasePlatform):
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://baijiahao.baidu.com/builder/rc/home"
+    CHECK_SLEEP = 2.0
+    CHECK_INVALID_URL_MARKERS = (
+        "/builder/theme/bjh/login",
+        "passport.baidu.com/v3/login",
+        "passport.baidu.com/v3/ucenter",
+        "wappass.baidu.com",
+        "auth.baidu.com",
+    )
+    CHECK_VALID_HOST = "https://baijiahao.baidu.com/"
     platform_id = 6
     platform_key = "baijiahao"
     platform_name = "百家号"
@@ -106,61 +117,6 @@ class BaijiahaoPlatform(BasePlatform):
     # check_cookie -- verify stored cookie is still valid
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        """Return True if the saved cookie file is still valid.
-
-        Opens ``https://baijiahao.baidu.com/builder/rc/home`` with the
-        stored cookies.  Cookie invalid if:
-        - cookie 文件不存在
-        - 跳到任意失效 URL marker (见 ``_COOKIE_INVALID_URL_MARKERS``)
-        - 跳出了 baijiahao.baidu.com 业务域 (兜底)
-        """
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-        if not os.path.exists(cookie_path):
-            logger.info("[baijiahao] cookie file not found")
-            return False
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(
-                browser, storage_state=cookie_path
-            )
-            try:
-                page = await context.new_page()
-                await page.goto(
-                    "https://baijiahao.baidu.com/builder/rc/home"
-                )
-                await page.wait_for_load_state("domcontentloaded", timeout=10000)
-                await asyncio.sleep(2)
-
-                current_url = page.url or ""
-                # 黑名单: 任一失效 marker 命中即视为失效
-                for marker in self._COOKIE_INVALID_URL_MARKERS:
-                    if marker in current_url:
-                        logger.info(
-                            f"[baijiahao] cookie expired (matched: {marker})"
-                        )
-                        return False
-                # 业务域兜底: URL 必须在 baijiahao.baidu.com 下才算成功
-                if not current_url.startswith(
-                    "https://baijiahao.baidu.com/"
-                ):
-                    logger.info(
-                        f"[baijiahao] cookie redirected off-domain: {current_url}"
-                    )
-                    return False
-                logger.info("[baijiahao] cookie valid")
-                return True
-            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info(f"[baijiahao] cookie check error: {exc}")
-                return False
-            finally:
-                await context.close()
-        finally:
-            await self.close_browser(browser)
-
-    # ------------------------------------------------------------------
-    # sync_profile -- refresh user name / avatar
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> dict:
         """Sync profile info (name, avatar, stats) from Baijiahao.

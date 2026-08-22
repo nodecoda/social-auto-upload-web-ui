@@ -7,7 +7,9 @@ and implement the abstract methods. Browser entry points delegate to
 """
 
 import asyncio
+import contextlib
 import json
+import os
 import sqlite3
 import time
 import uuid
@@ -38,6 +40,12 @@ from ._browser import (
 )
 
 _base_logger = get_channel_logger("base_platform")
+
+# 会话状态 4 态分类（Phase B1）：探针判定结果
+SESSION_ACTIVE = "active"      # 登录态有效
+SESSION_STALE = "stale"        # 被重定向到登录页（cookie 过期需重新登录）
+SESSION_REVOKED = "revoked"    # 页面明确失效提示（如「扫码登录」/登录页特征）
+SESSION_UNKNOWN = "unknown"    # 探针无法判定（异常/超时/页面异常）
 
 
 class BasePlatform(ABC):
@@ -162,10 +170,139 @@ class BasePlatform(ABC):
         """Perform platform login, pushing progress updates to *status_queue*."""
         ...
 
-    @abstractmethod
+    # ------------------------------------------------------------------
+    # Cookie 校验（Phase B1：基类模板 + 平台参数类属性，判定逻辑单源）
+    # ------------------------------------------------------------------
+    # 平台通过覆盖以下类属性声明校验参数（契约唯一来源，禁止平台内重复实现）：
+    CHECK_URL: str = ""                       # 探测页面 URL
+    CHECK_WAIT_UNTIL: str = "domcontentloaded"  # goto 加载等待事件
+    CHECK_TIMEOUT: int = 30_000               # goto 超时(ms)
+    CHECK_NETWORKIDLE: bool = False           # 是否额外等待 networkidle
+    CHECK_SLEEP: float = 2.0                  # 加载后停留秒数
+    CHECK_EXPECT_URL: str = ""                # 期望停留 URL（wait_for_url 目标）
+    CHECK_EXPECT_URL_TIMEOUT: int = 5_000
+    CHECK_REVOKED_TEXT: tuple = ()            # 页面失效文本（命中=revoked）
+    CHECK_REVOKED_SELECTOR: str = ""          # 登录页特征 selector（命中=revoked）
+    CHECK_TEXT_TIMEOUT: int = 5_000
+    CHECK_SELECTOR_TIMEOUT: int = 5_000
+    CHECK_INVALID_URL_MARKERS: tuple = ()     # URL 黑名单（lower 命中=stale）
+    CHECK_VALID_URL: tuple = ()               # 正向 URL 子串（全部命中=active，否则 stale）
+    CHECK_VALID_SELECTOR: str = ""            # 已登录锚点 selector（存在=active，否则 stale）
+    CHECK_VALID_HOST: str = ""                # 业务域白名单（URL startswith=active）
+    CHECK_DEFAULT_STATE: str = SESSION_ACTIVE  # 无判定命中时兜底状态
+
+    async def session_verify(self, cookie_file: str) -> dict:
+        """校验登录态，返回 4 态分类结果（Phase B2：仅告警不阻断）。
+
+        Returns:
+            {"state": "active|stale|revoked|unknown", "detail": str}
+        """
+        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
+        if not os.path.exists(cookie_path):
+            return {"state": SESSION_REVOKED, "detail": "cookie 文件不存在"}
+        browser = await self.create_browser(headless=True)
+        try:
+            context = await self.create_context(browser, storage_state=cookie_path)
+            try:
+                page = await context.new_page()
+                state = await self._probe_session(page)
+                return {"state": state, "detail": f"url={(page.url or '')[:120]}"}
+            finally:
+                with contextlib.suppress(Exception):  # 资源清理兜底,失败可忽略
+                    await context.close()
+        finally:
+            with contextlib.suppress(Exception):  # 资源清理兜底,失败可忽略
+                await self.close_browser(browser)
+
     async def check_cookie(self, cookie_file: str) -> bool:
-        """Return True if the saved cookie file is still valid."""
-        ...
+        """Return True if the saved cookie file is still valid.
+
+        基类模板：cookie 文件存在性 + 会话探针 → 4 态分类 → bool(active)。
+        平台通过 CHECK_* 类属性声明判定参数，禁止重复实现。
+        """
+        return (await self.session_verify(cookie_file))["state"] == SESSION_ACTIVE
+
+    async def _probe_session(self, page) -> str:
+        """统一会话探针：按优先级依次判定 4 态。
+
+        优先级: 期望URL → 失效文本 → 失效selector → URL黑名单 → 正向URL/selector/域名 → 兜底。
+        """
+        if not self.CHECK_URL:
+            return SESSION_UNKNOWN
+        try:
+            await page.goto(
+                self.CHECK_URL,
+                wait_until=self.CHECK_WAIT_UNTIL,
+                timeout=self.CHECK_TIMEOUT,
+            )
+            if self.CHECK_NETWORKIDLE:
+                with contextlib.suppress(Exception):  # networkidle 超时不阻塞判定
+                    await page.wait_for_load_state("networkidle", timeout=10_000)
+            if self.CHECK_SLEEP:
+                await asyncio.sleep(self.CHECK_SLEEP)
+
+            # 1) 期望 URL：未停留目标页 = 被重定向 → stale（douyin）
+            if self.CHECK_EXPECT_URL:
+                try:
+                    await page.wait_for_url(
+                        self.CHECK_EXPECT_URL, timeout=self.CHECK_EXPECT_URL_TIMEOUT
+                    )
+                except Exception:  # noqa: BLE001 -- 超时=未达目标页
+                    return SESSION_STALE
+
+            # 2) 失效文本：页面明确登录提示 → revoked（douyin「扫码登录」）
+            for text in self.CHECK_REVOKED_TEXT:
+                try:
+                    await page.get_by_text(text).wait_for(timeout=self.CHECK_TEXT_TIMEOUT)
+                    return SESSION_REVOKED
+                except Exception:  # noqa: BLE001,S112 -- 单文本未命中,继续
+                    continue
+
+            # 3) 失效 selector：登录页特征出现 → revoked（kuaishou/tiktok）
+            if self.CHECK_REVOKED_SELECTOR:
+                try:
+                    await page.wait_for_selector(
+                        self.CHECK_REVOKED_SELECTOR,
+                        timeout=self.CHECK_SELECTOR_TIMEOUT,
+                    )
+                    return SESSION_REVOKED
+                except Exception:  # noqa: BLE001,S110 -- selector 未出现,继续判定
+                    pass
+
+            # 4) URL 黑名单：重定向到登录/授权域 → stale
+            current_url = (page.url or "").lower()
+            for marker in self.CHECK_INVALID_URL_MARKERS:
+                if marker in current_url:
+                    return SESSION_STALE
+
+            # 5) 正向 URL 子串：全部命中=active，否则 stale（alipay/weixin_gzh）
+            if self.CHECK_VALID_URL:
+                if all(m in current_url for m in self.CHECK_VALID_URL):
+                    return SESSION_ACTIVE
+                return SESSION_STALE
+
+            # 6) 正向 selector：已登录锚点存在=active，否则 stale（csdn/zhihu/weibo/vivo/...）
+            if self.CHECK_VALID_SELECTOR:
+                el = page.locator(self.CHECK_VALID_SELECTOR).first
+                return SESSION_ACTIVE if await el.count() > 0 else SESSION_STALE
+
+            # 7) 业务域白名单：URL 停留业务域=active（baijiahao/guanghe/jingmai）
+            if self.CHECK_VALID_HOST:
+                return (
+                    SESSION_ACTIVE
+                    if current_url.startswith(self.CHECK_VALID_HOST.lower())
+                    else SESSION_STALE
+                )
+
+            # 8) 兜底状态（默认 active：黑名单未命中即有效，与各平台原实现一致）
+            if self.CHECK_DEFAULT_STATE in (
+                SESSION_ACTIVE, SESSION_STALE, SESSION_REVOKED, SESSION_UNKNOWN,
+            ):
+                return self.CHECK_DEFAULT_STATE
+            return SESSION_UNKNOWN
+        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
+            _base_logger.info("[Cookie检查] 会话探针异常: %s", exc)
+            return SESSION_UNKNOWN
 
     @abstractmethod
     async def open_creator_center(self, cookie_file: str) -> None:

@@ -82,6 +82,11 @@ async def _scrape_iqiyi_profile(page) -> tuple[str, str]:
 
 
 class IqiyiPlatform(BasePlatform):
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://creator.iqiyi.com/"
+    CHECK_NETWORKIDLE = True
+    CHECK_VALID_SELECTOR = '[class*="user-info"]'
+    CHECK_SLEEP = 0.0
     platform_id = 10
     platform_key = "iqiyi"
     platform_name = "爱奇艺"
@@ -153,34 +158,6 @@ class IqiyiPlatform(BasePlatform):
     # check_cookie — verify stored cookie is still valid
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            try:
-                page = await context.new_page()
-                await page.goto(_LOGIN_URL, wait_until="domcontentloaded")
-                await page.wait_for_load_state("networkidle")
-
-                try:
-                    await page.wait_for_selector(
-                        '[class*="user-info"]', timeout=5000
-                    )
-                    return True
-                except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
-                    return False
-            finally:
-                await context.close()
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.warning("check_cookie failed: %s", e)
-            return False
-        finally:
-            await self.close_browser(browser)
-
-    # ------------------------------------------------------------------
-    # sync_profile — scrape user name and avatar
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> dict:
         cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))

@@ -63,6 +63,16 @@ class DouyinPlatform(DouyinImageOps, BasePlatform):
     _set_location_tag = staticmethod(_set_location_tag)
     _set_declaration = staticmethod(_set_declaration)
 
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://creator.douyin.com/creator-micro/content/upload"
+    CHECK_EXPECT_URL = "https://creator.douyin.com/creator-micro/content/upload"
+    CHECK_REVOKED_TEXT = (
+        "扫码登录",
+    )
+    CHECK_VALID_URL = (
+        "creator.douyin.com/creator-micro/content/upload",
+    )
+    CHECK_SLEEP = 0.0
     platform_id = 3
     platform_key = "douyin"
     platform_name = "抖音"
@@ -138,47 +148,6 @@ class DouyinPlatform(DouyinImageOps, BasePlatform):
     # check_cookie — verify stored cookie is still valid
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        """Return True if the saved cookie file is still valid.
-
-        Opens ``https://creator.douyin.com/creator-micro/content/upload`` with
-        the stored cookies.  If the page shows "扫码登录" within 5 seconds the
-        cookie is considered invalid.
-        """
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            try:
-                page = await context.new_page()
-                await page.goto(
-                    "https://creator.douyin.com/creator-micro/content/upload"
-                )
-                try:
-                    await page.wait_for_url(
-                        "https://creator.douyin.com/creator-micro/content/upload",
-                        timeout=5000,
-                    )
-                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                    logger.info("cookie check: page did not reach target URL")
-                    return False
-
-                # If "扫码登录" is visible the cookie has expired
-                try:
-                    await page.get_by_text("扫码登录").wait_for(timeout=5000)
-                    logger.info("cookie check: 扫码登录 visible — cookie invalid")
-                    return False
-                except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                    logger.info("cookie check: no login prompt — cookie valid")
-                    return True
-            finally:
-                await context.close()
-        finally:
-            await self.close_browser(browser)
-
-    # ------------------------------------------------------------------
-    # sync_profile — refresh user name / avatar
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> dict:
         """同步抖音昵称、头像、运营数据(stats)。

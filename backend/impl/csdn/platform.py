@@ -41,6 +41,10 @@ CSDN_MAX_DESC_LEN = 150    # 简介不超过 150 字
 
 
 class CsdnPlatform(BasePlatform):
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://mp.csdn.net/"
+    CHECK_SLEEP = 2.0
+    CHECK_VALID_SELECTOR = "div.user-info-box"
     platform_id = 15
     platform_key = "csdn"
     platform_name = "CSDN"
@@ -151,37 +155,6 @@ class CsdnPlatform(BasePlatform):
     # check_cookie
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            page = await context.new_page()
-            try:
-                await page.goto(CSDN_HOME_URL)
-                try:
-                    await page.wait_for_load_state(
-                        "domcontentloaded", timeout=10000
-                    )
-                    await asyncio.sleep(2)
-                except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
-                    pass
-                profile_entry = page.locator(CSDN_LOGIN_SUCCESS_SELECTOR).first
-                if await profile_entry.count() > 0:
-                    logger.info("[校验Cookie] cookie 有效")
-                    return True
-                logger.info("[校验Cookie] cookie 已失效")
-                return False
-            finally:
-                await page.close()
-                await context.close()
-        finally:
-            await self.close_browser(browser)
-
-    # ------------------------------------------------------------------
-    # sync_profile
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> dict:
         """同步 CSDN 昵称、头像、运营数据(stats)。

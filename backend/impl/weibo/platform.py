@@ -1,7 +1,6 @@
 """Weibo platform implementation — CloakBrowser."""
 
 import asyncio
-import os
 import threading
 from pathlib import Path
 from queue import Queue
@@ -78,6 +77,11 @@ class WeiboPlatform(WeiboImageOps, BasePlatform):
     _click_publish = staticmethod(_click_publish)
     _wait_for_publish_success = staticmethod(_wait_for_publish_success)
 
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://weibo.com/n/微博创作者中心"
+    CHECK_NETWORKIDLE = True
+    CHECK_VALID_SELECTOR = '.woo-tab-nav a[href^="/u/"] img[src*="sinaimg.cn"]'
+    CHECK_SLEEP = 0.0
     platform_id = 11
     platform_key = "weibo"
     platform_name = "微博"
@@ -165,44 +169,6 @@ class WeiboPlatform(WeiboImageOps, BasePlatform):
     # check_cookie()
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        """Return True if the saved cookie file is still valid.
-
-        微博失效不会重定向到 passport.weibo.com，而是渲染未登录界面（右上角
-        显示登录/注册按钮）。所以用顶部导航的 profile link 作为「已登录」的
-        唯一锚点：存在则 cookie 有效。
-        """
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-        if not os.path.exists(cookie_path):
-            return False
-
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            page = await context.new_page()
-            try:
-                await page.goto(_WEIBO_CREATOR_URL, timeout=30000)
-                await page.wait_for_load_state("domcontentloaded", timeout=10000)
-                await page.wait_for_load_state("networkidle", timeout=10000)
-
-                # 顶部导航栏出现 a[href^="/u/"] 即视为已登录
-                profile_link = page.locator(
-                    '.woo-tab-nav a[href^="/u/"] img[src*="sinaimg.cn"]'
-                ).first
-                valid = await profile_link.count() > 0
-                logger.info(f"[weibo] cookie {'valid' if valid else 'expired, needs re-login'}")
-                return valid
-            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info(f"[weibo] cookie check error: {exc}")
-                return False
-            finally:
-                await context.close()
-        finally:
-            await self.close_browser(browser)
-
-    # ------------------------------------------------------------------
-    # open_creator_center()
-    # ------------------------------------------------------------------
 
     async def open_creator_center(self, cookie_file: str) -> None:
         """Open the Weibo creator centre in a visible browser window."""

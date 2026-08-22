@@ -46,6 +46,11 @@ _DECLARATION_NONE = "内容无需添加声明"
 
 
 class KuaishouPlatform(BasePlatform):
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://cp.kuaishou.com/article/publish/video"
+    CHECK_REVOKED_SELECTOR = "div.names div.container div.name:text('机构服务')"
+    CHECK_DEFAULT_STATE = "active"
+    CHECK_SLEEP = 0.0
     platform_id = 4
     platform_key = "kuaishou"
     platform_name = "快手"
@@ -153,46 +158,6 @@ class KuaishouPlatform(BasePlatform):
     # Cookie check
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        """Return True if the saved cookie file is still valid.
-
-        Opens the upload page and checks for the "机构服务" selector
-        within 5 seconds.
-        """
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            page = await context.new_page()
-            await page.goto(_KS_UPLOAD_URL, timeout=15000)
-
-            try:
-                await page.wait_for_selector(
-                    _COOKIE_INVALID_SELECTOR, timeout=5000
-                )
-                # Selector found means the login page appeared → cookie invalid
-                logger.info("[kuaishou] cookie invalid — login page shown")
-                return False
-            except Exception:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                # Selector not found → we stayed on the upload page → valid
-                logger.info("[kuaishou] cookie valid")
-                return True
-        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-            logger.info(f"[kuaishou] cookie check error: {exc}")
-            return False
-        finally:
-            try:  # noqa: SIM105
-                await context.close()
-            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
-                pass
-            try:  # noqa: SIM105
-                await self.close_browser(browser)
-            except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
-                pass
-
-    # ------------------------------------------------------------------
-    # Sync profile
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> dict:
         """Sync profile info (name, avatar, stats) from Kuaishou creator centre.
