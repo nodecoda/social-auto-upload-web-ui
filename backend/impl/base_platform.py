@@ -6,8 +6,10 @@ and implement the abstract methods. Browser entry points delegate to
 ``_browser.py`` (CloakBrowser stealth layer).
 """
 
+import asyncio
 import json
 import sqlite3
+import time
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -23,7 +25,13 @@ from ._browser import (
     create_browser as _create_browser,
 )
 from ._browser import (
+    create_browser_sync as _create_browser_sync,
+)
+from ._browser import (
     create_context as _create_context,
+)
+from ._browser import (
+    create_context_sync as _create_context_sync,
 )
 from ._browser import (
     create_persistent_context as _create_persistent_context,
@@ -46,6 +54,11 @@ class BasePlatform(ABC):
     #: True if this platform supports importing accounts from a raw cookie
     #: string (e.g. pasted from browser DevTools).  Subclasses override.
     supports_cookie_import: bool = False
+
+    #: True if this platform implements publish_image (图集发布能力)。
+    #: 契约测试锁定与 publish_image 实现一致性；task_queue 分发前校验，
+    #: 不支持的平台任务直接 failed（不抛 NotImplementedError 进队列）。
+    supports_image: bool = False
 
     #: The wildcard domain to attach imported cookies to, e.g. ``".baidu.com"``
     #: for Baijiahao (cookie issued by passport.baidu.com also applies to
@@ -108,6 +121,27 @@ class BasePlatform(ABC):
         """
         await _close_browser(browser, is_close_by_code=is_close_by_code)
 
+    def create_browser_sync(self, headless: bool = False):
+        """同步创建浏览器入口（A5: 收敛 20/20 平台直调 _browser.create_browser_sync）。
+
+        与 close_browser 对齐：平台发布/图集收尾只调 self.* 统一入口，
+        不再直接 import .._browser 的函数，保证生命周期入口单一。
+        """
+        return _create_browser_sync(headless=headless)
+
+    def create_context_sync(
+        self,
+        browser,
+        storage_state: str | None = None,
+        user_agent: str | None = None,
+    ):
+        """同步创建 context 入口（A5，同上收敛理由）。"""
+        return _create_context_sync(
+            browser,
+            storage_state=storage_state,
+            user_agent=user_agent,
+        )
+
     async def create_persistent_context(
         self,
         user_data_dir: str,
@@ -159,9 +193,21 @@ class BasePlatform(ABC):
         ...
 
     @abstractmethod
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to the platform.  Returns True on success."""
         ...
+
+    # ------------------------------------------------------------------
+    # Sync bridge (legacy callers in request threads)
+    # ------------------------------------------------------------------
+
+    def run_publish_sync(self, **kwargs) -> bool:
+        """同步桥接：在请求线程内调用 async publish_video。
+
+        R5 后 publish_video 全量 async 化；旧同步调用方（postVideoBatch 已随 R6 移除）
+        通过本包装逐次驱动事件循环，避免拿到未执行的 coroutine。
+        """
+        return asyncio.run(self.publish_video(**kwargs))
 
     # ------------------------------------------------------------------
     # Cookie import (default skeleton + per-platform hook)
@@ -175,16 +221,36 @@ class BasePlatform(ABC):
     ) -> tuple[list[dict], list[dict]]:
         """把 'k=v; k=v' 解析为 Playwright storage_state 的 (cookies, origins)。
 
-        只有 ``supports_cookie_import=True`` 的平台需要重写。基类的默认实现
-        直接抛错，由 :meth:`import_cookie` 触发并通过 status_queue 上报。
-        子类的典型实现参考 BaijiahaoPlatform。
+        A6/R9-2: 通用实现上移基类 —— 全部 cookie 归属 ``platform_cookie_domain``，
+        expires 给 7 天保守占位（sync_profile 跑完后回写真实 expires）。
+        带特殊规则的平台（如 csdn 的按名域名映射 + SESSION 双域）自行重写；
+        其余 supports_cookie_import=True 的平台无需再写本地副本。
 
         Returns:
             ``(cookies, origins)`` —— ``import_cookie`` 会原样写入 storage_state。
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} does not support cookie import"
+        cookies: list[dict] = []
+        expires = time.time() + self._IMPORT_COOKIE_EXPIRES_SECONDS
+        for chunk in cookie_str.split(";"):
+            pair = chunk.strip()
+            if not pair or "=" not in pair:
+                continue
+            name, _, value = pair.partition("=")
+            cookies.append({
+                "name": name.strip(),
+                "value": value.strip(),
+                "domain": self.platform_cookie_domain,
+                "path": "/",
+                "expires": expires,
+                "httpOnly": True,
+                "secure": False,
+                "sameSite": "Lax",
+            })
+        _base_logger.info(
+            "[%s] cookie 解析: %d 条, domain=%s",
+            self.platform_key, len(cookies), self.platform_cookie_domain,
         )
+        return cookies, []
 
     # Cookie import expires 保守占位（7 天）: 手工导入的 cookie 没有真实 expires，
     # Chromium 对 expires=-1（session）部分平台不收；sync_profile 跑完后会
@@ -219,7 +285,7 @@ class BasePlatform(ABC):
             }))
             cookies, origins = self._parse_cookie_to_storage_state(cookie_str)
             if not cookies:
-                raise ValueError("未解析到任何 cookie")
+                raise ValueError("未解析到任何 cookie")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
             _base_logger.info(
                 "[import_cookie] %s 解析到 %d 个 cookie",
                 self.platform_name, len(cookies),
@@ -298,7 +364,7 @@ class BasePlatform(ABC):
         if not name and not avatar and not account_id:
             # cookie 验证失败,清理临时文件
             if cookie_path and cookie_path.exists():
-                try:
+                try:  # noqa: SIM105
                     cookie_path.unlink()
                 except Exception:  # noqa: S110, BLE001 -- 文件/资源清理兜底,失败可忽略
                     pass

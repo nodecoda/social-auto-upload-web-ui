@@ -7,6 +7,7 @@
 - evaluate 驱动轮询: _resolve_token / _wait_for_video_uploaded /
   _click_primary_when_enabled / _dismiss_upload_notice
 """
+import asyncio
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -79,11 +80,11 @@ class TestBuildHomeUrl:
 class TestBuildPublishDatetime:
     def test_parsed(self):
         dt = datetime(2026, 8, 22, 10, 30, tzinfo=ZoneInfo('Asia/Shanghai'))
-        with patch('impl.weixin_gzh.platform.parse_schedule_time', return_value=[dt]):
+        with patch('impl.weixin_gzh._dom_ops.parse_schedule_time', return_value=[dt]):
             assert WeixinGzhPlatform._build_publish_datetime('2026-08-22 10:30', 1) == dt
 
     def test_empty_result_zero(self):
-        with patch('impl.weixin_gzh.platform.parse_schedule_time', return_value=[]):
+        with patch('impl.weixin_gzh._dom_ops.parse_schedule_time', return_value=[]):
             assert WeixinGzhPlatform._build_publish_datetime('bad', 1) == 0
 
 
@@ -134,7 +135,7 @@ class TestPublishVideo:
     def test_sync_wrapper_runs_upload_all(self):
         p = WeixinGzhPlatform()
         with patch.object(p, '_upload_all', AsyncMock()) as m:
-            result = p.publish_video(title='T', files=['/v.mp4'], account_file=['c.json'])
+            result = asyncio.run(p.publish_video(title='T', files=['/v.mp4'], account_file=['c.json']))
         assert result is True
         m.assert_awaited_once()
         assert m.await_args.kwargs['title'] == 'T'

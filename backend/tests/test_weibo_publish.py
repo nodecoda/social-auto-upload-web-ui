@@ -5,6 +5,7 @@ category/内容声明/合集透传, 策略固定 immediate。
 publish_image(sync wrapper) → _upload_all_images: 单层账号循环(非笛卡尔积),
 图集 >18 张硬上限校验, dry_run 早返回。
 """
+import asyncio
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -26,7 +27,7 @@ def _run_publish(platform, **kwargs):
     with patch.object(platform, '_upload_one_video', upload), \
          patch('impl.weibo.platform.get_account_name_by_cookie_file', return_value='昵称'), \
          patch('impl.weibo.platform.bind_account_name', MagicMock()):
-        result = platform.publish_video(**kwargs)
+        result = asyncio.run(platform.publish_video(**kwargs))
     return result, upload
 
 
@@ -36,7 +37,7 @@ def _run_publish_image(platform, **kwargs):
     with patch.object(platform, '_upload_one_image', upload), \
          patch('impl.weibo.platform.get_account_name_by_cookie_file', return_value='昵称'), \
          patch('impl.weibo.platform.bind_account_name', MagicMock()):
-        result = platform.publish_image(**kwargs)
+        result = asyncio.run(platform.publish_image(**kwargs))
     return result, upload
 
 
@@ -46,7 +47,7 @@ class TestPublishVideoSync:
     def test_returns_true_and_calls_upload_all(self):
         inst = _make_platform()
         with patch.object(inst, '_upload_all', AsyncMock()) as upload_all:
-            assert inst.publish_video(title='T', files=['/v.mp4']) is True
+            assert asyncio.run(inst.publish_video(title='T', files=['/v.mp4'])) is True
             upload_all.assert_awaited_once()
 
 
@@ -103,7 +104,7 @@ class TestUploadAllVideo:
              patch.object(inst, '_upload_one_video', AsyncMock()), \
              patch('impl.weibo.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.weibo.platform.bind_account_name', MagicMock()):
-            inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json'])
+            asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json']))
         assert any(
             c.args[0] == '[发布策略] 发布策略: immediate'
             for c in logger.info.call_args_list
@@ -121,13 +122,13 @@ class TestPublishImage:
     def test_dry_run_returns_early(self):
         inst = _make_platform()
         with patch.object(inst, '_upload_all_images', AsyncMock()) as upload_all:
-            assert inst.publish_image(files=['/i1.png'], dry_run=True) is True
+            assert asyncio.run(inst.publish_image(files=['/i1.png'], dry_run=True)) is True
             upload_all.assert_not_awaited()
 
     def test_normal_path_calls_upload_all_images(self):
         inst = _make_platform()
         with patch.object(inst, '_upload_all_images', AsyncMock()) as upload_all:
-            assert inst.publish_image(files=['/i1.png']) is True
+            assert asyncio.run(inst.publish_image(files=['/i1.png'])) is True
             upload_all.assert_awaited_once()
 
     def test_over_18_images_raises(self):

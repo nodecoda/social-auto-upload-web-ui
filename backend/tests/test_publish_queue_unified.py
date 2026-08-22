@@ -16,7 +16,7 @@ import sqlite3
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -96,7 +96,8 @@ def test_execute_sync_truthy_result_success():
     from ext_api import task_queue as tq
 
     fake_platform = MagicMock()
-    fake_platform.publish_video = MagicMock(return_value=True)
+    # R5: publish_video 契约已统一为 async
+    fake_platform.publish_video = AsyncMock(return_value=True)
     t = PublishTask(platform_type=3, payload={'title': 'X', 'files': ['/a.mp4']})
     with patch.object(tq, 'get_platform', return_value=fake_platform):
         result = asyncio.run(_make_queue()._execute(t))
@@ -109,7 +110,8 @@ def test_execute_sync_falsy_result_raises_page_not_submitted():
     from ext_api import task_queue as tq
 
     fake_platform = MagicMock()
-    fake_platform.publish_video = MagicMock(return_value=False)
+    # R5: publish_video 契约已统一为 async，必须用 AsyncMock
+    fake_platform.publish_video = AsyncMock(return_value=False)
     t = PublishTask(platform_type=3, payload={'title': 'X'})
     with patch.object(tq, 'get_platform', return_value=fake_platform):
         try:
@@ -153,7 +155,7 @@ def _run_worker_with_fake_execute(q, tasks, execute_impl):
     q._execute = execute_impl
 
     async def main():
-        try:
+        try:  # noqa: SIM105
             await asyncio.wait_for(q._worker('test-worker'), timeout=2.0)
         except (TimeoutError, asyncio.CancelledError):
             pass  # 正常：无更多任务时 worker 一直阻塞
@@ -238,7 +240,7 @@ def test_worker_survives_browser_watchdog_cancel():
 
     async def main():
         with patch.object(tq, 'get_platform', return_value=fake_platform):
-            try:
+            try:  # noqa: SIM105
                 await asyncio.wait_for(q._worker('test-worker'), timeout=3.0)
             except (TimeoutError, asyncio.CancelledError):
                 pass
@@ -258,7 +260,9 @@ def test_worker_survives_browser_watchdog_cancel():
 def test_insert_db_ignores_preexisting_detail_row():
     """_before_publish 已插入 detail 行（id == task.id）时，_insert_db 不得重复/覆盖。"""
     from ext_api import task_queue as tq_module
-    with patch.object(tq_module, 'DB_PATH', DB_PATH):
+    # A1: 状态回写收敛到 services.publish_history（唯一 writer），两处 DB_PATH 都要指向测试库
+    with patch.object(tq_module, 'DB_PATH', DB_PATH), \
+            patch('services.publish_history.DB_PATH', DB_PATH):
         # 预插 batch + detail（模拟 app._before_publish）
         conn = sqlite3.connect(str(DB_PATH))
         conn.execute(
@@ -294,7 +298,9 @@ def test_insert_db_ignores_preexisting_detail_row():
 def test_update_db_cancelled_counts_as_failed_in_batch():
     """单条 cancelled detail 不应让 batch 误判 success，应聚合为 failed。"""
     from ext_api import task_queue as tq_module
-    with patch.object(tq_module, 'DB_PATH', DB_PATH):
+    # A1: 状态回写收敛到 services.publish_history（唯一 writer），两处 DB_PATH 都要指向测试库
+    with patch.object(tq_module, 'DB_PATH', DB_PATH), \
+            patch('services.publish_history.DB_PATH', DB_PATH):
         conn = sqlite3.connect(str(DB_PATH))
         conn.execute(
             "INSERT OR IGNORE INTO publish_batches (id, type, title, status, created_at, updated_at) "

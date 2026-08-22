@@ -4,6 +4,7 @@ publish_video 是高层编排：desc+tags 前置校验(≤10 标签/≤50 字符
 sync 包装 _upload_all → parse_schedule_time 排期(按文件索引) → 文件×账号遍历 →
 _upload_one_video(本批 mock 掉,只测编排契约)。
 """
+import asyncio
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -32,7 +33,7 @@ def _run_publish(platform, **kwargs):
          patch('impl.baijiahao.platform.parse_schedule_time', pst), \
          patch('impl.baijiahao.platform.get_account_name_by_cookie_file', return_value='昵称'), \
          patch('impl.baijiahao.platform.bind_account_name', MagicMock()):
-        result = platform.publish_video(**kwargs)
+        result = asyncio.run(platform.publish_video(**kwargs))
     return result, upload, pst
 
 
@@ -44,19 +45,19 @@ class TestPublishVideoPreflight:
     def test_tags_over_10_raises(self):
         inst = _make_platform()
         with pytest.raises(ValueError, match="最多 10 个标签"):
-            inst.publish_video(title='T', files=['/v.mp4'], tags=[f't{i}' for i in range(11)])
+            asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], tags=[f't{i}' for i in range(11)]))
 
     def test_desc_tags_over_50_chars_raises(self):
         inst = _make_platform()
         desc = '长' * 60
         with pytest.raises(ValueError, match=r"总字符数.*超过 50"):
-            inst.publish_video(title='T', files=['/v.mp4'], desc=desc)
+            asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], desc=desc))
 
     def test_emoji_counts_as_3_raises(self):
         inst = _make_platform()
         desc = '😀' * 18  # 18 emoji = 54 字符 > 50
         with pytest.raises(ValueError, match="超过 50"):
-            inst.publish_video(title='T', files=['/v.mp4'], desc=desc)
+            asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], desc=desc))
 
     def test_valid_params_do_not_raise(self):
         inst = _make_platform()
@@ -74,7 +75,7 @@ class TestPublishVideoPreflight:
         inst = _make_platform()
         with patch('impl.baijiahao.platform.logger') as logger:
             with pytest.raises(ValueError):
-                inst.publish_video(title='T', files=['/v.mp4'], tags=[f't{i}' for i in range(11)])
+                asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], tags=[f't{i}' for i in range(11)]))
             assert any(
                 c.args[0] == '[发布视频] 百家号前置校验失败: %s' and c.args[1:] == ('百家号最多 10 个标签,当前 11 个',)
                 for c in logger.error.call_args_list
@@ -141,10 +142,10 @@ class TestUploadAllOrchestration:
              patch('impl.baijiahao.platform.parse_schedule_time', pst), \
              patch('impl.baijiahao.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.baijiahao.platform.bind_account_name', MagicMock()):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v1.mp4', '/v2.mp4'], account_file=['a.json', 'b.json'],
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
-            )
+            ))
         # parse_schedule_time 收到 (schedule_time_str, 文件数, enableTimer, videos_per_day, daily_times, start_days)
         assert pst.call_args.args[0] == '2026-08-21 10:00'
         assert pst.call_args.args[1] == 2
@@ -160,7 +161,7 @@ class TestUploadAllOrchestration:
              patch('impl.baijiahao.platform.parse_schedule_time', MagicMock(return_value=[None])), \
              patch('impl.baijiahao.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.baijiahao.platform.bind_account_name', MagicMock()):
-            inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json'])
+            asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json']))
         assert any(
             c.args[0] == '[发布策略] 发布策略: %s' and c.args[1:] == ('immediate',)
             for c in logger.info.call_args_list
@@ -174,10 +175,10 @@ class TestUploadAllOrchestration:
              patch('impl.baijiahao.platform.parse_schedule_time', MagicMock(return_value=[None])), \
              patch('impl.baijiahao.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.baijiahao.platform.bind_account_name', MagicMock()):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v.mp4'], account_file=['a.json'],
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
-            )
+            ))
         assert any(
             c.args[0] == '[发布策略] 发布策略: %s' and c.args[1:] == ('scheduled',)
             for c in logger.info.call_args_list

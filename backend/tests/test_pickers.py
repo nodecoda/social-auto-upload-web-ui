@@ -341,10 +341,9 @@ class TestJdPool:
     def test_create_async_closes_old(self):
         p = JdPool()
         old = p.create('a')
-        with patch('asyncio.ensure_future') as ef, patch('asyncio.get_event_loop') as gel:
-            loop = MagicMock()
-            loop.is_running.return_value = True
-            gel.return_value = loop
+        # 生产代码改用 get_running_loop() 探测运行中循环(弃用 get_event_loop)
+        with patch('asyncio.ensure_future') as ef, patch('asyncio.get_running_loop') as grl:
+            grl.return_value = MagicMock()
             new = p.create('a')
         assert p.get('a') is new and new is not old
         ef.assert_called_once()
@@ -354,7 +353,7 @@ class TestJdPool:
     def test_create_no_running_loop(self):
         p = JdPool()
         old = p.create('a')
-        with patch('asyncio.ensure_future') as ef, patch('asyncio.get_event_loop', side_effect=RuntimeError('no loop')):
+        with patch('asyncio.ensure_future') as ef, patch('asyncio.get_running_loop', side_effect=RuntimeError('no loop')):
             new = p.create('a')
         assert p.get('a') is new and new is not old
         ef.assert_not_called()

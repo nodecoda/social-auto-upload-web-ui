@@ -10,7 +10,6 @@ import asyncio
 import os
 import re
 import threading
-import time
 from pathlib import Path
 from queue import Queue
 
@@ -19,15 +18,15 @@ from util._logger import bind_account_name, get_channel_logger
 
 logger = get_channel_logger("bilibili")
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
     parse_schedule_time,
     save_login_result,
-    scrape_bilibili_profile,
 )
 from ..base_platform import BasePlatform
+from ._profile import scrape_bilibili_profile
 
 BILIBILI_UPLOAD_URL = "https://member.bilibili.com/platform/upload/video/frame"
 BILIBILI_MANAGE_URL = "https://member.bilibili.com/platform/upload-manager/article"
@@ -100,38 +99,6 @@ class BilibiliPlatform(BasePlatform):
     supports_cookie_import = True
     # B站 cookie 全部由 .bilibili.com 域下发，覆盖 account/member 子域
     platform_cookie_domain = ".bilibili.com"
-
-    def _parse_cookie_to_storage_state(
-        self, cookie_str: str
-    ) -> tuple[list[dict], list[dict]]:
-        """把 'k=v; k=v' 解析为 Playwright storage_state 的 (cookies, origins)。
-
-        - 全部 cookie 归属 ``platform_cookie_domain`` (.bilibili.com)
-        - expires 给 7 天保守占位，sync_profile 跑完后 storage_state 会被
-          回写为真实的 cookie（含真实 expires + localStorage）
-        - localStorage 留空，由 sync_profile 自然补全
-        """
-        cookies: list[dict] = []
-        expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
-        for pair in cookie_str.split(";"):
-            pair = pair.strip()
-            if not pair or "=" not in pair:
-                continue
-            name, _, value = pair.partition("=")
-            cookies.append({
-                "name": name.strip(),
-                "value": value.strip(),
-                "domain": self.platform_cookie_domain,
-                "path": "/",
-                "expires": expires,
-                "httpOnly": True,
-                "secure": False,
-                "sameSite": "Lax",
-            })
-        logger.info(
-            f"[bilibili] cookie 解析: {len(cookies)} 条, domain={self.platform_cookie_domain}"
-        )
-        return cookies, []
 
     # ------------------------------------------------------------------
     # Login
@@ -220,7 +187,7 @@ class BilibiliPlatform(BasePlatform):
         finally:
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # Cookie check
@@ -254,7 +221,7 @@ class BilibiliPlatform(BasePlatform):
                 await page.close()
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # Sync profile
@@ -301,17 +268,17 @@ class BilibiliPlatform(BasePlatform):
                 logger.info(f"[bilibili] sync profile failed: {e}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
-            try:
-                await browser.close()
+            try:  # noqa: SIM105
+                await self.close_browser(browser)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
@@ -438,18 +405,18 @@ class BilibiliPlatform(BasePlatform):
         url = "https://member.bilibili.com/platform/upload-manager/article"
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
-                    browser.close()
+                try:  # noqa: SIM105
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -460,7 +427,7 @@ class BilibiliPlatform(BasePlatform):
     # Publish video
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to Bilibili.
 
         Accepted keyword arguments:
@@ -577,7 +544,11 @@ class BilibiliPlatform(BasePlatform):
             logger.info("[发布视频] 视频发布流程完成!")
             logger.info("=" * 60)
 
-        asyncio.run(_run())
+        try:
+            await _run()
+        except Exception as e:
+            logger.exception("[发布失败] 哔哩哔哩 publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------
@@ -808,7 +779,7 @@ class BilibiliPlatform(BasePlatform):
                 if submitted:
                     logger.info("[上传视频] waiting 10s for processing")
                     await asyncio.sleep(10)
-                    try:
+                    try:  # noqa: SIM105
                         await page.screenshot(
                             path=str(
                                 log_dir / "bilibili_after_submit.png"
@@ -881,7 +852,7 @@ class BilibiliPlatform(BasePlatform):
                 # 检测上传失败
                 fail_text = page.get_by_text("上传失败", exact=True)
                 if await fail_text.count() > 0:
-                    raise RuntimeError("视频上传失败:检测到「上传失败」文案")
+                    raise RuntimeError("视频上传失败:检测到「上传失败」文案")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
                 if i % 60 == 0 and i > 0:  # 每 30 秒打一次日志
                     logger.info(
                         "[上传视频] 仍在上传中... (%.0f 秒)", i * 0.5
@@ -1073,7 +1044,7 @@ class BilibiliPlatform(BasePlatform):
                 # click 后等输入框真正可编辑(比固定 sleep 可靠, 避免焦点未稳定
                 # 就输入导致前几个字符被吞——曾出现"杨氏之子"只输入"杨"或"氏之子")。
                 await current_input.click()
-                try:
+                try:  # noqa: SIM105
                     await current_input.wait_for(state="editable", timeout=3000)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
@@ -1244,7 +1215,7 @@ class BilibiliPlatform(BasePlatform):
                     # dialog 用 page 兜底,后续 confirm 按钮查找走 page
                     dialog = page
                 else:
-                    raise RuntimeError("封面编辑弹窗未出现")
+                    raise RuntimeError("封面编辑弹窗未出现")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
             await asyncio.sleep(1)
             await asyncio.sleep(1)
 
@@ -1323,7 +1294,7 @@ class BilibiliPlatform(BasePlatform):
             logger.info("[设置封面] cover set successfully")
 
         except Exception as exc:
-            try:
+            try:  # noqa: SIM105
                 await page.screenshot(
                     path=str(log_dir / "bilibili_cover_error.png"),
                     full_page=True,
@@ -1402,7 +1373,7 @@ class BilibiliPlatform(BasePlatform):
                 'div.statement-content, '
                 'div[class*="statement-content"]'
             ).first.locator('li.bcc-option')
-            try:
+            try:  # noqa: SIM105
                 await scoped_options.first.wait_for(
                     state="attached", timeout=5000
                 )

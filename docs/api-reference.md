@@ -118,7 +118,6 @@
 | GET | `/platforms/import-supported` | `account.platforms_import_supported` | 列出所有支持 cookie 字符串导入的平台。 | account.ts / user.ts |
 | POST | `/postVideo` | `publish.postVideo` | 发布视频：校验+入队后台串行执行器，立即返回 taskId（前端轮询 status）。 | draft.ts / v2.ts |
 | GET | `/postVideo/status/<task_id>` | `publish.postVideo_status` | 查询异步发布任务状态（前端在发布期间轮询本接口）。 | draft.ts / v2.ts |
-| POST | `/postVideoBatch` | `publish.postVideoBatch` | 批量发布视频（同步调用）：逐条校验/发布，失败项聚合到 errors 返回。 | draft.ts / v2.ts |
 | POST | `/syncProfile` | `account.sync_profile` | 同步账号主页资料（昵称/头像/粉丝数等）。 | account.ts / user.ts |
 | POST | `/updateUserinfo` | `account.updateUserinfo` | 更新账号信息（昵称/备注等）。 | account.ts / user.ts |
 | POST | `/uploadCookie` | `account.upload_cookie` | 上传账号 cookie 文件并更新账号状态。 | account.ts / user.ts |
@@ -297,7 +296,6 @@
 | --- | --- | --- | --- |
 | POST | `/postVideo` | 发布视频：校验+入队后台串行执行器，立即返回 taskId（前端轮询 status）。 | draft.ts / v2.ts |
 | GET | `/postVideo/status/<task_id>` | 查询异步发布任务状态（前端在发布期间轮询本接口）。 | draft.ts / v2.ts |
-| POST | `/postVideoBatch` | 批量发布视频（同步调用）：逐条校验/发布，失败项聚合到 errors 返回。 | draft.ts / v2.ts |
 
 ### taobao_guanghe
 

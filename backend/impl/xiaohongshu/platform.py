@@ -11,7 +11,7 @@ from queue import Queue
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import close_browser, create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
@@ -68,25 +68,11 @@ class XiaohongshuPlatform(BasePlatform):
     platform_id = 1
     platform_key = "xiaohongshu"
     platform_name = "小红书"
+    supports_image = True  # 图集发布能力（A4 门控）
 
     # 支持 cookie 字符串导入账号
     supports_cookie_import = True
     platform_cookie_domain = ".xiaohongshu.com"
-
-    def _parse_cookie_to_storage_state(self, cookie_str):
-        cookies = []
-        expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
-        for pair in cookie_str.split(";"):
-            pair = pair.strip()
-            if not pair or "=" not in pair:
-                continue
-            name, _, value = pair.partition("=")
-            cookies.append({
-                "name": name.strip(), "value": value.strip(),
-                "domain": self.platform_cookie_domain, "path": "/",
-                "expires": expires, "httpOnly": True, "secure": False, "sameSite": "Lax",
-            })
-        return cookies, []
 
     # ------------------------------------------------------------------
     # login()
@@ -155,7 +141,7 @@ class XiaohongshuPlatform(BasePlatform):
         finally:
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie()
@@ -191,7 +177,7 @@ class XiaohongshuPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile()
@@ -223,7 +209,7 @@ class XiaohongshuPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _login_stats_fn(self, page, account_id) -> list:
         """登录成功后的 stats 抓取入口(供 save_login_result 调用)。
@@ -232,7 +218,7 @@ class XiaohongshuPlatform(BasePlatform):
         保证"登录后同步"和"同步按钮"看到的运营数据完全一致。
         """
         try:
-            try:
+            try:  # noqa: SIM105
                 await page.goto(_XHS_CREATOR_URL, wait_until="networkidle", timeout=30000)
             except Exception:  # noqa: S110, BLE001 -- 页面加载兜底,超时继续后续逻辑
                 pass
@@ -251,18 +237,18 @@ class XiaohongshuPlatform(BasePlatform):
         url = _XHS_CREATOR_URL
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
-                    browser.close()
+                try:  # noqa: SIM105
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -273,7 +259,7 @@ class XiaohongshuPlatform(BasePlatform):
     # publish_video()
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to Xiaohongshu using CloakBrowser.
 
         Accepted keyword arguments:
@@ -403,8 +389,8 @@ class XiaohongshuPlatform(BasePlatform):
                         else publish_datetimes[index]
                     )
 
-                    asyncio.run(
-                        _publish_single_video(
+                    try:
+                        await _publish_single_video(
                             title=title,
                             file_path=str(file_path),
                             tags=tags,
@@ -425,7 +411,9 @@ class XiaohongshuPlatform(BasePlatform):
                             xhs_shoot_date=xhs_shoot_date,
                             xhs_repost_source=xhs_repost_source,
                         )
-                    )
+                    except Exception as e:
+                        logger.exception("[发布失败] 小红书 publish_video 异常: %s", e)
+                        return False
 
         logger.info("=" * 60)
         logger.info("[发布视频] 视频发布流程完成!")
@@ -542,8 +530,8 @@ class XiaohongshuPlatform(BasePlatform):
                     )
                     if result:
                         success_count += 1
-                except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                    logger.error("[发布图集] 账号 %s 发布失败: %s", cookie_path, e)
+                except Exception as e:
+                    logger.exception("[发布图集] 账号 %s 发布失败: %s", cookie_path, e)
 
         logger.info("[发布图集] 图集发布完成: %d/%d 成功", success_count, total)
         logger.info("=" * 60)
@@ -730,13 +718,13 @@ async def _publish_single_image(
             await context.storage_state(path=account_file)
             logger.info("[发布] Cookie状态已更新")
             return True
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error("[发布图集] 图集发布出错: %s", e)
+        except Exception as e:
+            logger.exception("[发布图集] 图集发布出错: %s", e)
             return False
         finally:
             await context.close()
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error("[发布图集] 图集发布浏览器错误: %s", e)
+    except Exception as e:
+        logger.exception("[发布图集] 图集发布浏览器错误: %s", e)
         return False
     finally:
         await close_browser(browser, is_close_by_code=True)
@@ -1286,8 +1274,8 @@ async def _upload_images(page, files: list[str]) -> bool:
         )
         return len(uploaded) > 0
 
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error("[上传图集] 图片上传失败: %s", e)
+    except Exception as e:
+        logger.exception("[上传图集] 图片上传失败: %s", e)
         return False
 
 

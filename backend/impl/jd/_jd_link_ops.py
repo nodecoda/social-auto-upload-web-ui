@@ -284,7 +284,7 @@ async def wait_search_results(frame, timeout: float = 10):
     之前只等 ._sku-card-mygoods-con_jvzh5_77,0 结果时永远等不到,吃满 10s 超时。
     现在加上 ._empty-container_1xak8_69(空状态 DOM),空结果秒返回。
     """
-    try:
+    try:  # noqa: SIM105
         await frame.wait_for_selector(
             "._sku-card-mygoods-con_jvzh5_77, ._empty-container_1xak8_69",
             timeout=timeout * 1000,
@@ -364,7 +364,7 @@ async def wait_page_change(frame, timeout: float = 10):
     检测方法:比较当前 active 页码与触发前的不同 → 至少一张卡片可见
     """
     await sleep(0.5)  # 简单等待,后续可改为条件等待
-    try:
+    try:  # noqa: SIM105
         await frame.wait_for_selector(
             "._sku-card-mygoods-con_jvzh5_77",
             timeout=timeout * 1000,
@@ -592,7 +592,7 @@ async def search_novels(frame, keyword: str) -> list[dict]:
         await search_input.press_sequentially(keyword, delay=100)
 
     # 4. 等下拉出现(空 keyword 时下拉会显示历史/热门,也试着抓)
-    try:
+    try:  # noqa: SIM105
         await frame.wait_for_selector(
             ".rc-virtual-list-holder-inner .jd-select-item-option",
             timeout=5_000,

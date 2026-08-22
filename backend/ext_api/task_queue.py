@@ -5,13 +5,11 @@
 
 import asyncio
 import json
-import sqlite3
 import sys
 import threading
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from enum import StrEnum
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -20,39 +18,24 @@ from conf import BASE_DIR
 from impl.registry import get_platform
 from util._logger import get_channel_logger
 
+# R7: 状态枚举 + 聚合逻辑的唯一真源（原本地定义迁移到 util/status.py，
+# 此处 re-export 保持外部 from ext_api.task_queue import TaskStatus 兼容）
+from util.status import TaskStatus, aggregate_batch_status
+
+# re-export 兼容面：外部（含测试）继续 from ext_api.task_queue import ...；
+# 列入 __all__ 防止 ruff 将“看起来 unused”的 re-export 误删
+__all__ = [
+    "PublishTask",
+    "TaskQueue",
+    "TaskStatus",
+    "aggregate_batch_status",
+    "get_task_queue",
+    "task_queue",
+]
+
 logger = get_channel_logger("task_queue")
 
 DB_PATH = BASE_DIR / "db" / "database.db"
-
-
-class TaskStatus(StrEnum):
-    PENDING = "pending"
-    QUEUED = "queued"
-    RUNNING = "running"
-    SUCCESS = "success"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-
-
-def aggregate_batch_status(*, succ: int, fail: int, in_flight: int, total: int) -> str:
-    """根据 detail 状态聚合 batch 状态。
-
-    优先级：
-      1. total == 0            -> 'pending'    （无 detail，理论不该发生）
-      2. in_flight > 0         -> 'running'    （仍有 queued/running detail 未结束）
-      3. fail == 0             -> 'success'    （全部成功）
-      4. succ == 0             -> 'failed'     （全部失败）
-      5. 其余                  -> 'partial'    （混合成功+失败）
-    """
-    if total == 0:
-        return 'pending'
-    if in_flight > 0:
-        return 'running'
-    if fail == 0:
-        return 'success'
-    if succ == 0:
-        return 'failed'
-    return 'partial'
 
 
 @dataclass
@@ -94,6 +77,7 @@ class PublishTask:
     account_id: int = 0
     detail_id: str = ''            # publish_details.id
     payload: dict = field(default_factory=dict)
+    publish_kind: str = 'video'  # 'video' | 'image'（R6 队列三合一：同一队列按 kind 分发）
 
     def to_dict(self):
         d = asdict(self)
@@ -238,90 +222,43 @@ class TaskQueue:
                 self.queue.task_done()
 
     async def _execute(self, task: PublishTask):
-        """调用上游 uploader 执行上传。
+        """调用上游 uploader 执行发布（R6 队列三合一：唯一执行内核）。
 
-        新逻辑：当 task.payload 非空时，调 platform.publish_video(**payload)（splat）。
-        旧逻辑（task.payload 为空时）：保留原 myUtils.postVideo 模块函数调用（向后兼容）。
+        - 所有任务必须携带 payload（postVideo / 草稿批量 / image 发布统一 splat）；
+          payload 为空的旧 myUtils.postVideo 模块函数路径已随 R6 移除。
+        - 按 publish_kind 分发：'video' → platform.publish_video，'image' →
+          platform.publish_image（R5 后两者均已统一为 async，直接 await）。
+        - 在独立子任务里跑：impl/_browser 的 watchdog 在用户关闭浏览器时会
+          cancel 当前 asyncio task（= 这里的子任务），避免把 worker 主循环一起杀掉
+          （否则队列再无人消费，后续任务全部卡死）。
         """
-        # 新逻辑：payload 透传到 platform.publish_video（/postVideo 与草稿批量共用）
-        if task.payload:
-            platform = get_platform(task.platform_type)
-            if not platform:
-                raise ValueError(f"不支持的平台类型: {task.platform_type}")
-            publish_fn = platform.publish_video
-            if asyncio.iscoroutinefunction(publish_fn):
-                # 在独立子任务里跑：impl/_browser 的 watchdog 在用户关闭浏览器时会
-                # cancel 当前 asyncio task（= 这里的子任务），避免把 worker 主循环一起杀掉
-                # （否则队列再无人消费，后续任务全部卡死）。
-                inner = asyncio.create_task(publish_fn(**task.payload))
-                result = await inner
-            else:
-                loop = asyncio.get_event_loop()
-                result = await loop.run_in_executor(
-                    None, lambda: publish_fn(**task.payload)
-                )
-            if not result:
-                # 与旧 publish_executor job 语义一致：返回 falsy = 页面未跳转/校验未通过
-                raise RuntimeError("发布失败：页面未跳转，表单校验未通过")
-            return result
+        if not task.payload:
+            raise ValueError(
+                f"任务缺少 payload（R6 起所有发布任务必须携带 payload），task={task.id}"
+            )
 
-        # 旧逻辑：保留原代码不动
-        from myUtils.postVideo import (
-            post_video_bilibili,
-            post_video_DouYin,
-            post_video_ks,
-            post_video_tencent,
-            post_video_xhs,
+        platform = get_platform(task.platform_type)
+        if not platform:
+            raise ValueError(f"不支持的平台类型: {task.platform_type}")
+
+        # A4: 图集能力门控 —— 不支持的平台任务在分发前直接失败，
+        # 避免抛 NotImplementedError 进队列、失败原因不友好。
+        if task.publish_kind == 'image' and not getattr(platform, 'supports_image', False):
+            raise ValueError(
+                f"{platform.platform_name} 不支持图集发布（supports_image=False），"
+                f"task={task.id}"
+            )
+
+        publish_fn = (
+            platform.publish_image if task.publish_kind == 'image' else platform.publish_video
         )
 
-        file_list = [task.video_path]
-        account_list = [task.account_cookie_path]
-        tags = task.tags
-        title = task.title
-        thumbnail_path = task.thumbnail_path
-        desc = task.description
-
-        # 在 executor 中运行同步的上传函数
-        loop = asyncio.get_event_loop()
-        match task.platform_type:
-            case 1:
-                await loop.run_in_executor(
-                    None, lambda: post_video_xhs(
-                        title, file_list, tags, account_list, None, 0, 1, ['10:00'], 0,
-                        thumbnail_path=thumbnail_path, desc=desc
-                    )
-                )
-            case 2:
-                await loop.run_in_executor(
-                    None, lambda: post_video_tencent(
-                        title, file_list, tags, account_list, None, 0, 1, ['10:00'], 0, False,
-                        thumbnail_path=thumbnail_path, desc=desc
-                    )
-                )
-            case 3:
-                await loop.run_in_executor(
-                    None, lambda: post_video_DouYin(
-                        title, file_list, tags, account_list, None, 0, 1, ['10:00'], 0,
-                        thumbnail_landscape_path='', thumbnail_portrait_path=thumbnail_path,
-                        productLink='', productTitle='', desc=desc
-                    )
-                )
-            case 4:
-                await loop.run_in_executor(
-                    None, lambda: post_video_ks(
-                        title, file_list, tags, account_list, None, 0, 1, ['10:00'], 0,
-                        thumbnail_path=thumbnail_path, desc=desc
-                    )
-                )
-            case 5:
-                await loop.run_in_executor(
-                    None, lambda: post_video_bilibili(
-                        title, file_list, tags, account_list, None, 0, 1, ['10:00'], 0,
-                        desc=desc
-                    )
-                )
-            case _:
-                raise ValueError(f"不支持的平台类型: {task.platform_type}")
+        inner = asyncio.create_task(publish_fn(**task.payload))
+        result = await inner
+        if not result:
+            # 与旧 publish_executor job 语义一致：返回 falsy = 页面未跳转/校验未通过
+            raise RuntimeError("发布失败：页面未跳转，表单校验未通过")
+        return result
 
     def add_task(self, task: PublishTask):
         """线程安全地添加任务到队列"""
@@ -390,79 +327,53 @@ class TaskQueue:
     # ========== 数据库操作 ==========
 
     def _insert_db(self, task: PublishTask):
-        """插 1 行 publish_batches（如果不存在）+ 1 行 publish_details"""
+        """插 1 行 publish_batches（如果不存在）+ 1 行 publish_details。
+
+        A1: 收敛到 services.publish_history._record_publish（唯一 writer）。
+        source/draft_id 溯源（草稿批量）与 account_configs（task 字段打包）在此组装。
+        """
         try:
-            with sqlite3.connect(str(DB_PATH)) as conn:
-                # batch 插一次，多次同 batch_id 跳过
-                # 草稿批量发布时填 source='draft' + draft_id 溯源到草稿
-                conn.execute(
-                    """INSERT OR IGNORE INTO publish_batches
-                       (id, type, title, description, video_material_id,
-                        landscape_cover_material_id, portrait_cover_material_id,
-                        account_count, status, created_at, updated_at,
-                        source, draft_id)
-                       VALUES (?, 'video', ?, ?, '', '', '', 0, 'pending', ?, ?,
-                               ?, ?)""",
-                    (task.batch_id or task.id, task.title, task.description,
-                     task.created_at, task.created_at,
-                     task.source or '', task.draft_id or 0)
-                )
-                # account_configs：把 task 字段打包成 JSON
-                cfg = _build_account_configs(task)
-                # detail 也用 INSERT OR IGNORE：/postVideo 链路 app._before_publish 已
-                # 预插入 publish_details 行（task.id == publish_details.id），跳过不冲突；
-                # 草稿批量发布路径 task.id 是新 uuid，正常插入。
-                conn.execute(
-                    """INSERT OR IGNORE INTO publish_details
-                       (id, batch_id, account_id, account_name, platform, account_configs,
-                        status, created_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (task.id, task.batch_id or task.id, task.account_id or None,
-                     task.account_name, task.platform,
-                     json.dumps(cfg, ensure_ascii=False), task.status, task.created_at)
-                )
+            from services.publish_history import _record_publish
+            _record_publish(
+                batch_id=task.batch_id or task.id,
+                detail_id=task.id,
+                platform=task.platform,
+                account_id=task.account_id,
+                account_name=task.account_name,
+                video_path=task.video_path,
+                title=task.title,
+                description=task.description,
+                tags=task.tags,
+                status=task.status,
+                started_at=task.created_at,
+                account_configs=_build_account_configs(task),
+                content_type=task.publish_kind,
+                source=task.source or '',
+                draft_id=task.draft_id or 0,
+            )
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[TaskQueue] 插入数据库失败: {e}")
 
     def _update_db(self, task: PublishTask):
-        """更新 1 行 publish_details + 聚合 publish_batches 状态"""
+        """更新 1 行 publish_details + 聚合 publish_batches 状态。
+
+        A1: 收敛到 services.publish_history._update_publish_result（唯一 writer），
+        聚合口径 A2：cancelled 归 fail，in-flight 保持 running。
+        """
         try:
-            with sqlite3.connect(str(DB_PATH)) as conn:
-                conn.execute(
-                    """UPDATE publish_details
-                       SET status=?, retry_count=?, error_message=?, publish_url=?,
-                           started_at=?, finished_at=?
-                       WHERE id=?""",
-                    (task.status, task.retry_count, task.error_message, task.publish_url,
-                     task.started_at, task.finished_at, task.id)
-                )
-                # 聚合
-                row = conn.execute(
-                    "SELECT batch_id FROM publish_details WHERE id=?", (task.id,)
-                ).fetchone()
-                if not row:
-                    return
-                batch_id = row[0]
-                counts = conn.execute(
-                    """SELECT COUNT(*),
-                              SUM(CASE WHEN status='success' THEN 1 ELSE 0 END),
-                              SUM(CASE WHEN status IN ('failed', 'cancelled') THEN 1 ELSE 0 END),
-                              SUM(CASE WHEN status IN ('running', 'queued') THEN 1 ELSE 0 END)
-                       FROM publish_details WHERE batch_id=?""",
-                    (batch_id,)
-                ).fetchone()
-                total, succ, fail, in_flight = counts[0], counts[1] or 0, counts[2] or 0, counts[3] or 0
-                bs = aggregate_batch_status(succ=succ, fail=fail, in_flight=in_flight, total=total)
-                now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
-                conn.execute(
-                    """UPDATE publish_batches
-                       SET status=?, success_count=?, failed_count=?, account_count=?,
-                           finished_at=?, updated_at=?
-                       WHERE id=?""",
-                    (bs, succ, fail, total, task.finished_at or now, now, batch_id)
-                )
+            from services.publish_history import _update_publish_result
+            _update_publish_result(
+                detail_id=task.id,
+                status=task.status,
+                finished_at=task.finished_at,
+                error_message=task.error_message,
+                retry_count=task.retry_count,
+                publish_url=task.publish_url,
+                started_at=task.started_at,
+            )
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[TaskQueue] 更新数据库失败: {e}")
+
 
 
 # 全局单例

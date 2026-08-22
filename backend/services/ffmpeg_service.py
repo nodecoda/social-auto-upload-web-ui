@@ -198,7 +198,7 @@ def _extract_frames_sync(base_dir, video_path: str) -> None:
     try:
         _ensure_binaries()
         if FFMPEG is None:
-            raise FileNotFoundError("ffmpeg not available")
+            raise FileNotFoundError("ffmpeg not available")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
 
         output_dir = _frames_dir(base_dir, video_path)
         output_dir.mkdir(parents=True, exist_ok=True)

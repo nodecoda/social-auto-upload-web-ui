@@ -21,12 +21,12 @@ from queue import Queue
 from conf import BASE_DIR
 from util._logger import get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import (
     save_login_result,
-    scrape_jingmai_profile,
 )
 from ..base_platform import BasePlatform
+from ._profile import scrape_jingmai_profile
 
 logger = get_channel_logger("jingmai")
 
@@ -115,17 +115,17 @@ class JingmaiPlatform(BasePlatform):
                 )
                 success = True
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie
@@ -140,7 +140,7 @@ class JingmaiPlatform(BasePlatform):
             page = await context.new_page()
             try:
                 await page.goto(_JINGMAI_HOME_URL)
-                try:
+                try:  # noqa: SIM105
                     await page.wait_for_load_state(
                         "domcontentloaded", timeout=20000
                     )
@@ -157,16 +157,16 @@ class JingmaiPlatform(BasePlatform):
                 logger.info(f"[校验Cookie] cookie 已失效（url={current_url}）")
                 return False
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile
@@ -189,7 +189,7 @@ class JingmaiPlatform(BasePlatform):
             page = await context.new_page()
             try:
                 await page.goto(_JINGMAI_HOME_URL, wait_until="domcontentloaded", timeout=30000)
-                try:
+                try:  # noqa: SIM105
                     await page.wait_for_load_state("domcontentloaded", timeout=20000)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
@@ -215,16 +215,16 @@ class JingmaiPlatform(BasePlatform):
                 logger.info(f"[jingmai] 同步资料失败: {e}")
                 return {"name": "", "avatar": "", "stats": []}
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _login_stats_fn(self, page, account_id) -> list:
         """登录成功后的 stats 抓取入口（供 save_login_result 调用）。"""
@@ -262,8 +262,8 @@ class JingmaiPlatform(BasePlatform):
 
         async def _find_scope(total_timeout: float):
             """在主页面 + 全部子 frame 里找运营卡片，返回命中的 scope。"""
-            deadline = asyncio.get_event_loop().time() + total_timeout
-            while asyncio.get_event_loop().time() < deadline:
+            deadline = asyncio.get_running_loop().time() + total_timeout
+            while asyncio.get_running_loop().time() < deadline:
                 # 1) 主页面（历史布局：卡片直接挂在首页 DOM）
                 try:
                     await page.wait_for_selector(selector, timeout=1000)
@@ -341,7 +341,7 @@ class JingmaiPlatform(BasePlatform):
     # publish_video（委托给 JdPlatform 实现，避免重复代码）
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """京东京麦视频发布 — 复用 jd 平台实现。
 
         jingmai 与 jd 是同一个产品(dr.jd.com/jm/),用户在 jingmai 账号下
@@ -350,7 +350,7 @@ class JingmaiPlatform(BasePlatform):
         """
         from ..jd.platform import JdPlatform
         jd = JdPlatform()
-        return jd.publish_video(**kwargs)
+        return await jd.publish_video(**kwargs)
 
     # ------------------------------------------------------------------
     # open_creator_center
@@ -361,18 +361,18 @@ class JingmaiPlatform(BasePlatform):
         url = _JINGMAI_HOME_URL
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
-                    browser.close()
+                try:  # noqa: SIM105
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 

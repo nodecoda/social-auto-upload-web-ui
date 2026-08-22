@@ -6,7 +6,7 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from ext_api.task_queue import TaskQueue
 
@@ -66,7 +66,9 @@ def _make_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             started_at TIMESTAMP,
             finished_at TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            source TEXT NOT NULL DEFAULT '',
+            draft_id INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE publish_details (
             id TEXT PRIMARY KEY,
@@ -289,7 +291,9 @@ def _postvideo_roundtrip_db_path():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             started_at TIMESTAMP,
             finished_at TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            source TEXT NOT NULL DEFAULT '',
+            draft_id INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE publish_details (
             id TEXT PRIMARY KEY,
@@ -320,7 +324,7 @@ def test_postvideo_stores_account_configs_with_string_key_douyin():
 
     db_path = _postvideo_roundtrip_db_path()
     fake_platform = MagicMock()
-    fake_platform.publish_video = MagicMock(return_value=True)
+    fake_platform.publish_video = AsyncMock(return_value=True)  # R5: publish_video 已 async 化
 
     with patch("blueprints.publish_bp.get_platform", return_value=fake_platform), \
          patch("blueprints.publish_bp.DB_PATH", db_path), \
@@ -361,7 +365,7 @@ def test_postvideo_stores_account_configs_with_string_key_xiaohongshu():
 
     db_path = _postvideo_roundtrip_db_path()
     fake_platform = MagicMock()
-    fake_platform.publish_video = MagicMock(return_value=True)
+    fake_platform.publish_video = AsyncMock(return_value=True)  # R5: publish_video 已 async 化
 
     with patch("blueprints.publish_bp.get_platform", return_value=fake_platform), \
          patch("blueprints.publish_bp.DB_PATH", db_path), \

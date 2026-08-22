@@ -7,7 +7,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from ext_api.task_queue import TaskQueue
 
@@ -52,7 +52,9 @@ CREATE TABLE IF NOT EXISTS publish_batches (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     started_at TIMESTAMP,
     finished_at TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    source TEXT NOT NULL DEFAULT '',
+    draft_id INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS publish_details (
     id TEXT PRIMARY KEY,
@@ -96,7 +98,8 @@ class TestPostVideoWrites(unittest.TestCase):
     def setUp(self):
         # mock 掉真实 platform publish_video，避免启动 Chromium（每次 3 分钟）
         self._fake_platform = MagicMock()
-        self._fake_platform.publish_video = MagicMock(return_value=True)
+        # R5: publish_video 契约已统一为 async，必须用 AsyncMock
+        self._fake_platform.publish_video = AsyncMock(return_value=True)
         self._patches = [
             patch("blueprints.publish_bp.get_platform", return_value=self._fake_platform),
             patch("blueprints.publish_bp.DB_PATH", DB_PATH),

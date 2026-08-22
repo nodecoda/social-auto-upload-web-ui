@@ -9,14 +9,13 @@ Publish URL: https://mp.v.qq.com/publishVideo/video
 import asyncio
 import os
 import threading
-import time
 from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import clear_and_type, get_account_name_by_cookie_file, parse_schedule_time, save_login_result
 from ..base_platform import BasePlatform
 
@@ -80,21 +79,6 @@ class TencentVideoPlatform(BasePlatform):
     supports_cookie_import = True
     platform_cookie_domain = ".qq.com"
 
-    def _parse_cookie_to_storage_state(self, cookie_str):
-        cookies = []
-        expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
-        for pair in cookie_str.split(";"):
-            pair = pair.strip()
-            if not pair or "=" not in pair:
-                continue
-            name, _, value = pair.partition("=")
-            cookies.append({
-                "name": name.strip(), "value": value.strip(),
-                "domain": self.platform_cookie_domain, "path": "/",
-                "expires": expires, "httpOnly": True, "secure": False, "sameSite": "Lax",
-            })
-        return cookies, []
-
     # ------------------------------------------------------------------
     # login — open browser, wait for user to log in manually
     # ------------------------------------------------------------------
@@ -144,7 +128,7 @@ class TencentVideoPlatform(BasePlatform):
         finally:
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie — verify stored cookie is still valid
@@ -171,7 +155,7 @@ class TencentVideoPlatform(BasePlatform):
             logger.warning("check_cookie failed: %s", e)
             return False
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile — scrape user name and avatar
@@ -196,7 +180,7 @@ class TencentVideoPlatform(BasePlatform):
                         timeout=30000,
                     )
                     # 等数据接口完成(SPA 页面需要等异步请求)
-                    try:
+                    try:  # noqa: SIM105
                         await page.wait_for_load_state("networkidle", timeout=15000)
                     except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                         pass
@@ -212,7 +196,7 @@ class TencentVideoPlatform(BasePlatform):
             logger.warning("sync_profile failed: %s", e)
             return {"name": "", "avatar": "", "stats": []}
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _scrape_tencent_video_stats(self, page) -> list:
         """抓取腾讯视频数据分析总览页的运营数据。
@@ -316,7 +300,7 @@ class TencentVideoPlatform(BasePlatform):
                     timeout=30000,
                 )
                 # 等数据接口完成(SPA 页面需要等异步请求)
-                try:
+                try:  # noqa: SIM105
                     await page.wait_for_load_state("networkidle", timeout=15000)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
@@ -336,18 +320,18 @@ class TencentVideoPlatform(BasePlatform):
         url = _HOME_URL
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
-                    browser.close()
+                try:  # noqa: SIM105
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -559,13 +543,13 @@ class TencentVideoPlatform(BasePlatform):
                         current_url = page.url
                         page_title = await page.title()
                         body_text = (await page.locator('body').text_content() or '')[:500]
-                        logger.error(
+                        logger.exception(
                             "[DEBUG] current_url=%s page_title=%s body_excerpt=%s",
                             current_url, page_title, body_text,
                         )
                     except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
-                    raise Exception("未找到视频上传入口") from e
+                    raise Exception("未找到视频上传入口") from e  # noqa: TRY002 -- 同上,错误消息即失败原因
 
                 file_input = page.locator('input[type="file"]').first
                 input_count = await page.locator('input[type="file"]').count()
@@ -1007,6 +991,6 @@ class TencentVideoPlatform(BasePlatform):
             logger.info("[发布] Video published successfully")
         else:
             logger.error("[发布] Publish indicator not found within 60s timeout")
-            raise Exception("发布失败：未检测到发布成功信号（页面未跳转，无成功文本）")
+            raise Exception("发布失败：未检测到发布成功信号（页面未跳转，无成功文本）")  # noqa: TRY002 -- 仓库无自定义异常体系,错误消息即失败原因
 
         await asyncio.sleep(2)

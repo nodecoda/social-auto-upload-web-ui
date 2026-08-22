@@ -4,7 +4,7 @@ line-length = 120
 exclude = [".venv", "__pycache__"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "G", "DTZ", "PLW", "PIE", "BLE", "S110", "S112"]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "TRY002", "TRY301", "G", "DTZ", "PLW", "PIE", "BLE", "S110", "S112"]
 # 存量违规分批治理中(见 docs/backend-coding-standards.md §10 治理清单)。
 # 每完成一批,从 ignore 移除对应规则,让 ruff 重新生效监督回归。
 ignore = [
@@ -13,14 +13,9 @@ ignore = [
     # 日志 f-string 写法(仓库既有惯例,621 处;性能影响可忽略,改造成本高,按惯例豁免)
     "G004",
     # 风格类零散项(低优先,随治理顺手修)
-    "E501",     # 159 处超行宽(存量,不阻断)
-    "SIM105",   # 178 处可用 contextlib.suppress(风格)
-    "TRY002",   #   5 处
-    "TRY003",   # 109 处
-    "TRY300",   #  57 处
-    "TRY301",   #  20 处
-    "TRY400",   #  54 处
-    "PLW2901",  #  21 处循环变量重定义
+    "E501",     # 243 处超行宽(存量,不阻断)
+    "TRY003",   # 193 处 raise 长消息:错误消息即任务失败原因/领域数据,逐消息建异常类过度设计,整组豁免
+    "TRY300",   #  56 处 try/except 后兜底语句:fallback-after-except 惯用法,移 else 语义不符,整组豁免
 ]
 
 [tool.ruff.lint.per-file-ignores]

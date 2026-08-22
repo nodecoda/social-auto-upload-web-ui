@@ -2,7 +2,7 @@
 import asyncio
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
@@ -70,7 +70,9 @@ def test_execute_splats_payload_to_platform_publish_video():
 
     # Mock platform
     fake_platform = MagicMock()
-    fake_platform.publish_video = MagicMock(return_value=True)
+    # R5：publish_video 契约已统一为 async，必须用 AsyncMock（sync mock 会让
+    # task_queue 的 asyncio.create_task 拿到非 coroutine 直接 TypeError）。
+    fake_platform.publish_video = AsyncMock(return_value=True)
 
     with patch.object(tq, 'get_platform', return_value=fake_platform):
         queue = tq.get_task_queue()
@@ -185,7 +187,7 @@ def _run_worker_through_tasks(worker, tasks_and_outcomes):
     async def fast_sleep(_):
         await real_sleep(0)
     with patch('ext_api.task_queue.asyncio.sleep', side_effect=fast_sleep):
-        try:
+        try:  # noqa: SIM105
             asyncio.run(worker._worker("test-worker"))
         except asyncio.CancelledError:
             pass  # expected: sentinel triggers worker exit
@@ -247,7 +249,7 @@ def _run_worker_through_tasks_cancellable(worker, tasks_and_outcomes):
         task.max_retries = 1
 
     # 跑 worker 协程，期望其以 CancelledError 退出
-    try:
+    try:  # noqa: SIM105
         asyncio.run(worker._worker("test-worker"))
     except asyncio.CancelledError:
         pass  # expected: sentinel 触发 worker 退出
@@ -318,7 +320,7 @@ def test_worker_no_double_task_done():
     with patch('ext_api.task_queue.asyncio.sleep', side_effect=fast_sleep):
         # 启动 worker，超时打断无限循环
         async def main():
-            try:
+            try:  # noqa: SIM105
                 await asyncio.wait_for(q._worker("test"), timeout=0.5)
             except TimeoutError:
                 pass
@@ -367,7 +369,7 @@ def test_worker_max_retries_zero_fails_without_retry():
         await real_sleep(0)
     with patch('ext_api.task_queue.asyncio.sleep', side_effect=fast_sleep):
         async def main():
-            try:
+            try:  # noqa: SIM105
                 await asyncio.wait_for(q._worker("test"), timeout=0.5)
             except TimeoutError:
                 pass

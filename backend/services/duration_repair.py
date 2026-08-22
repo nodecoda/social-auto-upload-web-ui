@@ -353,7 +353,7 @@ def start_repair_in_background() -> list[threading.Thread]:
 def ensure_duration_or_probe(stored_path: str, current_duration: float) -> float:
     """发布提交入口的同步兜底：时长缺失则即时识别。
 
-    用于 ``postVideo`` / ``postVideoBatch``：若传入的 ``current_duration``
+    用于 ``postVideo``（postVideoBatch 已随 R6 移除）：若传入的 ``current_duration``
     非法（<=0），尝试识别一次并写库。已是正常时长则原样返回。
 
     返回值保证：能识别就返回 >0，识别不到仍返回 0（调用方应将 0 视为

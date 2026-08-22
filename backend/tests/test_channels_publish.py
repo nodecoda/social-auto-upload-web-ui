@@ -4,6 +4,7 @@ channels 无独立 _upload_one_video: DOM 操作内联在 async _do_upload 中,
 依赖模块级 helper。本批 patch 全部 helper + browser/context 链,
 只测编排契约: 文件×账号笛卡尔积 / 参数透传 / 定时条件调用 / 草稿提交。
 """
+import asyncio
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -65,7 +66,7 @@ def _run_publish(platform, **kwargs):
         for p in patches:
             p.start()
         try:
-            result = platform.publish_video(**kwargs)
+            result = asyncio.run(platform.publish_video(**kwargs))
         finally:
             for p in patches:
                 p.stop()
@@ -171,7 +172,7 @@ class TestPublishVideoOrchestration:
              patch('impl.channels.platform.parse_schedule_time', MagicMock(return_value=[0])), \
              patch('impl.channels.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.channels.platform.bind_account_name', MagicMock()):
-            inst.publish_video(title='T', files=['/v.mp4'], account_file=['u1.json'])
+            asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], account_file=['u1.json']))
             expected = str(Path(BASE_DIR / 'cookiesFile' / 'u1.json'))
             inst.create_context.assert_awaited_once_with(browser, storage_state=expected)
             context.storage_state.assert_awaited_once_with(path=expected)

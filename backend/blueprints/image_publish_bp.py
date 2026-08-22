@@ -18,6 +18,28 @@ from conf import BASE_DIR
 from storage import resolve_material_path
 from util._logger import get_channel_logger
 
+# R7: 状态枚举共享真源（util/status.py）
+from util.status import TaskStatus
+
+
+def _derived_platform_map():
+    """中文名/英文 key → platform_id 双向兜底映射（registry 派生，R4）。
+
+    返回 {platform_name: id, platform_key: id}，支持前端传中文名或 key。
+    """
+    from impl.registry import _registry
+    m = {}
+    for pid, cls in _registry.items():
+        m[cls.platform_name] = pid
+        m[cls.platform_key] = pid
+    return m
+
+
+def _derived_platform_triples():
+    """(platform_id, key, name) 三元组（registry 派生，R4）。"""
+    from impl.registry import _registry
+    return [(pid, cls.platform_key, cls.platform_name) for pid, cls in sorted(_registry.items())]
+
 logger = get_channel_logger("image_publish")
 
 image_publish_bp = Blueprint('image_publish', __name__, url_prefix='/api/image-publish')
@@ -35,52 +57,9 @@ def _get_db():
 
 # ========== 发布 ==========
 
-def _update_image_publish_detail(detail_id, status, error_message=""):
-    """更新单条 publish_details 状态，并聚合到 publish_batches"""
-    try:
-        with sqlite3.connect(str(DB_PATH)) as conn:
-            conn.execute(
-                "UPDATE publish_details SET status=?, finished_at=?, error_message=? WHERE id=?",
-                (status, datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), error_message, detail_id)
-            )
-            row = conn.execute(
-                "SELECT batch_id FROM publish_details WHERE id=?", (detail_id,)
-            ).fetchone()
-            if not row:
-                return
-            batch_id = row[0]
-            counts = conn.execute(
-                """SELECT COUNT(*),
-                          SUM(CASE WHEN status='success' THEN 1 ELSE 0 END),
-                          SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END)
-                   FROM publish_details WHERE batch_id=?""",
-                (batch_id,)
-            ).fetchone()
-            total, succ, fail = counts[0], counts[1] or 0, counts[2] or 0
-            if total == 0:
-                bs = 'pending'
-            elif fail == 0:
-                bs = 'success'
-            elif succ == 0:
-                bs = 'failed'
-            else:
-                bs = 'partial'
-            conn.execute(
-                """UPDATE publish_batches
-                   SET status=?, success_count=?, failed_count=?, account_count=?,
-                       finished_at=?, updated_at=?
-                   WHERE id=?""",
-                (bs, succ, fail, total, datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(),
-                 datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(), batch_id)
-            )
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-        logger.info(f"[image_publish] 更新失败: {e}")
-
-
 @image_publish_bp.route('/publish', methods=['POST'])
 def publish_images():
     """发布图集内容到各平台（单账号 + batchId 模式，前端循环调用）"""
-    import asyncio
 
     from impl.registry import get_platform
 
@@ -115,34 +94,35 @@ def publish_images():
     excluded = {'landscapeCoverMaterialId', 'portraitCoverMaterialId', 'filePath'}
     account_configs = {k: v for k, v in config.items() if k not in excluded}
 
+    # R7: 落库统一走 services.publish_history._record_publish（唯一 writer），
+    # 消灭路由内行内 INSERT；detail 初始状态用共享 TaskStatus 枚举。
     try:
-        conn = _get_db()
-        conn.execute(
-            """INSERT OR IGNORE INTO publish_batches
-               (id, type, title, description, image_material_ids,
-                landscape_cover_material_id, portrait_cover_material_id,
-                account_count, status, created_at, updated_at)
-               VALUES (?, 'image', ?, ?, ?, ?, ?, 0, 'pending', ?, ?)""",
-            (batch_id, title, description, json.dumps(image_ids, ensure_ascii=False),
-             data.get('landscapeCoverMaterialId', ''),
-             data.get('portraitCoverMaterialId', ''),
-             now, now)
+        from services.publish_history import _record_publish
+        _record_publish(
+            batch_id=batch_id,
+            detail_id=detail_id,
+            platform=platform,
+            account_id=account_id,
+            account_name=account_name,
+            video_path='',
+            title=title,
+            description=description,
+            tags=[],
+            status=TaskStatus.RUNNING,
+            started_at=now,
+            account_configs=account_configs,
+            landscape_cover_material_id=data.get('landscapeCoverMaterialId', ''),
+            portrait_cover_material_id=data.get('portraitCoverMaterialId', ''),
+            content_type='image',
+            image_material_ids=json.dumps(image_ids, ensure_ascii=False),
         )
-        conn.execute(
-            """INSERT INTO publish_details
-               (id, batch_id, account_id, account_name, platform, account_configs,
-                status, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, 'running', ?)""",
-            (detail_id, batch_id, account_id, account_name, platform,
-             json.dumps(account_configs, ensure_ascii=False), now)
-        )
-        conn.commit()
-        conn.close()
     except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": f"写入失败: {e}"}), 500
 
-    # ---------- 实际发布执行（保留原有逻辑） ----------
-    success = False
+    # ---------- 入队执行（R6 队列三合一：发布执行统一走 task_queue worker） ----------
+    # 文件解析在路由内完成（保持既有语义），payload 透传给 worker 的
+    # platform.publish_image(**payload)；状态由 worker 的 _update_db 写回同一
+    # detail 行并聚合 batch（不再请求线程内同步执行，消灭第二套执行/状态机）。
     err = ""
     try:
         # 获取图片文件路径（从 materials 表读取 stored_path，再解析本地路径）
@@ -166,91 +146,94 @@ def publish_images():
         platform_type = config.get('platform')
         cookie_file = config.get('filePath')
 
-        if image_files and platform_type and cookie_file:
-            # 平台类型映射（支持中文名称和英文key）
-            platform_map = {
-                'douyin': 3,
-                '抖音': 3,
-                'xiaohongshu': 1,
-                '小红书': 1,
-                'kuaishou': 4,
-                '快手': 4,
-                'weibo': 11, '微博': 11,   # 新增
-                'alipay': 12, '支付宝': 12,  # 图集发布
-                'vivo': 16, 'VIVO': 16,
-                'weixin_gzh': 17, '微信公众号': 17,  # 公众号贴图
-            }
-            platform_id = platform_map.get(platform_type)
-            if not platform_id:
-                raise ValueError(f"不支持的平台: {platform_type}")
-
-            platform_obj = get_platform(platform_id)
-            if not platform_obj:
-                raise ValueError("无法获取平台实例")
-
-            dry_run = config.get('dry_run', True)
-
-            logger.info(f"发布参数: dry_run={dry_run}, cover_path={config.get('cover_path')}, "
-                        f"music_name={config.get('music_name')}, hotspot={config.get('hotspot')}, "
-                        f"hotspot_tags={config.get('hotspot_tags')}, "
-                        f"aiContent={config.get('aiContent')}, isOriginal={config.get('isOriginal')}, "
-                        f"tags={config.get('tags')}, "
-                        f"mix_id={config.get('mix_id')}, tag_type={config.get('tag_type')}, "
-                        f"tag_value={config.get('tag_value')}, mini_link={config.get('mini_link')}")
-
-            # 调用平台的 publish_image 方法
-            publish_fn = platform_obj.publish_image
-            publish_kwargs = dict(
-                title=config.get('title', ''),
-                files=image_files,
-                tags=config.get('tags', []),
-                account_file=[cookie_file],
-                desc=config.get('description', ''),
-                cover_path=resolve_material_path(config.get('cover_path', '')),
-                mix_id=config.get('mix_id', ''),
-                music_name=config.get('music_name', ''),
-                hotspot=config.get('hotspot', ''),
-                tag_type=config.get('tag_type', ''),
-                tag_value=config.get('tag_value', ''),
-                mini_link=config.get('mini_link', ''),
-                enableTimer=bool(config.get('scheduleTime')),
-                schedule_time_str=config.get('scheduleTime', ''),
-                ai_content=config.get('aiContent', ''),
-                is_original=config.get('isOriginal', False),
-                activities=config.get('activities', []),
-                content_statement=config.get('contentStatement', ''),
-                content_statement2=config.get('contentStatement2', ''),
-                content_statement2_optional=config.get('contentStatement2Optional', ''),
-                author_declaration=config.get('aiContent', ''),
-                author_statement=config.get('author_statement', '') or config.get('authorStatement', ''),
-                music_id=config.get('music_id', ''),
-                music_title=config.get('music_title', ''),
-                # 微信公众号图集特有字段(视频发布侧用的 snake_case 此处补 camelCase 读取)
-                gzh_collection_name=config.get('gzhCollectionName', '') or config.get('gzh_collection_name', ''),
-                gzh_claim_source=config.get('gzhClaimSource', '') or config.get('gzh_claim_source', ''),
-                dry_run=dry_run,
-            )
-            if asyncio.iscoroutinefunction(publish_fn):
-                result = asyncio.run(publish_fn(**publish_kwargs))
-            else:
-                result = publish_fn(**publish_kwargs)
-            success = bool(result)
-        else:
+        if not (image_files and platform_type and cookie_file):
             # 没有图片或缺配置：不调用平台（保留成功占位以便 batch 不卡 pending）
             err = "无图片或缺平台/cookie 配置，跳过实际发布"
             logger.info(f"[image_publish] {err}")
-            success = True
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"发布失败: {e}")
+            from services.publish_history import _update_publish_result
+            _update_publish_result(detail_id, TaskStatus.SUCCESS, now, error_message=err)
+            return jsonify({"code": 200, "msg": "发布成功", "data": {"batch_id": batch_id, "detail_id": detail_id}})
+
+        # 平台类型映射（中文名/英文key → id）：由 registry 类属性派生（R4），
+        # 新增平台自动收录，无需在此处维护
+        platform_map = _derived_platform_map()
+        platform_id = platform_map.get(platform_type)
+        if not platform_id:
+            raise ValueError(f"不支持的平台: {platform_type}")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
+
+        platform_obj = get_platform(platform_id)
+        if not platform_obj:
+            raise ValueError("无法获取平台实例")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
+
+        dry_run = config.get('dry_run', True)
+
+        logger.info(f"发布参数: dry_run={dry_run}, cover_path={config.get('cover_path')}, "
+                    f"music_name={config.get('music_name')}, hotspot={config.get('hotspot')}, "
+                    f"hotspot_tags={config.get('hotspot_tags')}, "
+                    f"aiContent={config.get('aiContent')}, isOriginal={config.get('isOriginal')}, "
+                    f"tags={config.get('tags')}, "
+                    f"mix_id={config.get('mix_id')}, tag_type={config.get('tag_type')}, "
+                    f"tag_value={config.get('tag_value')}, mini_link={config.get('mini_link')}")
+
+        publish_kwargs = dict(
+            title=config.get('title', ''),
+            files=image_files,
+            tags=config.get('tags', []),
+            account_file=[cookie_file],
+            desc=config.get('description', ''),
+            cover_path=resolve_material_path(config.get('cover_path', '')),
+            mix_id=config.get('mix_id', ''),
+            music_name=config.get('music_name', ''),
+            hotspot=config.get('hotspot', ''),
+            tag_type=config.get('tag_type', ''),
+            tag_value=config.get('tag_value', ''),
+            mini_link=config.get('mini_link', ''),
+            enableTimer=bool(config.get('scheduleTime')),
+            schedule_time_str=config.get('scheduleTime', ''),
+            ai_content=config.get('aiContent', ''),
+            is_original=config.get('isOriginal', False),
+            activities=config.get('activities', []),
+            content_statement=config.get('contentStatement', ''),
+            content_statement2=config.get('contentStatement2', ''),
+            content_statement2_optional=config.get('contentStatement2Optional', ''),
+            author_declaration=config.get('aiContent', ''),
+            author_statement=config.get('author_statement', '') or config.get('authorStatement', ''),
+            music_id=config.get('music_id', ''),
+            music_title=config.get('music_title', ''),
+            # 微信公众号图集特有字段(视频发布侧用的 snake_case 此处补 camelCase 读取)
+            gzh_collection_name=config.get('gzhCollectionName', '') or config.get('gzh_collection_name', ''),
+            gzh_claim_source=config.get('gzhClaimSource', '') or config.get('gzh_claim_source', ''),
+            dry_run=dry_run,
+        )
+
+        # R6: 入队 task_queue，worker 后台执行 platform.publish_image(**payload)。
+        # task.id == publish_details.id（上方已预插 detail 行），worker 的 _update_db
+        # 写回同一行并聚合 batch 状态。
+        from ext_api.task_queue import PublishTask, get_task_queue
+        task = PublishTask(
+            id=detail_id,
+            batch_id=batch_id,
+            platform=platform_obj.platform_name,
+            platform_type=platform_id,
+            account_name=account_name,
+            account_cookie_path=cookie_file,
+            title=title,
+            description=description,
+            payload=publish_kwargs,
+            publish_kind='image',
+            # 失败立即标记 FAILED,不重试(与 video 发布一致,避免同一任务反复开浏览器)
+            max_retries=0,
+        )
+        get_task_queue().add_task(task)
+        logger.info(f"[image_publish] 已入队: detail_id={detail_id} platform={platform_obj.platform_name} batch={batch_id}")
+        return jsonify({"code": 200, "msg": "发布任务已入队", "data": {"batch_id": batch_id, "detail_id": detail_id}})
+    except Exception as e:
+        logger.exception(f"发布失败: {e}")
         err = str(e)
-        success = False
+        from services.publish_history import _update_publish_result
+        _update_publish_result(detail_id, TaskStatus.FAILED, now, error_message=err)
+        return jsonify({"code": 500, "msg": f"发布失败: {err}"}), 500
 
-    final_status = 'success' if success else 'failed'
-    _update_image_publish_detail(detail_id, final_status, error_message=err)
-
-    if success:
-        return jsonify({"code": 200, "msg": "发布成功", "data": {"batch_id": batch_id, "detail_id": detail_id}})
-    return jsonify({"code": 500, "msg": f"发布失败: {err}"}), 500
 
 
 # ========== 草稿管理（已迁移到 /api/v2/drafts，保留兼容接口） ==========
@@ -321,8 +304,8 @@ def save_draft():
             draft_id = cursor.lastrowid
             conn.close()
         return jsonify({"code": 200, "msg": "草稿保存成功", "data": {"id": draft_id}})
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"保存草稿失败: {e}")
+    except Exception as e:
+        logger.exception(f"保存草稿失败: {e}")
         return jsonify({"code": 500, "msg": f"保存失败: {e!s}"}), 500
 
 
@@ -380,19 +363,11 @@ def _extract_image_channels_summary(draft_data):
     if not publish_account_ids:
         return []
 
-    # 平台ID到名称和key的映射
+    # 平台ID到名称和key的映射：registry 派生（R4）
     # 注意: platform key 必须与 frontend config/platforms.js 的 key 一致,
     # 否则草稿箱 getPlatformLogo() 匹配不到 logo。
     platform_id_to_name = {
-        1: ('xiaohongshu', '小红书'),
-        2: ('channels', '视频号'),
-        3: ('douyin', '抖音'),
-        4: ('kuaishou', '快手'),
-        5: ('bilibili', 'B站'),
-        6: ('baijiahao', '百家号'),
-        11: ('weibo', '微博'),
-        12: ('alipay', '支付宝'),   # 图集发布
-        13: ('toutiao', '今日头条'),
+        pid: (key, name) for pid, key, name in _derived_platform_triples()
     }
 
     try:
@@ -432,8 +407,8 @@ def delete_draft(draft_id):
             return jsonify({"code": 404, "msg": "草稿不存在"}), 404
 
         return jsonify({"code": 200, "msg": "草稿已删除"})
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"删除草稿失败: {e}")
+    except Exception as e:
+        logger.exception(f"删除草稿失败: {e}")
         return jsonify({"code": 500, "msg": f"删除失败: {e!s}"}), 500
 
 
@@ -442,7 +417,6 @@ def delete_draft(draft_id):
 @image_publish_bp.route('/execute-publish', methods=['POST'])
 def execute_publish():
     """执行图集发布任务 - 调用平台API（单账号 + batchId 模式）"""
-    import asyncio
 
     from impl.registry import get_platform
 
@@ -468,11 +442,8 @@ def execute_publish():
         Path(account_file[0]).stem if account_file else ''
     )
 
-    # 平台名映射（与 /publish 一致，用于在 publish_details.platform 存可读名）
-    platform_name_map = {1: '小红书', 2: '视频号', 3: '抖音', 4: '快手', 5: 'B站',
-                         6: '百家号', 7: 'TikTok', 8: 'YouTube', 9: '腾讯视频', 10: '爱奇艺',
-                         11: '微博', 12: '支付宝', 13: '今日头条', 14: '知乎', 15: 'CSDN',
-                         16: 'VIVO', 17: '微信公众号'}
+    # 平台名映射（与 /publish 一致，用于在 publish_details.platform 存可读名）：registry 派生（R4）
+    platform_name_map = {pid: name for pid, key, name in _derived_platform_triples()}
     platform_label = platform_name_map.get(int(platform_type), str(platform_type))
 
     now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
@@ -481,39 +452,36 @@ def execute_publish():
     excluded = {'landscapeCoverMaterialId', 'portraitCoverMaterialId'}
     account_configs = {k: v for k, v in data.items() if k not in excluded}
 
+    # R7: 落库统一走 services.publish_history._record_publish（唯一 writer）
     try:
-        conn = _get_db()
-        conn.execute(
-            """INSERT OR IGNORE INTO publish_batches
-               (id, type, title, description, image_material_ids,
-                landscape_cover_material_id, portrait_cover_material_id,
-                account_count, status, created_at, updated_at)
-               VALUES (?, 'image', ?, ?, ?, ?, ?, 0, 'pending', ?, ?)""",
-            (batch_id, title, description, json.dumps(image_ids, ensure_ascii=False),
-             data.get('landscapeCoverMaterialId', ''),
-             data.get('portraitCoverMaterialId', ''),
-             now, now)
+        from services.publish_history import _record_publish
+        _record_publish(
+            batch_id=batch_id,
+            detail_id=detail_id,
+            platform=platform_label,
+            account_id=account_id,
+            account_name=account_name,
+            video_path='',
+            title=title,
+            description=description,
+            tags=[],
+            status=TaskStatus.RUNNING,
+            started_at=now,
+            account_configs=account_configs,
+            landscape_cover_material_id=data.get('landscapeCoverMaterialId', ''),
+            portrait_cover_material_id=data.get('portraitCoverMaterialId', ''),
+            content_type='image',
+            image_material_ids=json.dumps(image_ids, ensure_ascii=False),
         )
-        conn.execute(
-            """INSERT INTO publish_details
-               (id, batch_id, account_id, account_name, platform, account_configs,
-                status, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, 'running', ?)""",
-            (detail_id, batch_id, account_id, account_name, platform_label,
-             json.dumps(account_configs, ensure_ascii=False), now)
-        )
-        conn.commit()
-        conn.close()
     except Exception as e:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
         return jsonify({"code": 500, "msg": f"写入失败: {e}"}), 500
 
-    # ---------- 实际发布执行（保留原有逻辑） ----------
-    success = False
+    # ---------- 入队执行（R6 队列三合一：与 /publish 同一执行内核） ----------
     err = ""
     try:
         platform = get_platform(platform_type)
         if not platform:
-            raise ValueError(f"不支持的平台类型: {platform_type}")
+            raise ValueError(f"不支持的平台类型: {platform_type}")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
 
         # 从 materials 表读取 stored_path，再解析本地路径
         from storage import get_storage
@@ -533,10 +501,8 @@ def execute_publish():
         conn.close()
 
         if not image_files:
-            raise ValueError("未找到有效的图片文件")
+            raise ValueError("未找到有效的图片文件")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
 
-        # 调用平台的 publish_image 方法
-        publish_fn = platform.publish_image
         publish_kwargs = dict(
             title=title,
             files=image_files,
@@ -557,22 +523,33 @@ def execute_publish():
             music_title=data.get('music_title', ''),
             dry_run=data.get('dry_run', True),
         )
-        if asyncio.iscoroutinefunction(publish_fn):
-            result = asyncio.run(publish_fn(**publish_kwargs))
-        else:
-            result = publish_fn(**publish_kwargs)
-        success = bool(result)
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"执行发布失败: {e}")
+
+        # R6: 入队 task_queue（task.id == publish_details.id），worker 后台执行
+        # platform.publish_image(**payload)，_update_db 写回同一 detail 行并聚合 batch。
+        from ext_api.task_queue import PublishTask, get_task_queue
+        task = PublishTask(
+            id=detail_id,
+            batch_id=batch_id,
+            platform=platform_label,
+            platform_type=int(platform_type),
+            account_name=account_name,
+            account_cookie_path=(account_file or [''])[0],
+            title=title,
+            description=description,
+            payload=publish_kwargs,
+            publish_kind='image',
+            max_retries=0,
+        )
+        get_task_queue().add_task(task)
+        logger.info(f"[image_publish] 已入队: detail_id={detail_id} platform={platform_label} batch={batch_id}")
+        return jsonify({"code": 200, "msg": "发布任务已入队", "data": {"batch_id": batch_id, "detail_id": detail_id}})
+    except Exception as e:
+        logger.exception(f"执行发布失败: {e}")
         err = str(e)
-        success = False
+        from services.publish_history import _update_publish_result
+        _update_publish_result(detail_id, TaskStatus.FAILED, now, error_message=err)
+        return jsonify({"code": 500, "msg": f"发布失败: {err}"}), 500
 
-    final_status = 'success' if success else 'failed'
-    _update_image_publish_detail(detail_id, final_status, error_message=err)
-
-    if success:
-        return jsonify({"code": 200, "msg": "发布任务已执行", "data": {"batch_id": batch_id, "detail_id": detail_id}})
-    return jsonify({"code": 500, "msg": f"发布失败: {err}"}), 500
 
 
 @image_publish_bp.route('/drafts/batch-publish', methods=['POST'])

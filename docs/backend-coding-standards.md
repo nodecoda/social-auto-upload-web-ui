@@ -38,6 +38,18 @@ python -m pytest -q
 
 **规则**：新增平台 = `impl/<platform>/` + `blueprints/<platform>_bp.py` + `registry.py` 注册；不把业务逻辑写进蓝图。
 
+**新增平台 Checklist（对齐架构整改 R1/R2/R8 后契约，`test_platform_contracts.py` 全量断言）**：
+
+- [ ] 平台类继承 `BasePlatform`，注册到 `impl/registry.py`（`platform_id` / `platform_key` / `platform_name` 齐备且唯一）
+- [ ] 发布契约形态：`publish_video` 与基类签名一致；**禁止**「`asyncio.run` 桥接后无条件 `return True`」吞异常（异常须捕获记录并返回 `False`）
+- [ ] 浏览器生命周期：创建走 `self.create_browser`，**禁止直接 `browser.close()`**——收尾一律 `await self.close_browser(browser)`（线程内 sync 场景用 `asyncio.run(close_browser(browser))`）
+- [ ] **禁止 `asyncio.get_event_loop()`**（3.12 弃用）；轮询计时用 `asyncio.get_running_loop().time()`；Flask 线程跑协程用 `util.async_utils.run_async`
+- [ ] cookie 域声明：`platform_cookie_domain` 或 `_parse_cookie_to_storage_state` 按基类模板实现，不逐字节复制
+- [ ] 元数据单源：平台名/键以类属性为准，`conf.PLATFORM_MAP` / blueprint 映射改为派生，不另立常量表
+- [ ] 必要测试：`tests/test_<platform>_platform_dom.py`（DOM 交互契约）+ 注册表可达性断言；CI 4 道检查全绿后合并
+
+> 对照红线见 `backend/tests/test_platform_contracts.py`（注册表结构 / `browser.close` 直调 / `get_event_loop` / 吞失败反模式，违规即 CI 失败）。
+
 ---
 
 ## 2. 平台实现契约
@@ -162,8 +174,14 @@ except ApiTimeoutError as e:
 | D6 | RUF006 asyncio 弱引用 | 3 | 官方 set 持有模式（_browser watchdog/jd/taobao 关闭任务） | ✅ 2026-08-21 |
 | D7 | G003/B023/SIM102/B007 零散 | 6 | 日志拼接改 %s、循环变量绑定、合并 if、未用变量下划线 | ✅ 2026-08-21 |
 | D8 | RUF100 冗余 noqa | 24 | per-file-ignores 覆盖后自动清理（app.py E402 等） | ✅ 2026-08-21 |
+| D9 | SIM105 try-except 可 suppress | 183 | 既有 try/except-pass 风格直观,逐处 noqa 注释 + 规则解禁（RUF100 顺带清 44 处冗余 BLE001） | ✅ 2026-08-22 |
+| D10 | TRY400 裸日志重抛 | 54 | except 块 `logger.error` → `logger.exception`（自动附栈）实际修复 + 规则解禁 | ✅ 2026-08-22 |
+| D11 | PLW2901 循环变量复写 | 6 | 逐处重命名循环变量（`pair`→`chunk`/`raw_name` 等）实际修复 + 规则解禁 | ✅ 2026-08-22 |
+| D12 | TRY002 裸 Exception raise | 8 | 无自定义异常体系、错误消息即失败原因,noqa 注释（5 生产 + 3 测试桩）+ 规则解禁 | ✅ 2026-08-22 |
+| D13 | TRY301 try 内主动 raise | 20 | try 内主动 raise 为语义错误/快速失败,noqa 注释 + 规则解禁 | ✅ 2026-08-22 |
 
 > 规则从 `pyproject.toml` ignore 列表移除 = 该批完成（ruff 重新报错即回归）。
+> **2026-08-22 豁免项**：`E501`（243 处超行宽存量）、`TRY003`（193 处 raise 长消息：错误消息即领域数据/任务失败原因，逐消息建异常类过度设计）、`TRY300`（56 处 try/except 后兜底语句：fallback-after-except 惯用法，移 else 语义不符）——整组保留 ignore 豁免，理由已注释在 pyproject。
 
 ---
 

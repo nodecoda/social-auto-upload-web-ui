@@ -51,6 +51,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(139, 92, 246, 0.15)',
     cssClass: 'xiaohongshu',
     creatorUrl: 'https://creator.xiaohongshu.com/',
+    supportsImage: true,
     settingsFields: [
       { key: 'aiContent', label: '内容类型声明', type: 'select', required: true, placeholder: '添加内容类型声明', options: [
         { label: '虚构演绎，仅供娱乐', value: '虚构演绎，仅供娱乐' },
@@ -82,6 +83,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(59, 130, 246, 0.15)',
     cssClass: 'channels',
     creatorUrl: 'https://channels.weixin.qq.com/',
+    supportsImage: false,
     settingsFields: [
       // 视频标注:发布页「选择视频标注」下拉,所有选项(含「无需标注」)都会去页面真正选中。
       { key: 'channelsMarkTag', label: '视频标注', type: 'select', placeholder: '选择视频标注',
@@ -116,6 +118,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(244, 63, 94, 0.15)',
     cssClass: 'douyin',
     creatorUrl: 'https://creator.douyin.com/',
+    supportsImage: true,
     settingsFields: [
       { key: 'aiContent', label: '自主声明', type: 'select', required: true, placeholder: '请选择自主声明', options: [
         { label: '内容由AI生成', value: '内容由AI生成' },
@@ -141,6 +144,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(245, 158, 11, 0.15)',
     cssClass: 'kuaishou',
     creatorUrl: 'https://k.kuaishou.com/',
+    supportsImage: true,
     settingsFields: [
       { key: 'aiContent', label: '作者声明', type: 'select', required: true, placeholder: '请选择作者声明', options: [{ label: '内容为AI生成', value: '内容为AI生成' }, { label: '演绎情节，仅供娱乐', value: '演绎情节，仅供娱乐' }, { label: '个人观点，仅供参考', value: '个人观点，仅供参考' }, { label: '素材来源于网络', value: '素材来源于网络' }, { label: DECLARATION_NONE, value: DECLARATION_NONE }] },
       { key: 'isOriginal', label: '原创声明', type: 'radio', options: [{ label: '原创', value: true }, { label: '非原创', value: false }] },
@@ -160,6 +164,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(0, 161, 214, 0.15)',
     cssClass: 'bilibili',
     creatorUrl: 'https://member.bilibili.com/',
+    supportsImage: false,
     settingsFields: [
       { key: 'zone', label: '分区', type: 'select', placeholder: '选择投稿分区', options: [
         { label: 'vlog', value: 'vlog' },
@@ -220,6 +225,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(230, 78, 58, 0.15)',
     cssClass: 'baijiahao',
     creatorUrl: 'https://baijiahao.baidu.com/',
+    supportsImage: false,
     settingsFields: [
       { key: 'isOriginal', label: '原创声明', type: 'radio', options: [{ label: '原创', value: true }, { label: '非原创', value: false }] },
       { key: 'creationDeclaration', label: '必选声明', type: 'select', required: true, placeholder: '选择必选声明', options: [
@@ -283,6 +289,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(254, 44, 85, 0.15)',
     cssClass: 'tiktok',
     creatorUrl: 'https://www.tiktok.com/tiktokstudio/upload?lang=en',
+    supportsImage: false,
     settingsFields: [
       { key: 'aiContent', label: 'AI生成内容', type: 'switch', required: true },
       { key: 'isOriginal', label: '原创声明', type: 'radio', options: [{ label: '原创', value: true }, { label: '非原创', value: false }] },
@@ -302,6 +309,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(255, 0, 0, 0.15)',
     cssClass: 'youtube',
     creatorUrl: 'https://studio.youtube.com/',
+    supportsImage: false,
     settingsFields: [
       { key: 'audience', label: '观众', type: 'radio', required: true,
         description: '根据法律要求，无论你身在何处，都必须遵守《儿童在线隐私保护法》(COPPA) 和/或其他法律。你必须指明自己的视频是否为面向儿童的内容。\n面向儿童的视频不支持个性化广告和通知等功能。',
@@ -326,6 +334,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(255, 106, 0, 0.15)',
     cssClass: 'tencent-video',
     creatorUrl: 'https://mp.v.qq.com/',
+    supportsImage: false,
     settingsFields: [
       { key: 'creationDeclaration', label: '创作声明', type: 'multiSelect', required: true, placeholder: '请选择创作声明（可多选）', options: [
         { label: '剧情演绎，仅供娱乐', value: '剧情演绎，仅供娱乐' },
@@ -350,6 +359,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(0, 212, 66, 0.15)',
     cssClass: 'iqiyi',
     creatorUrl: 'https://creator.iqiyi.com/',
+    supportsImage: false,
     settingsFields: [
       { key: 'creationDeclaration', label: '创作声明（必填）', type: 'select', required: true, placeholder: '请选择创作声明', options: [
         { label: '含AI生成内容', value: '含AI生成内容' },
@@ -382,6 +392,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(230, 22, 45, 0.15)',
     cssClass: 'weibo',
     creatorUrl: 'https://weibo.com/set/index',
+    supportsImage: true,
     settingsFields: [
       { key: 'videoType', label: '类型', type: 'radio', options: [
         { label: '原创', value: '原创' },
@@ -433,6 +444,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(22, 119, 255, 0.15)',
     cssClass: 'alipay',
     creatorUrl: 'https://c.alipay.com/page/life-account/index',
+    supportsImage: true,
     settingsFields: [
       { key: 'authorStatement', label: '作者声明', type: 'select', required: true, placeholder: '请选择作者声明（必填）', options: [
         { label: '内容无需标注', value: '内容无需标注' },
@@ -461,6 +473,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(255, 0, 0, 0.15)',
     cssClass: 'toutiao',
     creatorUrl: 'https://mp.toutiao.com/profile_v4/index',
+    supportsImage: false,
     settingsFields: [
       { key: 'creationDeclaration', label: '作品声明', type: 'select', required: true, placeholder: '请选择作品声明', options: [
         { label: '取自站外', value: '取自站外' },
@@ -521,6 +534,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(0, 132, 255, 0.15)',
     cssClass: 'zhihu',
     creatorUrl: 'https://www.zhihu.com/upload-video?entry=navPanel',
+    supportsImage: false,
     settingsFields: [
       { key: 'creationDeclaration', label: '视频标记', type: 'select', placeholder: '请选择视频标记', options: [
         { label: '内容无需标注', value: '内容无需标注' },
@@ -611,6 +625,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(252, 85, 49, 0.15)',
     cssClass: 'csdn',
     creatorUrl: 'https://mp.csdn.net/',
+    supportsImage: false,
     settingsFields: [
       { key: 'recommend', label: '是否推荐', type: 'switch', description: '勾选后发布的视频将被推荐' },
     ] as SettingsField[],
@@ -627,6 +642,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(65, 84, 255, 0.15)',
     cssClass: 'vivo',
     creatorUrl: 'https://www.kaixinkan.com.cn/#/home',
+    supportsImage: false,
     settingsFields: [
       // 位置(平台级):浏览器自动化打开 vivo 发布页搜索回传下拉数据,空=不显示位置
       { key: 'vivoLocationName', label: '添加位置', type: 'poiSelect', placeholder: '输入地理位置' },
@@ -664,6 +680,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(7, 193, 96, 0.15)',
     cssClass: 'weixin_gzh',
     creatorUrl: 'https://mp.weixin.qq.com/',
+    supportsImage: true,
     settingsFields: [
       { key: 'isOriginal', label: '原创声明', type: 'radio', options: [{ label: '原创', value: true }, { label: '非原创', value: false }] },
       { key: 'gzhClaimSource', label: '创作来源', type: 'select',
@@ -691,6 +708,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(255, 80, 0, 0.15)',
     cssClass: 'taobao_guanghe',
     creatorUrl: 'https://creator.guanghe.taobao.com/',
+    supportsImage: false,
     settingsFields: [
       // 创作者声明(平台必填,后端未传时默认「内容无需标注」)
       { key: 'guangheClaim', label: '创作者声明', type: 'select', required: true,
@@ -718,6 +736,7 @@ export const PLATFORMS = {
     bgColor: 'rgba(225, 37, 27, 0.15)',
     cssClass: 'jingmai',
     creatorUrl: 'https://dr.jd.com/jm/',
+    supportsImage: false,
     hideFields: ['description', 'tags'],
     // 创作声明 + 定时发布都走 settingsFields 通用渲染,与其他平台布局一致
     settingsFields: [

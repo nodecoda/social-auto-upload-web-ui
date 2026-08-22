@@ -4,6 +4,7 @@ publish_video(同步) 内联 _run(): files/account_file 空 → ValueError(京�
 jd_novel/jd_products 规范化 → 方向封面(landscape→169>横>916>竖) → 排期 →
 文件×账号笛卡尔积 → _upload_single_video。
 """
+import asyncio
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -32,7 +33,7 @@ def _run_publish(platform, **kwargs):
          patch('impl.jd.platform.parse_schedule_time', pst), \
          patch('impl.jd.platform.get_account_name_by_cookie_file', return_value='昵称'), \
          patch('impl.jd.platform.bind_account_name', MagicMock()):
-        result = platform.publish_video(**kwargs)
+        result = asyncio.run(platform.publish_video(**kwargs))
     return result, upload, pst
 
 
@@ -157,9 +158,9 @@ class TestDirectionalCoverAndOrchestration:
              patch('impl.jd.platform.parse_schedule_time', pst), \
              patch('impl.jd.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.jd.platform.bind_account_name', MagicMock()):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v1.mp4', '/v2.mp4'], account_file=['a.json', 'b.json'],
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
-            )
+            ))
         for i, call in enumerate(upload.await_args_list):
             assert call.kwargs['publish_date'] == pst.return_value[i // 2]

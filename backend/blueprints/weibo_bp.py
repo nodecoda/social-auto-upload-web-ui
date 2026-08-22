@@ -8,7 +8,6 @@
 """
 
 import asyncio
-import sqlite3
 import sys
 from pathlib import Path
 
@@ -16,10 +15,20 @@ from flask import Blueprint, jsonify, request
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-from impl._browser import create_browser, create_context
+from impl._browser import close_browser, create_browser, create_context
 from impl.weibo.platform import WeiboPlatform
 from services.test_video import get_test_video
 from util._logger import get_channel_logger
+from util.account_db import get_account_cookie_file as _get_account_cookie_file_impl
+from util.async_utils import run_async
+
+
+def _get_account_cookie_file(account_id):
+    """取账号 cookie 文件名（共享实现,绑定本平台 type=11）。
+
+    原为每个 blueprint 内联 20 行 SQL, 已收敛到 util/account_db.py。
+    """
+    return _get_account_cookie_file_impl(account_id, 11)
 
 logger = get_channel_logger("weibo")
 
@@ -31,53 +40,6 @@ _WEIBO_UPLOAD_URL = "https://weibo.com/upload/channel"
 
 def _get_cookie_path(cookie_file: str) -> str:
     return str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-
-
-def _get_account_cookie_file(account_id):
-    """从 user_info 表查微博账号(type=11)的 cookie 文件名。"""
-    db_path = BASE_DIR / "db" / "database.db"
-    conn = sqlite3.connect(str(db_path))
-    try:
-        cursor = conn.cursor()
-        if account_id:
-            cursor.execute(
-                "SELECT filePath FROM user_info WHERE type = 11 AND id = ? LIMIT 1",
-                (account_id,),
-            )
-        else:
-            cursor.execute("SELECT filePath FROM user_info WHERE type = 11 LIMIT 1")
-        row = cursor.fetchone()
-        return row[0] if row else None
-    finally:
-        conn.close()
-
-
-def run_async(coro):
-    """在 Flask 同步路由里跑 async 协程(照抄 bilibili_bp)。"""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # 已有 loop 在跑(Flask + Waitress 常见)→ 起新线程跑
-            import threading
-            result = {}
-            def _run():
-                new_loop = asyncio.new_event_loop()
-                try:
-                    result['value'] = new_loop.run_until_complete(coro)
-                except Exception as e:  # noqa: BLE001 -- 捕获后恢复默认状态,防御性编码
-                    result['error'] = e
-                finally:
-                    new_loop.close()
-            t = threading.Thread(target=_run)
-            t.start()
-            t.join()
-            if 'error' in result:
-                raise result['error']
-            return result.get('value')
-        else:
-            return loop.run_until_complete(coro)
-    except RuntimeError:
-        return asyncio.run(coro)
 
 
 @weibo_bp.route('/collections', methods=['GET'])
@@ -199,12 +161,12 @@ async def _fetch_collections_via_browser(cookie_file: str) -> dict:
             logger.info(f"[合集列表] 解析完成,共 {len(items)} 个合集")
             return {"success": True, "data": {"list": items, "total": len(items)}}
         finally:
-            try:
+            try:  # noqa: SIM105
                 await context.close()
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
     finally:
-        try:
-            await browser.close()
+        try:  # noqa: SIM105
+            await close_browser(browser)
         except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
             pass

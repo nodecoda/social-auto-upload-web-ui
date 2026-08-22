@@ -11,22 +11,21 @@
 import asyncio
 import json
 import threading
-import time
 from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
     parse_schedule_time,
     save_login_result,
-    scrape_toutiao_profile,
 )
 from ..base_platform import BasePlatform
+from ._profile import scrape_toutiao_profile
 
 logger = get_channel_logger("toutiao")
 
@@ -41,38 +40,6 @@ class ToutiaoPlatform(BasePlatform):
     # 头条 cookie 全部由 mp.toutiao.com / sso.toutiao.com 下发，
     # 通配 .toutiao.com 后对创作中心和子域都生效。
     platform_cookie_domain = ".toutiao.com"
-
-    def _parse_cookie_to_storage_state(
-        self, cookie_str: str
-    ) -> tuple[list[dict], list[dict]]:
-        """把 'k=v; k=v' 解析为 Playwright storage_state 的 (cookies, origins)。
-
-        - 全部 cookie 归属 ``platform_cookie_domain`` (.toutiao.com)
-        - expires 给 7 天保守占位，sync_profile 跑完后 storage_state 会被
-          回写为真实的 cookie（含真实 expires + localStorage）
-        - localStorage 留空，由 sync_profile 自然补全
-        """
-        cookies: list[dict] = []
-        expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
-        for pair in cookie_str.split(";"):
-            pair = pair.strip()
-            if not pair or "=" not in pair:
-                continue
-            name, _, value = pair.partition("=")
-            cookies.append({
-                "name": name.strip(),
-                "value": value.strip(),
-                "domain": self.platform_cookie_domain,
-                "path": "/",
-                "expires": expires,
-                "httpOnly": True,
-                "secure": False,
-                "sameSite": "Lax",
-            })
-        logger.info(
-            f"[toutiao] cookie 解析: {len(cookies)} 条, domain={self.platform_cookie_domain}"
-        )
-        return cookies, []
 
     # ------------------------------------------------------------------
     # login — QR code scan via CloakBrowser
@@ -127,8 +94,8 @@ class ToutiaoPlatform(BasePlatform):
                 # Wait for login
                 logger.info("[登录] 等待用户扫码...")
                 max_wait = 300  # 5 minutes
-                start_time = asyncio.get_event_loop().time()
-                while (asyncio.get_event_loop().time() - start_time) < max_wait:
+                start_time = asyncio.get_running_loop().time()
+                while (asyncio.get_running_loop().time() - start_time) < max_wait:
                     try:
                         current_url = page.url
                         if "auth/page/login" not in current_url and "profile_v4" in current_url:
@@ -162,7 +129,7 @@ class ToutiaoPlatform(BasePlatform):
                 await context.close()
         finally:
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie — verify stored cookie is still valid
@@ -194,7 +161,7 @@ class ToutiaoPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile — refresh user name / avatar
@@ -218,7 +185,7 @@ class ToutiaoPlatform(BasePlatform):
             context = await self.create_context(browser, storage_state=cookie_path)
             try:
                 page = await context.new_page()
-                try:
+                try:  # noqa: SIM105
                     await page.goto(
                         "https://mp.toutiao.com/profile_v4/index",
                         wait_until="domcontentloaded",
@@ -288,7 +255,7 @@ class ToutiaoPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _login_stats_fn(self, page, account_id) -> list:
         """登录成功后的 stats 抓取入口(供 save_login_result 调用)。
@@ -347,19 +314,19 @@ class ToutiaoPlatform(BasePlatform):
         url = "https://mp.toutiao.com/profile_v4/index"
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
                 logger.info("[打开创作中心] 创作中心已打开")
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
-                    browser.close()
+                try:  # noqa: SIM105
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -539,10 +506,10 @@ class ToutiaoPlatform(BasePlatform):
 
                 # Wait for upload to complete
                 max_wait = 14400  # 4 hours for large files (no timeout limit)
-                start_time = asyncio.get_event_loop().time()
+                start_time = asyncio.get_running_loop().time()
                 upload_complete = False
                 last_progress = ""
-                while (asyncio.get_event_loop().time() - start_time) < max_wait:
+                while (asyncio.get_running_loop().time() - start_time) < max_wait:
                     try:
                         success_text = page.locator('span.percent:has-text("上传成功")')
                         if await success_text.count():
@@ -769,8 +736,8 @@ class ToutiaoPlatform(BasePlatform):
                 await asyncio.sleep(0.5)
 
             logger.info("[标签] 所有标签填写完成")
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error("[标签] 填写标签失败: %s", e)
+        except Exception as e:
+            logger.exception("[标签] 填写标签失败: %s", e)
 
     # ------------------------------------------------------------------
     # Helper: set thumbnail (cover images)
@@ -925,7 +892,7 @@ class ToutiaoPlatform(BasePlatform):
                     "//button[normalize-space()='确定']"
                 ).first
                 if await dialog_ok_btn.count() > 0:
-                    try:
+                    try:  # noqa: SIM105
                         await dialog_ok_btn.wait_for(state="visible", timeout=5000)
                     except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                         # 弹窗动画中可能 is_visible=False,继续 force click
@@ -939,8 +906,8 @@ class ToutiaoPlatform(BasePlatform):
                 logger.warning("[封面] 二次确认弹窗处理失败: %s", e)
 
             logger.info("[封面] 封面设置完成")
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error("[封面] 设置封面失败: %s", e)
+        except Exception as e:
+            logger.exception("[封面] 设置封面失败: %s", e)
 
     # ------------------------------------------------------------------
     # Helper: set creation declaration (multi-select)
@@ -983,8 +950,8 @@ class ToutiaoPlatform(BasePlatform):
                     logger.warning("[声明] 未找到声明选项: %s", decl)
 
             logger.info("[声明] 作品声明设置完成")
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error("[声明] 设置作品声明失败: %s", e)
+        except Exception as e:
+            logger.exception("[声明] 设置作品声明失败: %s", e)
 
     # ------------------------------------------------------------------
     # Helper: toggle video-to-image generation
@@ -1010,8 +977,8 @@ class ToutiaoPlatform(BasePlatform):
                         logger.info("[生成图文] 视频生成图文状态已是目标状态")
             else:
                 logger.warning("[生成图文] 未找到生成图文选项!")
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error("[生成图文] 设置视频生成图文失败: %s", e)
+        except Exception as e:
+            logger.exception("[生成图文] 设置视频生成图文失败: %s", e)
 
     # ------------------------------------------------------------------
     # Helper: set collection (合集)
@@ -1049,8 +1016,8 @@ class ToutiaoPlatform(BasePlatform):
                     logger.info("[合集] 已点击确定")
             else:
                 logger.warning("[合集] 未找到选择合集按钮!")
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error("[合集] 设置合集失败: %s", e)
+        except Exception as e:
+            logger.exception("[合集] 设置合集失败: %s", e)
 
     # ------------------------------------------------------------------
     # Helper: toggle extend link
@@ -1106,8 +1073,8 @@ class ToutiaoPlatform(BasePlatform):
             else:
                 logger.warning("[扩展链接] 未找到链接输入框!")
 
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error("[扩展链接] 设置扩展链接失败: %s", e)
+        except Exception as e:
+            logger.exception("[扩展链接] 设置扩展链接失败: %s", e)
 
     # ------------------------------------------------------------------
     # Helper: set schedule time
@@ -1172,5 +1139,5 @@ class ToutiaoPlatform(BasePlatform):
                     logger.info("[定时发布] 定时发布设置完成")
             else:
                 logger.warning("[定时发布] 未找到定时发布按钮!")
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error("[定时发布] 设置定时发布时间失败: %s", e)
+        except Exception as e:
+            logger.exception("[定时发布] 设置定时发布时间失败: %s", e)

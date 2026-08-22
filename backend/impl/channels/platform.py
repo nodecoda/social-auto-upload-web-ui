@@ -9,7 +9,6 @@ and shared utilities from ``backend/impl/_utils.py``.
 import asyncio
 import json
 import threading
-import time
 from pathlib import Path
 from queue import Queue
 
@@ -18,15 +17,15 @@ from util._logger import bind_account_name, get_channel_logger
 
 logger = get_channel_logger("channels")
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
     parse_schedule_time,
     save_login_result,
-    scrape_tencent_profile,
 )
 from ..base_platform import BasePlatform
+from ._profile import scrape_tencent_profile
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -560,8 +559,8 @@ async def _fill_shoot_region_in_dialog(dialog, region_path: list[str]) -> None:
         return
 
     # 逐级匹配: 用 get_by_text 精确定位当前可见菜单项(避免遍历 240 国)
-    for level, target_name in enumerate(region_path):
-        target_name = str(target_name).strip()
+    for level, raw_name in enumerate(region_path):
+        target_name = str(raw_name).strip()
         # 级联项文本在 .weui-desktop-dropdown__list-ele__text 内, 用精确文本定位
         # scope 限定在 cascader 内, 避免误触其它下拉
         item = cascader.locator(
@@ -909,7 +908,7 @@ async def _set_thumbnail(page, thumbnail_path: str | None, thumbnail_landscape_p
         while cover_dialog is None:
             attempt += 1
             try:
-                try:
+                try:  # noqa: SIM105
                     await cover_entry.hover()
                 except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
@@ -1175,21 +1174,6 @@ class ChannelsPlatform(BasePlatform):
     supports_cookie_import = True
     platform_cookie_domain = ".qq.com"
 
-    def _parse_cookie_to_storage_state(self, cookie_str):
-        cookies = []
-        expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
-        for pair in cookie_str.split(";"):
-            pair = pair.strip()
-            if not pair or "=" not in pair:
-                continue
-            name, _, value = pair.partition("=")
-            cookies.append({
-                "name": name.strip(), "value": value.strip(),
-                "domain": self.platform_cookie_domain, "path": "/",
-                "expires": expires, "httpOnly": True, "secure": False, "sameSite": "Lax",
-            })
-        return cookies, []
-
     # ------------------------------------------------------------------
     # login — QR code in iframe, then save_login_result
     # ------------------------------------------------------------------
@@ -1246,15 +1230,15 @@ class ChannelsPlatform(BasePlatform):
                 "message": str(exc),
             }))
         finally:
-            try:
+            try:  # noqa: SIM105
                 # 释放 context 资源
                 await context.close()
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                try:
-                    await browser.close()
+                try:  # noqa: SIM105
+                    await self.close_browser(browser)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -1307,22 +1291,22 @@ class ChannelsPlatform(BasePlatform):
                 # 如果页面停留(没有重定向到登录页),说明 cookie 有效
                 logger.info("check_cookie: [SUCCESS] 页面停留未重定向，Cookie 有效 | URL: %s", final_url)
                 return True
-            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                logger.error("check_cookie: [EXCEPTION] 发生异常: %s", exc)
+            except Exception as exc:
+                logger.exception("check_cookie: [EXCEPTION] 发生异常: %s", exc)
                 import traceback
-                logger.error("check_cookie: traceback: %s", traceback.format_exc())
+                logger.exception("check_cookie: traceback: %s", traceback.format_exc())
                 return False
             finally:
                 logger.info("check_cookie: 正在关闭 context")
                 await context.close()
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error("check_cookie: [EXCEPTION] browser/context 创建失败: %s", e)
+        except Exception as e:
+            logger.exception("check_cookie: [EXCEPTION] browser/context 创建失败: %s", e)
             import traceback
-            logger.error("check_cookie: traceback: %s", traceback.format_exc())
+            logger.exception("check_cookie: traceback: %s", traceback.format_exc())
             return False
         finally:
             logger.info("check_cookie: 正在关闭 browser")
-            await browser.close()
+            await self.close_browser(browser)
         logger.info("=== check_cookie 结束 ===")
 
     # ------------------------------------------------------------------
@@ -1352,8 +1336,8 @@ class ChannelsPlatform(BasePlatform):
             logger.info(f"[发布] sync_profile error: {exc}")
             return {"name": "", "avatar": "", "stats": []}
         finally:
-            try:
-                await browser.close()
+            try:  # noqa: SIM105
+                await self.close_browser(browser)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
@@ -1419,7 +1403,7 @@ class ChannelsPlatform(BasePlatform):
         保证"登录后同步"和"同步按钮"看到的运营数据完全一致。
         """
         try:
-            try:
+            try:  # noqa: SIM105
                 await page.goto(TENCENT_PLATFORM_URL, timeout=15000)
             except Exception:  # noqa: S110, BLE001 -- 页面加载兜底,超时继续后续逻辑
                 pass
@@ -1438,18 +1422,18 @@ class ChannelsPlatform(BasePlatform):
         url = "https://channels.weixin.qq.com/platform"
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
-                    browser.close()
+                try:  # noqa: SIM105
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -1460,7 +1444,7 @@ class ChannelsPlatform(BasePlatform):
     # publish_video — full TencentVideo flow via CloakBrowser
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to Channels (视频号).
 
         Accepted keyword arguments:
@@ -1588,7 +1572,7 @@ class ChannelsPlatform(BasePlatform):
 
                             # Open upload page
                             await page.goto(TENCENT_UPLOAD_URL, timeout=60000)
-                            try:
+                            try:  # noqa: SIM105
                                 await page.wait_for_url(
                                     TENCENT_UPLOAD_URL, timeout=60000
                                 )
@@ -1667,16 +1651,20 @@ class ChannelsPlatform(BasePlatform):
                             await context.storage_state(path=cookie_path)
                             logger.info("[发布] Cookie状态已更新")
                         finally:
-                            try:
+                            try:  # noqa: SIM105
                                 await context.close()
                             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                                 pass
-                            try:
+                            try:  # noqa: SIM105
                                 await self.close_browser(browser, is_close_by_code=True)
                             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                                 pass
 
-        asyncio.run(_do_upload())
+        try:
+            await _do_upload()
+        except Exception as e:
+            logger.exception("[发布失败] 视频号 publish_video 异常: %s", e)
+            return False
 
         logger.info("=" * 60)
         logger.info("[发布视频] 视频发布流程完成!")

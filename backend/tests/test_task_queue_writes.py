@@ -75,6 +75,9 @@ class TestTaskQueueWrites(unittest.TestCase):
         # (因为 task_queue 加载时 conf.BASE_DIR 可能已固化到错误路径)
         from ext_api import task_queue as _tq_mod
         _tq_mod.DB_PATH = DB_PATH
+        # A1: _insert_db 收敛到 services.publish_history（唯一 writer），同步注入
+        import services.publish_history as _ph_mod
+        _ph_mod.DB_PATH = DB_PATH
 
     def test_publish_task_has_batch_id_field(self):
         t = self.PublishTask(batch_id='abc-123')

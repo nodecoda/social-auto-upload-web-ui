@@ -4,6 +4,7 @@ publish_video(sync wrapper) → _upload_all: 封面优先级(portrait>landscape>
 parse_schedule_time 排期(按文件索引,非 list 兜底) → 文件×账号笛卡尔积 →
 _upload_single(注意方法名,非 _upload_one_video)。
 """
+import asyncio
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -30,7 +31,7 @@ def _run_publish(platform, **kwargs):
          patch('impl.tiktok.platform.parse_schedule_time', pst), \
          patch('impl.tiktok.platform.get_account_name_by_cookie_file', return_value='昵称'), \
          patch('impl.tiktok.platform.bind_account_name', MagicMock()):
-        result = platform.publish_video(**kwargs)
+        result = asyncio.run(platform.publish_video(**kwargs))
     return result, upload, pst
 
 
@@ -40,7 +41,7 @@ class TestPublishVideoSync:
     def test_returns_true_and_calls_upload_all(self):
         inst = _make_platform()
         with patch.object(inst, '_upload_all', AsyncMock()) as upload_all:
-            assert inst.publish_video(title='T', files=['/v.mp4']) is True
+            assert asyncio.run(inst.publish_video(title='T', files=['/v.mp4'])) is True
             upload_all.assert_awaited_once()
 
 
@@ -115,10 +116,10 @@ class TestUploadAllOrchestration:
              patch('impl.tiktok.platform.parse_schedule_time', pst), \
              patch('impl.tiktok.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.tiktok.platform.bind_account_name', MagicMock()):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v1.mp4', '/v2.mp4'], account_file=['a.json', 'b.json'],
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
-            )
+            ))
         assert pst.call_args.args[0] == '2026-08-21 10:00'
         assert pst.call_args.args[1] == 2
         assert pst.call_args.args[2] is True
@@ -135,10 +136,10 @@ class TestUploadAllOrchestration:
              patch('impl.tiktok.platform.parse_schedule_time', pst), \
              patch('impl.tiktok.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.tiktok.platform.bind_account_name', MagicMock()):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v1.mp4', '/v2.mp4'], account_file=['a.json'],
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
-            )
+            ))
         for call in upload.await_args_list:
             assert call.kwargs['publish_date'] == dt
 
@@ -150,7 +151,7 @@ class TestUploadAllOrchestration:
              patch('impl.tiktok.platform.parse_schedule_time', MagicMock(return_value=[None])), \
              patch('impl.tiktok.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.tiktok.platform.bind_account_name', MagicMock()):
-            inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json'])
+            asyncio.run(inst.publish_video(title='T', files=['/v.mp4'], account_file=['a.json']))
         assert any(
             c.args[0] == '[发布策略] 发布策略: %s' and c.args[1:] == ('immediate',)
             for c in logger.info.call_args_list
@@ -164,10 +165,10 @@ class TestUploadAllOrchestration:
              patch('impl.tiktok.platform.parse_schedule_time', MagicMock(return_value=[None])), \
              patch('impl.tiktok.platform.get_account_name_by_cookie_file', return_value='昵称'), \
              patch('impl.tiktok.platform.bind_account_name', MagicMock()):
-            inst.publish_video(
+            asyncio.run(inst.publish_video(
                 title='T', files=['/v.mp4'], account_file=['a.json'],
                 enableTimer=True, schedule_time_str='2026-08-21 10:00',
-            )
+            ))
         assert any(
             c.args[0] == '[发布策略] 发布策略: %s' and c.args[1:] == ('scheduled',)
             for c in logger.info.call_args_list

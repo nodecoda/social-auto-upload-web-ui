@@ -22,7 +22,6 @@
 """
 
 import asyncio
-import sqlite3
 import sys
 from pathlib import Path
 
@@ -30,8 +29,18 @@ from flask import Blueprint, jsonify, request
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-from impl._browser import create_browser, create_context
+from impl._browser import close_browser, create_browser, create_context
 from util._logger import get_channel_logger
+from util.account_db import get_account_cookie_file as _get_account_cookie_file_impl
+from util.async_utils import run_async
+
+
+def _get_account_cookie_file(account_id):
+    """取账号 cookie 文件名（共享实现,绑定本平台 type=12）。
+
+    原为每个 blueprint 内联 20 行 SQL, 已收敛到 util/account_db.py。
+    """
+    return _get_account_cookie_file_impl(account_id, 12)
 
 logger = get_channel_logger("alipay")
 
@@ -49,19 +58,6 @@ _ALIPAY_SHORT_CONTENT_URL = (
 
 def _get_cookie_path(cookie_file: str) -> str:
     return str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-
-
-def _get_account_cookie_file(account_id: str) -> str:
-    """从数据库取账号 cookie 文件名。account_id 为空时取任意一个支付宝账号。"""
-    conn = sqlite3.connect(str(Path(BASE_DIR / "db" / "database.db")))
-    cursor = conn.cursor()
-    if account_id:
-        cursor.execute("SELECT filePath FROM user_info WHERE id = ?", (account_id,))
-    else:
-        cursor.execute("SELECT filePath FROM user_info WHERE type = 12 LIMIT 1")
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else None
 
 
 # ======================================================================
@@ -135,8 +131,8 @@ async def _search_compilation_via_browser(cookie_file: str, keyword: str) -> dic
     if not empty_video.exists():
         try:
             _create_minimal_mp4(empty_video)
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.error(f"[合集搜索] 创建空视频失败: {e}")
+        except Exception as e:
+            logger.exception(f"[合集搜索] 创建空视频失败: {e}")
             return {"success": False, "error": f"创建空视频失败: {e}"}
 
     browser = await create_browser(headless=True)
@@ -162,8 +158,8 @@ async def _search_compilation_via_browser(cookie_file: str, keyword: str) -> dic
                             f"stat={data.get('stat')}, "
                             f"total={data.get('result', {}).get('total')}"
                         )
-                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                        logger.error(f"[浏览器拦截] 解析响应失败: {e}")
+                    except Exception as e:
+                        logger.exception(f"[浏览器拦截] 解析响应失败: {e}")
 
             page.on("response", handle_response)
 
@@ -251,7 +247,7 @@ async def _search_compilation_via_browser(cookie_file: str, keyword: str) -> dic
         finally:
             await context.close()
     finally:
-        await browser.close()
+        await close_browser(browser)
 
 
 def _create_minimal_mp4(path: Path):
@@ -284,29 +280,6 @@ def _create_minimal_mp4(path: Path):
 # ======================================================================
 # run_async helper(与 douyin_image_bp 一致)
 # ======================================================================
-
-def run_async(coro):
-    """在新事件循环里跑协程(避免与 Flask 线程冲突,同 douyin_image_bp)。"""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # 已在 loop 里(罕见),开新线程跑
-            import threading
-            result = {}
-            def _run():
-                new_loop = asyncio.new_event_loop()
-                try:
-                    result["v"] = new_loop.run_until_complete(coro)
-                finally:
-                    new_loop.close()
-            t = threading.Thread(target=_run)
-            t.start()
-            t.join()
-            return result.get("v")
-    except RuntimeError:
-        pass
-    return asyncio.run(coro)
-
 
 # ======================================================================
 # /api/alipay/music-list — 图集背景音乐列表
@@ -512,7 +485,7 @@ async def _fetch_music_list_via_browser(cookie_file: str) -> dict:
         finally:
             await context.close()
     finally:
-        await browser.close()
+        await close_browser(browser)
 
 
 def _create_test_jpeg(path: Path):

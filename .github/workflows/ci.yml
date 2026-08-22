@@ -99,10 +99,31 @@ jobs:
       - run: pip-audit -r requirements.lock --no-deps
       # 覆盖率硬门槛（防回退）：2026-08-21 T38 后实测 91%（CI 报告 88%）, 门槛 80% 留 8-11pp 裕量
       # 覆盖率报告见 Actions artifact；本地复现: python -m pytest --cov=. --cov-config=.coveragerc
-      - run: python -m pytest -q --cov=. --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=80
+      # DOM 契约测试已抽到 tests/dom/ 独立步骤（backend-dom job），主集排除避免叠加内存压力
+      - run: python -m pytest -q --ignore=tests/dom --cov=. --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=80
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-backend
           path: backend/coverage.xml
           retention-days: 14
+
+  backend-dom:
+    name: backend-dom (platform DOM 契约, 独立步骤防内存叠加)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.lock pytest
+      # DOM 契约测试逐文件独立进程跑，避免多个平台 mock 链叠加内存
+      - run: |
+          set -e
+          for f in tests/dom/test_*_platform_dom.py; do
+            echo "== $f =="
+            python -m pytest -q --no-header -p no:cacheprovider "$f"
+          done

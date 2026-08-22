@@ -3,8 +3,6 @@
 使用CloakBrowser来请求抖音API，避免反检测
 """
 
-import asyncio
-import sqlite3
 import sys
 from pathlib import Path
 from urllib.parse import quote
@@ -13,8 +11,18 @@ from flask import Blueprint, jsonify, request
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-from impl._browser import create_browser, create_context
+from impl._browser import close_browser, create_browser, create_context
 from util._logger import get_channel_logger
+from util.account_db import get_account_cookie_file as _get_account_cookie_file_impl
+from util.async_utils import run_async
+
+
+def _get_account_cookie_file(account_id):
+    """取账号 cookie 文件名（共享实现,绑定本平台 type=3）。
+
+    原为每个 blueprint 内联 20 行 SQL, 已收敛到 util/account_db.py。
+    """
+    return _get_account_cookie_file_impl(account_id, 3)
 
 logger = get_channel_logger("douyin_image")
 
@@ -24,21 +32,6 @@ douyin_image_bp = Blueprint('douyin_image', __name__, url_prefix='/api/douyin-im
 def _get_cookie_path(cookie_file: str) -> str:
     """获取cookie文件的完整路径"""
     return str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-
-
-def _get_account_cookie_file(account_id: str) -> str:
-    """从数据库获取账号的cookie文件路径"""
-    conn = sqlite3.connect(str(Path(BASE_DIR / "db" / "database.db")))
-    cursor = conn.cursor()
-    if account_id:
-        cursor.execute("SELECT filePath FROM user_info WHERE id = ?", (account_id,))
-    else:
-        cursor.execute("SELECT filePath FROM user_info WHERE type = 3 LIMIT 1")
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        return None
-    return row[0]
 
 
 async def _fetch_with_browser(cookie_file: str, url: str, base_url: str = "https://creator.douyin.com/") -> dict:
@@ -97,7 +90,7 @@ async def _fetch_with_browser(cookie_file: str, url: str, base_url: str = "https
         finally:
             await context.close()
     finally:
-        await browser.close()
+        await close_browser(browser)
 
 
 async def _fetch_with_browser_post(cookie_file: str, url: str, form_data: dict, base_url: str = "https://creator.douyin.com/") -> dict:
@@ -158,16 +151,7 @@ async def _fetch_with_browser_post(cookie_file: str, url: str, form_data: dict, 
         finally:
             await context.close()
     finally:
-        await browser.close()
-
-
-def run_async(coro):
-    """在Flask中运行异步函数"""
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+        await close_browser(browser)
 
 
 @douyin_image_bp.route('/mix-list', methods=['GET'])
@@ -190,8 +174,8 @@ def get_mix_list():
         else:
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"获取合集列表失败: {e}")
+    except Exception as e:
+        logger.exception(f"获取合集列表失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -213,8 +197,8 @@ def get_activity_list():
         else:
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"获取活动列表失败: {e}")
+    except Exception as e:
+        logger.exception(f"获取活动列表失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -238,8 +222,8 @@ def search_hotspot():
         else:
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"搜索热点失败: {e}")
+    except Exception as e:
+        logger.exception(f"搜索热点失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -314,8 +298,8 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
                         data = await response.json()
                         captured_response = data
                         logger.info(f"[浏览器拦截] 响应数据: status_code={data.get('status_code')}, music_count={len(data.get('music', []))}")
-                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                        logger.error(f"[浏览器拦截] 解析响应失败: {e}")
+                    except Exception as e:
+                        logger.exception(f"[浏览器拦截] 解析响应失败: {e}")
 
             page.on("response", handle_response)
 
@@ -459,7 +443,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, cursor_val: 
         finally:
             await context.close()
     finally:
-        await browser.close()
+        await close_browser(browser)
         # 清理测试图片
         try:
             if test_image.exists():
@@ -493,8 +477,8 @@ def search_poi():
         else:
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"搜索位置失败: {e}")
+    except Exception as e:
+        logger.exception(f"搜索位置失败: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500
 
 
@@ -639,6 +623,6 @@ def search_medium():
             logger.error(f"[影视演绎搜索] 请求失败: {result.get('error')}")
             return jsonify({"code": 500, "msg": result.get("error", "请求失败")}), 500
 
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-        logger.error(f"[影视演绎搜索] 异常: {e}")
+    except Exception as e:
+        logger.exception(f"[影视演绎搜索] 异常: {e}")
         return jsonify({"code": 500, "msg": str(e)}), 500

@@ -127,11 +127,17 @@ def _run_async(coro):
 # ── 默认实现 ────────────────────────────────────────────────────────────────
 
 class TestDefaults:
-    def test_parse_cookie_raises(self):
+    def test_parse_cookie_uses_base_generic_impl(self):
+        """A6/R9-2: 基类提供通用解析实现（不再抛 NotImplementedError）。
+
+        未重写 _parse_cookie_to_storage_state 的平台继承基类逻辑：
+        k=v 解析到 platform_cookie_domain（未设置时为 ''）。
+        """
         class _Bare(BasePlatform):
             platform_id = 97
             platform_key = 'bare'
             platform_name = 'Bare'
+            platform_cookie_domain = '.bare.com'
 
             async def login(self, id, status_queue, account_id=None):
                 pass
@@ -148,8 +154,13 @@ class TestDefaults:
             async def sync_profile(self, cookie_file):
                 return {}
 
-        with pytest.raises(NotImplementedError):
-            _Bare()._parse_cookie_to_storage_state('k=v')
+        cookies, origins = _Bare()._parse_cookie_to_storage_state('a=1; b=2; bad')
+        assert origins == []
+        assert len(cookies) == 2
+        assert cookies[0]['name'] == 'a' and cookies[0]['value'] == '1'
+        assert cookies[0]['domain'] == '.bare.com'
+        assert cookies[0]['path'] == '/'
+        assert cookies[0]['httpOnly'] is True
 
     @pytest.mark.parametrize('method', ['publish_note', 'publish_image', 'get_statistics'])
     def test_optional_stubs_raise(self, method):
@@ -269,8 +280,8 @@ class TestImportCookie:
             _run_async(platform.import_cookie('k=v', q))
         assert _drain(q)[-1]['msg'].startswith('写入数据库失败')
 
-    def test_import_cookie_parse_uses_default(self, tmp_path):
-        """未重写 _parse_cookie_to_storage_state 的平台走基类 → step1 报错。"""
+    def test_import_cookie_parse_uses_base_generic(self, tmp_path):
+        """A6/R9-2: 未重写的平台走基类通用解析（不再 step1 报错）。"""
         class _NoImport(BasePlatform):
             platform_id = 98
             platform_key = 'noimport'
@@ -294,6 +305,7 @@ class TestImportCookie:
         platform = _NoImport()
         q = Queue()
         with patch('impl.base_platform.BASE_DIR', tmp_path), \
-             patch('impl.base_platform.sqlite3.connect', return_value=_FakeConn()), pytest.raises(NotImplementedError):
-            _run_async(platform.import_cookie('k=v', q))
-        assert _drain(q)[-1]['status'] == 'error'
+             patch('impl.base_platform.sqlite3.connect', return_value=_FakeConn()):
+            result = _run_async(platform.import_cookie('k=v', q))
+        # 通用解析成功（domain 为空串），流程继续到 step2 写文件/校验
+        assert result is not None or _drain(q)[-1]['status'] != 'error'

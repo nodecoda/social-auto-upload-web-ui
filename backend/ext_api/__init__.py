@@ -31,26 +31,26 @@ ext_api = Blueprint('ext_api', __name__, url_prefix='/api/v2')
 
 DB_PATH = BASE_DIR / "db" / "database.db"
 
-# 平台 id → 中文名称(必须与 frontend config/platforms.js + impl/registry.py 一致)
-_PLATFORM_ID_TO_NAME = {
-    1: "小红书", 2: "视频号", 3: "抖音", 4: "快手", 5: "B站",
-    6: "百家号", 7: "TikTok", 8: "YouTube", 9: "腾讯视频",
-    10: "爱奇艺", 11: "微博", 12: "支付宝", 13: "今日头条", 14: "知乎",
-    15: "CSDN", 16: "VIVO", 17: "微信公众号", 18: "淘宝光合", 19: "京东京麦",
-}
+# 平台 id → 中文名称：registry 派生（R4，唯一真源=registry 类属性）。
+# 新增平台自动收录；若某平台名需特殊展示名，改 registry 类属性即可。
+def _derived_id_to_name():
+    from impl.registry import _registry
+    return {pid: cls.platform_name for pid, cls in _registry.items()}
+
+
+_PLATFORM_ID_TO_NAME = _derived_id_to_name()
 
 # 平台 key(拼音) → 中文名称。修复 publish_details.platform 历史脏数据:
 # 旧数据中有的存的是拼音 key(如 iqiyi / tencent_video),有的存的是中文名
-# 这里统一转中文名。key 必须与 frontend config/platforms.js 一致。
-_PLATFORM_KEY_TO_NAME = {
-    "xiaohongshu": "小红书", "channels": "视频号", "douyin": "抖音",
-    "kuaishou": "快手", "bilibili": "B站", "baijiahao": "百家号",
-    "tiktok": "TikTok", "youtube": "YouTube",
-    "tencent_video": "腾讯视频", "iqiyi": "爱奇艺",
-    "weibo": "微博", "alipay": "支付宝", "toutiao": "今日头条", "zhihu": "知乎",
-    "csdn": "CSDN", "vivo": "VIVO", "weixin_gzh": "微信公众号",
-    "taobao_guanghe": "淘宝光合", "jingmai": "京东京麦",
-}
+# 这里统一转中文名。key 必须与 frontend config/platforms.js 一致。# 平台 key(拼音) → 中文名称：registry 派生（R4）。修复 publish_details.platform
+# 历史脏数据（旧数据有拼音 key 也有中文名），统一转中文名。
+def _derived_key_to_name():
+    from impl.registry import _registry
+    return {cls.platform_key: cls.platform_name for cls in _registry.values()}
+
+
+_PLATFORM_KEY_TO_NAME = _derived_key_to_name()
+
 
 # SSE 订阅者
 _sse_subscribers: list[queue.Queue] = []
@@ -81,7 +81,7 @@ def _ensure_tables(conn):
         )
         """)
         # 迁移：为旧表添加 type 列
-        try:
+        try:  # noqa: SIM105
             conn.execute('ALTER TABLE drafts ADD COLUMN type TEXT DEFAULT "video"')
         except sqlite3.OperationalError:
             pass  # 列已存在
@@ -218,7 +218,13 @@ def get_tasks():
 
 @ext_api.route('/tasks', methods=['POST'])
 def create_task():
-    """创建发布任务"""
+    """创建发布任务（R6 起走 payload 统一契约）。
+
+    老版本构造的 task 无 payload，会落入 task_queue._execute 的
+    myUtils.postVideo 旧模块路径（该路径已随 R6 移除）；现改为由 registry
+    校验平台并把老字段映射为 publish_video kwargs（payload），worker 统一
+    执行新契约，行为不变。
+    """
     data = request.get_json()
     if not data:
         return jsonify({"code": 400, "msg": "请求数据不能为空"}), 400
@@ -228,17 +234,25 @@ def create_task():
         if not data.get(field):
             return jsonify({"code": 400, "msg": f"缺少必填字段: {field}"}), 400
 
-    # 平台 id → 名称 完整映射(必须与 frontend config/platforms.js + impl/registry.py 一致)
-    platform_map = {
-        1: "小红书", 2: "视频号", 3: "抖音", 4: "快手", 5: "B站",
-        6: "百家号", 7: "TikTok", 8: "YouTube", 9: "腾讯视频",
-        10: "爱奇艺", 11: "微博", 12: "支付宝", 13: "今日头条", 14: "知乎",
-        15: "CSDN",
-    }
     platform_type = data['platformType']
 
+    # 平台实例/名称：registry 类属性为唯一真源（R4），淘汰老硬编码 15 平台表
+    from impl.registry import get_platform
+    platform = get_platform(platform_type)
+    if not platform:
+        return jsonify({"code": 400, "msg": f"不支持的平台类型: {platform_type}"}), 400
+
+    payload = {
+        'title': data['title'],
+        'files': [data['videoPath']],
+        'tags': data.get('tags', []),
+        'account_file': [data['accountCookiePath']],
+        'desc': data.get('description', ''),
+        'thumbnail_path': data.get('thumbnailPath', ''),
+    }
+
     task = PublishTask(
-        platform=platform_map.get(platform_type, "未知"),
+        platform=platform.platform_name,
         platform_type=platform_type,
         account_name=data['accountName'],
         account_cookie_path=data['accountCookiePath'],
@@ -247,6 +261,7 @@ def create_task():
         description=data.get('description', ''),
         thumbnail_path=data.get('thumbnailPath', ''),
         tags=data.get('tags', []),
+        payload=payload,
     )
 
     tq = get_task_queue()
@@ -309,7 +324,7 @@ def task_stream():
         _sse_subscribers.append(q)
 
     def on_status(task: PublishTask):
-        try:
+        try:  # noqa: SIM105
             q.put_nowait(json.dumps({
                 "id": task.id,
                 "status": task.status,
@@ -728,7 +743,7 @@ def get_settings():
         # 转换数值类型
         for key in ['publishInterval', 'maxConcurrent', 'heartbeatInterval', 'autoSaveInterval']:
             if key in defaults:
-                try:
+                try:  # noqa: SIM105
                     defaults[key] = int(defaults[key])
                 except (ValueError, TypeError):
                     pass
@@ -764,8 +779,8 @@ def update_settings():
 
         # 所有设置统一写入 SQLite（包括 storage / proxyUrl）
         conn = _db_conn()
-        for key, value in data.items():
-            value = json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else str(value)
+        for key, raw_value in data.items():
+            value = json.dumps(raw_value, ensure_ascii=False) if isinstance(raw_value, (dict, list)) else str(raw_value)
             conn.execute(
                 """INSERT OR REPLACE INTO settings (key, value, updated_at)
                    VALUES (?, ?, ?)""",
@@ -786,29 +801,15 @@ def update_settings():
 # ========== 草稿箱 ==========
 
 # 平台 ID → (key, 名称) 映射。key 必须与 frontend config/platforms.js 一致,
-# 否则草稿箱 getPlatformLogo() 匹配不到 logo。
-_PLATFORM_ID_MAP = {
-    1: ('xiaohongshu', '小红书'),
-    2: ('channels', '视频号'),
-    3: ('douyin', '抖音'),
-    4: ('kuaishou', '快手'),
-    5: ('bilibili', 'B站'),
-    6: ('baijiahao', '百家号'),
-    7: ('tiktok', 'TikTok'),
-    8: ('youtube', 'YouTube'),
-    9: ('tencent_video', '腾讯视频'),
-    10: ('iqiyi', '爱奇艺'),
-    11: ('weibo', '微博'),
-    12: ('alipay', '支付宝'),
-    13: ('toutiao', '今日头条'),
-    14: ('zhihu', '知乎'),
-    15: ('csdn', 'CSDN'),
-    16: ('vivo', 'VIVO'),
-    17: ('weixin_gzh', '微信公众号'),
-    18: ('taobao_guanghe', '淘宝光合'),
-    19: ('jingmai', '京东京麦'),
-    # 注: jd (id=20) 与 jingmai 是同一产品,不单独映射
-}
+# 否则草稿箱 getPlatformLogo() 匹配不到 logo。# 平台 ID → (key, 名称) 映射：registry 派生（R4）。key 必须与 frontend
+# config/platforms.js 一致,否则草稿箱 getPlatformLogo() 匹配不到 logo。
+def _derived_id_map():
+    from impl.registry import _registry
+    return {pid: (cls.platform_key, cls.platform_name) for pid, cls in _registry.items()}
+
+
+_PLATFORM_ID_MAP = _derived_id_map()
+
 
 
 def _extract_image_channels_from_draft(conn, draft_data):

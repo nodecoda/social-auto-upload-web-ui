@@ -4,6 +4,8 @@ _populate_registry 在 import 时执行（19 个平台晚加载，失败会被�
 本测试验证注册表契约 + 关键平台可达性。
 """
 
+import pytest
+
 import impl.registry as registry
 from impl.base_platform import BasePlatform
 
@@ -19,6 +21,13 @@ class StubPlatform(BasePlatform):
     async def open_creator_center(self, cookie_file): ...
     async def sync_profile(self, cookie_file): ...
     def publish_video(self, **kwargs): ...
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_stub_platform():
+    """测试结束后移除 StubPlatform(999)，防止污染全局注册表（后续测试用 999 判未知平台）。"""
+    yield
+    registry._registry.pop(999, None)
 
 
 def test_register_and_get_platform():

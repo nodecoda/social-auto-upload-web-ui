@@ -7,7 +7,6 @@ Uses ``BasePlatform`` browser entry points and shared utilities from
 
 import asyncio
 import threading
-import time
 from pathlib import Path
 from queue import Queue
 
@@ -16,7 +15,7 @@ from util._logger import bind_account_name, get_channel_logger
 
 logger = get_channel_logger("kuaishou")
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
@@ -49,25 +48,11 @@ class KuaishouPlatform(BasePlatform):
     platform_id = 4
     platform_key = "kuaishou"
     platform_name = "快手"
+    supports_image = True  # 图集发布能力（A4 门控）
 
     # 支持 cookie 字符串导入账号
     supports_cookie_import = True
     platform_cookie_domain = ".kuaishou.com"
-
-    def _parse_cookie_to_storage_state(self, cookie_str):
-        cookies = []
-        expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
-        for pair in cookie_str.split(";"):
-            pair = pair.strip()
-            if not pair or "=" not in pair:
-                continue
-            name, _, value = pair.partition("=")
-            cookies.append({
-                "name": name.strip(), "value": value.strip(),
-                "domain": self.platform_cookie_domain, "path": "/",
-                "expires": expires, "httpOnly": True, "secure": False, "sameSite": "Lax",
-            })
-        return cookies, []
 
     # ------------------------------------------------------------------
     # Login — QR code scan via CloakBrowser
@@ -151,15 +136,15 @@ class KuaishouPlatform(BasePlatform):
             logger.info(f"[kuaishou] login error: {exc}")
             status_queue.put('{"status": "0", "error": "' + str(exc) + '"}')
         finally:
-            try:
+            try:  # noqa: SIM105
                 # 释放 context 资源
                 await context.close()
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                try:
-                    await browser.close()
+                try:  # noqa: SIM105
+                    await self.close_browser(browser)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -195,12 +180,12 @@ class KuaishouPlatform(BasePlatform):
             logger.info(f"[kuaishou] cookie check error: {exc}")
             return False
         finally:
-            try:
+            try:  # noqa: SIM105
                 await context.close()
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
-            try:
-                await browser.close()
+            try:  # noqa: SIM105
+                await self.close_browser(browser)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
@@ -233,8 +218,8 @@ class KuaishouPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            try:
-                await browser.close()
+            try:  # noqa: SIM105
+                await self.close_browser(browser)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
 
@@ -274,7 +259,7 @@ class KuaishouPlatform(BasePlatform):
                 # 点击右上角用户头像触发 popover
                 trigger = page.locator(".user-info-dpd").first
                 if await trigger.count() > 0:
-                    try:
+                    try:  # noqa: SIM105
                         await trigger.click()
                     except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                         pass
@@ -313,7 +298,7 @@ class KuaishouPlatform(BasePlatform):
                         stats.append({"ICON": icon, "COUNT": count, "NAME": name, "SORT": sort_no})
 
                 # 关闭 popover(点击页面其他位置)
-                try:
+                try:  # noqa: SIM105
                     await page.mouse.click(10, 10)
                 except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass
@@ -351,18 +336,18 @@ class KuaishouPlatform(BasePlatform):
         url = _KS_UPLOAD_URL
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
-                    browser.close()
+                try:  # noqa: SIM105
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -597,7 +582,7 @@ class KuaishouPlatform(BasePlatform):
     # Publish video
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to Kuaishou using CloakBrowser.
 
         Accepted keyword arguments:
@@ -616,9 +601,23 @@ class KuaishouPlatform(BasePlatform):
         - ``schedule_time_str`` (*str*, optional)
         - ``author_declaration`` (*str*, optional)
         """
-        import asyncio as _aio
 
-        _aio.run(self._publish_video_async(**kwargs))
+        # 标签上限校验前置（快手最多 4 个）。ValueError 直接抛给调用方，
+        # 不落入下方 try/except —— R2 吞失败修复只针对真实发布异常(浏览器/上传)，
+        # 调用方参数错误必须尽早暴露,否则会被伪装成"页面未跳转"。
+        tags = kwargs.get("tags", []) or []
+        if len(tags) > _KS_MAX_TAGS:
+            logger.error(
+                "[发布校验] 快手标签超过上限: 当前 %d 个, 最多 %d 个",
+                len(tags), _KS_MAX_TAGS,
+            )
+            raise ValueError(f"快手标签最多 {_KS_MAX_TAGS} 个, 当前 {len(tags)} 个")
+
+        try:
+            await self._publish_video_async(**kwargs)
+        except Exception as e:
+            logger.exception("[发布失败] 快手 publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------
@@ -861,11 +860,11 @@ class KuaishouPlatform(BasePlatform):
                 except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                     pass
                 await asyncio.sleep(2)
-            try:
+            try:  # noqa: SIM105
                 await context.close()
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
-            try:
+            try:  # noqa: SIM105
                 await self.close_browser(browser, is_close_by_code=True)
             except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                 pass
@@ -1088,7 +1087,7 @@ class KuaishouPlatform(BasePlatform):
             await asyncio.sleep(2)
 
             # 8. Wait for modal to close
-            try:
+            try:  # noqa: SIM105
                 await modal.wait_for(state="hidden", timeout=30000)
             except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
@@ -1130,7 +1129,7 @@ class KuaishouPlatform(BasePlatform):
             await confirm_btn.click()
             await asyncio.sleep(2)
 
-            try:
+            try:  # noqa: SIM105
                 await modal.wait_for(state="hidden", timeout=30000)
             except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                 pass
@@ -1289,7 +1288,7 @@ class KuaishouPlatform(BasePlatform):
                     author_declaration,
                 )
                 # 点击空白处收起下拉框，避免遮挡后续操作
-                try:
+                try:  # noqa: SIM105
                     await page.keyboard.press("Escape")
                 except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass

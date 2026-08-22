@@ -17,7 +17,7 @@ import sqlite3
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -229,15 +229,15 @@ class TestCreateTask:
         assert resp.status_code == 400
         assert field in resp.get_json()['msg']
 
-    def test_unknown_platform_type_maps_to_unknown(self):
+    def test_unknown_platform_type_rejected(self):
+        """R6：平台由 registry 真源校验，未知类型不再容错入队（老行为映射为'未知'）。"""
         fake_tq = MagicMock()
         payload = dict(VALID_PAYLOAD, platformType=999)
         with patch('ext_api.get_task_queue', return_value=fake_tq):
             resp = app.test_client().post('/api/v2/tasks', json=payload)
-        assert resp.status_code == 200
-        task = fake_tq.add_task.call_args[0][0]
-        assert task.platform == '未知'
-        assert task.platform_type == 999
+        assert resp.status_code == 400
+        assert '不支持的平台类型' in resp.get_json()['msg']
+        fake_tq.add_task.assert_not_called()
 
     def test_normal_creation_maps_fields_and_defaults(self):
         fake_tq = MagicMock()
@@ -525,3 +525,42 @@ class TestTaskQueueDomain:
         assert seen == ['t-cb']
         assert log_info.call_count == 1
         assert '回调错误' in log_info.call_args[0][0]
+
+    def test_execute_image_gated_by_supports_image(self):
+        """A4: 不支持的平台 image 任务在分发前被门控拒绝（不抛 NotImplementedError）。
+
+        bilibili 注册但 supports_image=False → _execute 应直接 ValueError。
+        """
+        import asyncio
+
+        from ext_api.task_queue import PublishTask
+
+        q = TaskQueue(max_concurrent=1)
+        task = PublishTask(
+            id='img-gate-1',
+            platform_type=5,  # bilibili（无图集能力）
+            platform='bilibili',
+            publish_kind='image',
+            payload={'title': 't', 'files': ['/tmp/1.jpg']},
+        )
+        with pytest.raises(ValueError, match='不支持图集发布'):
+            asyncio.run(q._execute(task))
+
+    def test_execute_image_supported_platform_passes_gate(self):
+        """A4: 支持图集的平台（xiaohongshu）通过门控，进入平台调用（mock 掉）。"""
+        import asyncio
+
+        q = TaskQueue(max_concurrent=1)
+        task = PublishTask(
+            id='img-gate-2',
+            platform_type=1,  # xiaohongshu（supports_image=True）
+            platform='小红书',
+            publish_kind='image',
+            payload={'title': 't', 'files': ['/tmp/1.jpg']},
+        )
+        fake = MagicMock()
+        fake.supports_image = True
+        fake.publish_image = AsyncMock(return_value=True)
+        with patch('ext_api.task_queue.get_platform', return_value=fake):
+            result = asyncio.run(q._execute(task))
+        assert result is True

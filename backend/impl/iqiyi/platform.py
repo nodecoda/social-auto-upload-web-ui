@@ -7,14 +7,13 @@ Publish URL: https://creator.iqiyi.com/publish/video/wemedia
 
 import asyncio
 import threading
-import time
 from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import clear_and_type, get_account_name_by_cookie_file, parse_schedule_time, save_login_result
 from ..base_platform import BasePlatform
 
@@ -90,21 +89,6 @@ class IqiyiPlatform(BasePlatform):
     supports_cookie_import = True
     platform_cookie_domain = ".iqiyi.com"
 
-    def _parse_cookie_to_storage_state(self, cookie_str):
-        cookies = []
-        expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
-        for pair in cookie_str.split(";"):
-            pair = pair.strip()
-            if not pair or "=" not in pair:
-                continue
-            name, _, value = pair.partition("=")
-            cookies.append({
-                "name": name.strip(), "value": value.strip(),
-                "domain": self.platform_cookie_domain, "path": "/",
-                "expires": expires, "httpOnly": True, "secure": False, "sameSite": "Lax",
-            })
-        return cookies, []
-
     # ------------------------------------------------------------------
     # login — open browser, wait for user to log in manually
     # ------------------------------------------------------------------
@@ -162,7 +146,7 @@ class IqiyiPlatform(BasePlatform):
             finally:
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie — verify stored cookie is still valid
@@ -191,7 +175,7 @@ class IqiyiPlatform(BasePlatform):
             logger.warning("check_cookie failed: %s", e)
             return False
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile — scrape user name and avatar
@@ -216,7 +200,7 @@ class IqiyiPlatform(BasePlatform):
             logger.warning("sync_profile failed: %s", e)
             return {"name": "", "avatar": "", "stats": []}
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _scrape_iqiyi_stats(self, page) -> list:
         """抓取爱奇艺创作者中心首页的 3 项运营数据(获赞/关注/粉丝)。
@@ -325,18 +309,18 @@ class IqiyiPlatform(BasePlatform):
         url = _LOGIN_URL
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
-                    browser.close()
+                try:  # noqa: SIM105
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -1005,9 +989,9 @@ class IqiyiPlatform(BasePlatform):
                     "[iqiyi] 检测到上传区域 .up-phone-card,等待其消失后再点发布"
                 )
                 # 轮询等待卡片消失(最长 30 分钟,大文件慢网络留余量)
-                deadline = asyncio.get_event_loop().time() + 1800
+                deadline = asyncio.get_running_loop().time() + 1800
                 last_percent = -1
-                while asyncio.get_event_loop().time() < deadline:
+                while asyncio.get_running_loop().time() < deadline:
                     try:
                         if await upload_card.count() == 0:
                             break

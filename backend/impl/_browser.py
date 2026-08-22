@@ -168,11 +168,11 @@ async def close_browser(browser, is_close_by_code: bool = True) -> None:
     模块级发布函数（如 xiaohongshu._publish_single_video，无 self）直接
     调用本函数；类方法走 BasePlatform.close_browser（内部委托本函数）。
     """
-    try:
+    try:  # noqa: SIM105
         browser._is_close_by_code = is_close_by_code
     except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
         pass
-    try:
+    try:  # noqa: SIM105
         await browser.close()
     except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
         pass

@@ -7,7 +7,6 @@ All browser operations go through BasePlatform's CloakBrowser entry points.
 import asyncio
 import re
 import threading
-import time
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
@@ -16,7 +15,7 @@ from zoneinfo import ZoneInfo
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
@@ -41,21 +40,6 @@ class TiktokPlatform(BasePlatform):
     # 支持 cookie 字符串导入账号
     supports_cookie_import = True
     platform_cookie_domain = ".tiktok.com"
-
-    def _parse_cookie_to_storage_state(self, cookie_str):
-        cookies = []
-        expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
-        for pair in cookie_str.split(";"):
-            pair = pair.strip()
-            if not pair or "=" not in pair:
-                continue
-            name, _, value = pair.partition("=")
-            cookies.append({
-                "name": name.strip(), "value": value.strip(),
-                "domain": self.platform_cookie_domain, "path": "/",
-                "expires": expires, "httpOnly": True, "secure": False, "sameSite": "Lax",
-            })
-        return cookies, []
 
     # ------------------------------------------------------------------
     # Login
@@ -104,7 +88,7 @@ class TiktokPlatform(BasePlatform):
         finally:
             # 成功才关浏览器（失败/异常时留着让用户看现场）
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # Cookie validation
@@ -136,7 +120,7 @@ class TiktokPlatform(BasePlatform):
             except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
                 return True
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # Profile sync
@@ -203,7 +187,7 @@ class TiktokPlatform(BasePlatform):
             logger.info(f"[tiktok] sync_profile error: {e}")
             return ("", "")
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # Open creator centre (unchanged — uses sync CloakBrowser)
@@ -219,18 +203,18 @@ class TiktokPlatform(BasePlatform):
         url = "https://www.tiktok.com/tiktokstudio/upload?lang=en"
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
-                    browser.close()
+                try:  # noqa: SIM105
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -241,7 +225,7 @@ class TiktokPlatform(BasePlatform):
     # Publish video — main entry point (sync)
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """Publish a video to TikTok.
 
         Accepted keyword arguments:
@@ -262,7 +246,11 @@ class TiktokPlatform(BasePlatform):
         - ``ai_content`` (*Any*, optional) -- truthy value enables the
           "AI 生成的内容" toggle on the publish page
         """
-        asyncio.run(self._upload_all(**kwargs))
+        try:
+            await self._upload_all(**kwargs)
+        except Exception as e:
+            logger.exception("[发布失败] TikTok publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------
@@ -831,7 +819,7 @@ class TiktokPlatform(BasePlatform):
         # after one click to avoid getting stuck.
         right_arrow = calendar.locator('span.arrow').nth(1)
         if current_month != publish_date.month:
-            try:
+            try:  # noqa: SIM105
                 await right_arrow.click(timeout=2_000)
             except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass

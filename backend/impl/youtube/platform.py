@@ -12,7 +12,6 @@ import os
 import re
 import sqlite3
 import threading
-import time
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -25,9 +24,10 @@ logger = get_channel_logger("youtube")
 
 from conf import BASE_DIR
 
-from .._browser import create_browser_sync, create_context_sync
-from .._utils import clear_input, get_account_name_by_cookie_file, parse_schedule_time, scrape_youtube_profile
+from .._browser import close_browser
+from .._utils import clear_input, get_account_name_by_cookie_file, parse_schedule_time
 from ..base_platform import BasePlatform
+from ._profile import scrape_youtube_profile
 
 YOUTUBE_STUDIO_URL = "https://studio.youtube.com"
 
@@ -50,21 +50,6 @@ class YoutubePlatform(BasePlatform):
     # 仅灌 .youtube.com cookie 可能拉不到资料，需用户自行验证）
     supports_cookie_import = True
     platform_cookie_domain = ".youtube.com"
-
-    def _parse_cookie_to_storage_state(self, cookie_str):
-        cookies = []
-        expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
-        for pair in cookie_str.split(";"):
-            pair = pair.strip()
-            if not pair or "=" not in pair:
-                continue
-            name, _, value = pair.partition("=")
-            cookies.append({
-                "name": name.strip(), "value": value.strip(),
-                "domain": self.platform_cookie_domain, "path": "/",
-                "expires": expires, "httpOnly": True, "secure": False, "sameSite": "Lax",
-            })
-        return cookies, []
 
     # ------------------------------------------------------------------
     # login — UNIQUE: uses persistent_context (Google requires persistent
@@ -121,7 +106,7 @@ class YoutubePlatform(BasePlatform):
             # Scrape profile
             user_name, avatar_url = await scrape_youtube_profile(page)
             if not user_name:
-                user_name = f"YouTube{int(asyncio.get_event_loop().time())}"
+                user_name = f"YouTube{int(asyncio.get_running_loop().time())}"
 
             # Save storage state manually (persistent context)
             cookies_dir = Path(BASE_DIR / "cookiesFile")
@@ -181,7 +166,7 @@ class YoutubePlatform(BasePlatform):
             }))
         finally:
             if context:
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -218,8 +203,8 @@ class YoutubePlatform(BasePlatform):
             return False
         finally:
             if browser:
-                try:
-                    await browser.close()
+                try:  # noqa: SIM105
+                    await self.close_browser(browser)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -246,8 +231,8 @@ class YoutubePlatform(BasePlatform):
             return "", ""
         finally:
             if browser:
-                try:
-                    await browser.close()
+                try:  # noqa: SIM105
+                    await self.close_browser(browser)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -261,18 +246,18 @@ class YoutubePlatform(BasePlatform):
         url = YOUTUBE_STUDIO_URL + "/"
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
-                    browser.close()
+                try:  # noqa: SIM105
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -458,7 +443,7 @@ class YoutubePlatform(BasePlatform):
             # Check for upload failure
             fail_text = page.locator("text=upload failed")
             if await fail_text.count() > 0:
-                raise RuntimeError("video upload failed")
+                raise RuntimeError("video upload failed")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
 
             await asyncio.sleep(2)
 
@@ -551,7 +536,7 @@ class YoutubePlatform(BasePlatform):
             raise
         finally:
             if browser:
-                try:
+                try:  # noqa: SIM105
                     await self.close_browser(browser, is_close_by_code=True)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -745,7 +730,7 @@ class YoutubePlatform(BasePlatform):
                 logger.info(_msg("[定时发布] 时区已设为 GMT+8"))
             except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                 logger.info(_msg(f"[定时发布] 时区设置失败, 使用默认: {exc}"))
-                try:
+                try:  # noqa: SIM105
                     await page.keyboard.press("Escape")
                 except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                     pass

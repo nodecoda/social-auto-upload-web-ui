@@ -9,21 +9,20 @@
 
 import asyncio
 import threading
-import time
 from pathlib import Path
 from queue import Queue
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import (
     get_account_name_by_cookie_file,
     parse_schedule_time,
     save_login_result,
-    scrape_zhihu_profile,
 )
 from ..base_platform import BasePlatform
+from ._profile import scrape_zhihu_profile
 
 logger = get_channel_logger("zhihu")
 
@@ -45,38 +44,6 @@ class ZhihuPlatform(BasePlatform):
     supports_cookie_import = True
     # 知乎 cookie 全部由 .zhihu.com 域下发
     platform_cookie_domain = ".zhihu.com"
-
-    def _parse_cookie_to_storage_state(
-        self, cookie_str: str
-    ) -> tuple[list[dict], list[dict]]:
-        """把 'k=v; k=v' 解析为 Playwright storage_state 的 (cookies, origins)。
-
-        - 全部 cookie 归属 ``platform_cookie_domain`` (.zhihu.com)
-        - expires 给 7 天保守占位，sync_profile 跑完后 storage_state 会被
-          回写为真实的 cookie（含真实 expires + localStorage）
-        - localStorage 留空，由 sync_profile 自然补全
-        """
-        cookies: list[dict] = []
-        expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
-        for pair in cookie_str.split(";"):
-            pair = pair.strip()
-            if not pair or "=" not in pair:
-                continue
-            name, _, value = pair.partition("=")
-            cookies.append({
-                "name": name.strip(),
-                "value": value.strip(),
-                "domain": self.platform_cookie_domain,
-                "path": "/",
-                "expires": expires,
-                "httpOnly": True,
-                "secure": False,
-                "sameSite": "Lax",
-            })
-        logger.info(
-            f"[zhihu] cookie 解析: {len(cookies)} 条, domain={self.platform_cookie_domain}"
-        )
-        return cookies, []
 
     async def login(self, id: str, status_queue: Queue, account_id=None) -> None:
         """打开知乎登录页，等待用户完成登录后保存 cookie。
@@ -113,17 +80,17 @@ class ZhihuPlatform(BasePlatform):
                 )
                 success = True
             finally:
-                try:
+                try:  # noqa: SIM105
                     await page.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
-                try:
+                try:  # noqa: SIM105
                     await context.close()
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
         finally:
             if success:
-                await browser.close()
+                await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # check_cookie
@@ -155,7 +122,7 @@ class ZhihuPlatform(BasePlatform):
                 await page.close()
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     # ------------------------------------------------------------------
     # sync_profile
@@ -202,7 +169,7 @@ class ZhihuPlatform(BasePlatform):
                 await page.close()
                 await context.close()
         finally:
-            await browser.close()
+            await self.close_browser(browser)
 
     async def _scrape_zhihu_stats(self, page) -> list:
         """抓取知乎创作中心的 9 项运营数据,来自两个页面。
@@ -379,18 +346,18 @@ class ZhihuPlatform(BasePlatform):
         url = ZHIHU_CREATOR_URL
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
-                try:
+                try:  # noqa: SIM105
                     page.wait_for_event("close", timeout=0)
                 except Exception:  # noqa: S110, BLE001 -- DOM/页面探测兜底,元素可能不存在
                     pass
             finally:
-                try:
-                    browser.close()
+                try:  # noqa: SIM105
+                    asyncio.run(close_browser(browser))
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
 
@@ -401,7 +368,7 @@ class ZhihuPlatform(BasePlatform):
     # publish_video
     # ------------------------------------------------------------------
 
-    def publish_video(self, **kwargs) -> bool:
+    async def publish_video(self, **kwargs) -> bool:
         """发布视频到知乎。
 
         接受的 kwargs（由 app.py 统一传入）:
@@ -532,7 +499,11 @@ class ZhihuPlatform(BasePlatform):
             logger.info("[发布视频] 视频发布流程完成!")
             logger.info("=" * 60)
 
-        asyncio.run(_run())
+        try:
+            await _run()
+        except Exception as e:
+            logger.exception("[发布失败] 知乎 publish_video 异常: %s", e)
+            return False
         return True
 
     # ------------------------------------------------------------------
@@ -566,7 +537,7 @@ class ZhihuPlatform(BasePlatform):
                 page = await context.new_page()
                 logger.info(f"[上传视频] 开始上传视频: {title}")
                 await page.goto(ZHIHU_UPLOAD_URL)
-                try:
+                try:  # noqa: SIM105
                     await page.wait_for_load_state(
                         "domcontentloaded", timeout=30000
                     )
@@ -612,7 +583,7 @@ class ZhihuPlatform(BasePlatform):
                     await self._set_schedule_time(page, publish_date)
 
                 # 提交前截图
-                try:
+                try:  # noqa: SIM105
                     await page.screenshot(
                         path=str(log_dir / "zhihu_before_submit.png"),
                         full_page=True,
@@ -624,7 +595,7 @@ class ZhihuPlatform(BasePlatform):
                 submitted, submit_msg = await self._click_submit(page, is_scheduled)
                 if submitted:
                     logger.info(f"[上传视频] ✓ 发布成功: {submit_msg}")
-                    try:
+                    try:  # noqa: SIM105
                         await page.screenshot(
                             path=str(log_dir / "zhihu_after_submit.png"),
                             full_page=True,
@@ -634,7 +605,7 @@ class ZhihuPlatform(BasePlatform):
                 else:
                     logger.info(f"[上传视频] ✗ 发布失败: {submit_msg}")
                     # 发布失败也保留现场日志，方便排查
-                    try:
+                    try:  # noqa: SIM105
                         await page.screenshot(
                             path=str(log_dir / "zhihu_submit_failed.png"),
                             full_page=True,
@@ -653,13 +624,13 @@ class ZhihuPlatform(BasePlatform):
                     except Exception:  # noqa: S110, BLE001 -- 探测性操作兜底,失败走 fallback
                         pass
                 if not DEBUG_DRY_RUN_SUBMIT:
-                    try:
+                    try:  # noqa: SIM105
                         await context.close()
                     except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                         pass
         finally:
             if not DEBUG_DRY_RUN_SUBMIT:
-                try:
+                try:  # noqa: SIM105
                     await self.close_browser(browser, is_close_by_code=True)
                 except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
                     pass
@@ -683,7 +654,7 @@ class ZhihuPlatform(BasePlatform):
         log_dir = Path(BASE_DIR / "logs")
         logger.info("[上传视频] 正在上传视频文件: %s", file_path)
 
-        try:
+        try:  # noqa: SIM105
             await page.screenshot(
                 path=str(log_dir / "zhihu_upload_before.png"), full_page=True
             )
@@ -764,7 +735,7 @@ class ZhihuPlatform(BasePlatform):
                 logger.info("[上传视频] 上传按钮兜底失败: %s", e)
 
         if file_input is None:
-            try:
+            try:  # noqa: SIM105
                 await page.screenshot(
                     path=str(log_dir / "zhihu_upload_no_input.png"),
                     full_page=True,
@@ -794,7 +765,7 @@ class ZhihuPlatform(BasePlatform):
                     return
                 fail = page.locator('text=上传失败')
                 if await fail.count() > 0 and await fail.first.is_visible():
-                    raise RuntimeError("视频上传失败")
+                    raise RuntimeError("视频上传失败")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
             except RuntimeError:
                 raise
             except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
@@ -899,12 +870,12 @@ class ZhihuPlatform(BasePlatform):
                     if inputs_info > 0:
                         # 用 evaluate 找到这个 input 并直接设值（playwright 定位用）
                         # 实际策略：先点 dropzone，再用 file_chooser
-                        raise RuntimeError("无法可靠定位封面 input")
+                        raise RuntimeError("无法可靠定位封面 input")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
                 except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
                     logger.info(f"[设置封面] 排除法失败: {e}")
 
             if not uploaded:
-                raise RuntimeError("封面文件未能上传到弹窗")
+                raise RuntimeError("封面文件未能上传到弹窗")  # noqa: TRY301 -- try 内主动 raise 为语义错误/快速失败,刻意不被吞,抽象改造ROI低
 
             # 4. 等待封面预览出现 = 上传完成（30s 给图片处理留足时间）
             logger.info("[设置封面] 等待封面预览/确认按钮...")
@@ -981,7 +952,7 @@ class ZhihuPlatform(BasePlatform):
 
         except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[设置封面] 设置封面失败（非致命）: {exc}")
-            try:
+            try:  # noqa: SIM105
                 await page.screenshot(
                     path=str(log_dir / "zhihu_cover_error.png"),
                     full_page=True,
@@ -1120,7 +1091,7 @@ class ZhihuPlatform(BasePlatform):
             await asyncio.sleep(1)
         except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[视频标记] 设置失败（非致命）: {exc}")
-            try:
+            try:  # noqa: SIM105
                 await page.keyboard.press("Escape")
             except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass
@@ -1350,7 +1321,7 @@ class ZhihuPlatform(BasePlatform):
             await asyncio.sleep(0.5)
 
             # 关闭可能仍打开的下拉
-            try:
+            try:  # noqa: SIM105
                 await page.keyboard.press("Escape")
             except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
                 pass

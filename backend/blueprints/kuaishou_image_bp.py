@@ -4,7 +4,6 @@
 """
 
 import asyncio
-import sqlite3
 import sys
 from pathlib import Path
 
@@ -12,8 +11,18 @@ from flask import Blueprint, jsonify, request
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
-from impl._browser import create_browser, create_context
+from impl._browser import close_browser, create_browser, create_context
 from util._logger import get_channel_logger
+from util.account_db import get_account_cookie_file as _get_account_cookie_file_impl
+from util.async_utils import run_async
+
+
+def _get_account_cookie_file(account_id):
+    """取账号 cookie 文件名（共享实现,绑定本平台 type=4）。
+
+    原为每个 blueprint 内联 20 行 SQL, 已收敛到 util/account_db.py。
+    """
+    return _get_account_cookie_file_impl(account_id, 4)
 
 logger = get_channel_logger("kuaishou_image")
 
@@ -22,35 +31,6 @@ kuaishou_image_bp = Blueprint('kuaishou_image', __name__, url_prefix='/api/kuais
 
 def _get_cookie_path(cookie_file: str) -> str:
     return str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-
-
-def _get_account_cookie_file(account_id: str) -> str | None:
-    conn = sqlite3.connect(str(Path(BASE_DIR / "db" / "database.db")))
-    cursor = conn.cursor()
-    if account_id:
-        cursor.execute("SELECT filePath FROM user_info WHERE id = ? AND type = 4", (account_id,))
-        row = cursor.fetchone()
-        if row:
-            conn.close()
-            return row[0]
-    # fallback：任意一个可用的快手账号
-    cursor.execute("SELECT filePath FROM user_info WHERE type = 4 LIMIT 1")
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        return None
-    return row[0]
-
-
-def run_async(coro):
-    """在同步 Flask 上下文里跑 async 协程。"""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            return asyncio.run(coro)
-    except RuntimeError:
-        pass
-    return asyncio.run(coro)
 
 
 @kuaishou_image_bp.route('/ping', methods=['GET'])
@@ -127,8 +107,8 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, count: str =
                         data = await response.json()
                         captured = data
                         logger.info(f"[拦截] 解析成功，musicList 长度: {len((data.get('data') or {}).get('musicList', []))}")
-                    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                        logger.error(f"[拦截] 解析失败: {e}")
+                    except Exception as e:
+                        logger.exception(f"[拦截] 解析失败: {e}")
 
             page.on("response", handle_response)
 
@@ -182,8 +162,8 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, count: str =
                 logger.info(f"[步骤4] 父级: <{parent_info['tag']}> class=\"{parent_info['cls']}\"")
                 await parent.click()
                 logger.info("[步骤4] 点击成功!")
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                logger.error(f"[步骤4] 点击失败: {e}")
+            except Exception as e:
+                logger.exception(f"[步骤4] 点击失败: {e}")
                 # fallback: 直接 JS 点击
                 logger.info("[步骤4] 尝试 JS fallback...")
                 await page.evaluate("""
@@ -203,8 +183,8 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, count: str =
             try:
                 await drawer.wait_for(state="visible", timeout=10000)
                 logger.info("[步骤5] 音乐抽屉已出现")
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                logger.error(f"[步骤5] 音乐抽屉未出现: {e}")
+            except Exception as e:
+                logger.exception(f"[步骤5] 音乐抽屉未出现: {e}")
                 # 截图看看当前页面状态
                 shot2 = str(Path(BASE_DIR / "debug_no_drawer.png"))
                 await page.screenshot(path=shot2, full_page=True)
@@ -219,8 +199,8 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, count: str =
             search_input = drawer.locator("input[placeholder='搜索音乐']").first
             try:
                 await search_input.click()
-            except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-                logger.error(f"[步骤6] 搜索框点击失败: {e}")
+            except Exception as e:
+                logger.exception(f"[步骤6] 搜索框点击失败: {e}")
                 all_inputs = drawer.locator("input")
                 input_count = await all_inputs.count()
                 logger.info(f"[步骤6] 抽屉内 input 数量: {input_count}")
@@ -268,4 +248,4 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, count: str =
         finally:
             await context.close()
     finally:
-        await browser.close()
+        await close_browser(browser)
