@@ -6,8 +6,6 @@
 """
 import asyncio
 import os
-from datetime import UTC, datetime
-from zoneinfo import ZoneInfo
 
 from util._logger import get_channel_logger
 
@@ -1050,75 +1048,6 @@ async def _set_reprint_url(page, reprint_url: str):
             logger.warning("[上传视频] 填写转载来源失败: %s", e)
 
 
-async def _set_schedule_time(page, schedule_time_str: str):
-        """设置定时发布(文档行 67-74)。
-
-        流程:
-        1. 点击"定时发布" radio(``input[name="publishType"][value="regularly"]``)
-        2. 等日期时间选择器出现
-        3. 直接填 ``input#*_scheduleTime``(antd5-picker 的输入框)
-        4. 点"确定"按钮关闭 picker
-
-        antd5-picker 的原生日历点选很脆,这里优先用直接 fill input 的方式
-        (picker 的输入框支持手输 ``YYYY-MM-DD HH:MM``)。
-        """
-        # 解析时间字符串 → "YYYY-MM-DD HH:MM"
-        dt = _parse_schedule_dt(schedule_time_str)
-        if not dt:
-            logger.warning(
-                "[上传视频] 无法解析定时时间「%s」,跳过定时设置",
-                schedule_time_str,
-            )
-            return
-        time_str = dt.strftime("%Y-%m-%d %H:%M")
-
-        # 1. 切换到"定时发布" radio
-        try:
-            regularly_radio = page.locator(
-                'input[name="publishType"][value="regularly"]'
-            ).first
-            await regularly_radio.wait_for(state="attached", timeout=10000)
-            # radio 可能在 label 内,用 click label 父级
-            label = regularly_radio.locator("xpath=ancestor::label[1]")
-            await label.click(force=True)
-            logger.info("[上传视频] 已切换到「定时发布」")
-            await asyncio.sleep(0.8)
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.warning("[上传视频] 切换定时发布失败: %s", e)
-            return
-
-        # 2. 直接填 picker 输入框
-        schedule_input = page.locator(
-            "input[id$='_scheduleTime']"
-        ).first
-        try:
-            await schedule_input.wait_for(state="visible", timeout=10000)
-            await schedule_input.click()
-            await asyncio.sleep(0.3)
-            # 清空再填
-            await schedule_input.fill("")
-            await schedule_input.type(time_str, delay=50)
-            await asyncio.sleep(0.5)
-            logger.info("[上传视频] 已填定时时间: %s", time_str)
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录日志,防御性编码
-            logger.warning("[上传视频] 填定时时间失败: %s", e)
-            return
-
-        # 3. 点"确定"按钮关闭 picker
-        try:
-            ok_btn = page.get_by_role("button", name="确 定", exact=True).first
-            if await ok_btn.count() > 0:
-                await ok_btn.click()
-                logger.info("[上传视频] 已点击 picker「确定」")
-                await asyncio.sleep(0.5)
-        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-            logger.info("[上传视频] 点击 picker 确定失败(可能已关): %s", e)
-            try:  # noqa: SIM105
-                await page.keyboard.press("Enter")
-            except Exception:  # noqa: S110, BLE001 -- UI 操作兜底,失败走后续逻辑
-                pass
-
-
 async def _click_publish(page):
         """点击「确认发布」按钮(文档行 11 末尾)。"""
         publish_btn = page.get_by_role(
@@ -1246,40 +1175,3 @@ async def _wait_for_publish_success(page, timeout_s: int = 90, page_type: str = 
             f"[上传视频] 等待发布完成超时({timeout_s}s),"
             f"是否处理过弹窗: {modal_handled}"
         )
-
-
-def _parse_schedule_dt(schedule_time_str: str):
-    """解析前端传入的时间字符串为 datetime(本地时区)。
-
-    兼容:
-    - ISO UTC: ``2026-06-22T13:00:00.000Z`` / ``2026-06-22T13:00:00+08:00``
-    - 本地: ``2026-06-22 13:00:00`` / ``2026-06-22 13:00`` / ``2026-06-22T13:00``
-    """
-
-    if not schedule_time_str:
-        return None
-    try:
-        raw = str(schedule_time_str)
-        is_utc = raw.endswith("Z") or "+00:00" in raw
-        raw_clean = raw.replace("+08:00", "").replace("+00:00", "")
-
-        for fmt in (
-            "%Y-%m-%dT%H:%M:%S.%fZ",
-            "%Y-%m-%dT%H:%M:%SZ",
-            "%Y-%m-%dT%H:%M:%S",
-            "%Y-%m-%dT%H:%M",
-            "%Y-%m-%d %H:%M:%S",
-            "%Y-%m-%d %H:%M",
-        ):
-            try:
-                dt = datetime.strptime(raw_clean, fmt).replace(
-                    tzinfo=UTC if is_utc else ZoneInfo("Asia/Shanghai")
-                )
-                if is_utc:
-                    dt = dt.astimezone(ZoneInfo("Asia/Shanghai"))
-                return dt
-            except ValueError:
-                continue
-    except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-        logger.info("[上传视频] 解析定时时间失败: %s", e)
-    return None

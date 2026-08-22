@@ -167,17 +167,21 @@ class TaskQueue:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._thread: threading.Thread | None = None
         self._started = False
+        self._ready = threading.Event()  # _run_loop 初始化完成信号（防 start 返回即 add_task 的竞态）
         self._status_callbacks: list = []  # 状态变更回调
 
     def start(self):
-        """在后台线程中启动事件循环"""
+        """在后台线程中启动事件循环，等待事件循环初始化完成再返回"""
         if self._started:
             return
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
+        # 等 _run_loop 初始化 queue/_loop，否则紧随 start() 的 add_task 会
+        # 命中 assert "队列未启动"（CI 高负载下偶发 flaky）。
+        if not self._ready.wait(timeout=10):
+            raise RuntimeError("[TaskQueue] 事件循环启动超时")
         self._started = True
         logger.info(f"[TaskQueue] 启动，并发数={self.max_concurrent}")
-        # 由 _run_loop 初始化;这里保持 None 语义,使用时断言
 
     def _run_loop(self):
         self._loop = asyncio.new_event_loop()
@@ -185,6 +189,7 @@ class TaskQueue:
         self.queue = asyncio.Queue()
         for i in range(self.max_concurrent):
             self._loop.create_task(self._worker(f"worker-{i}"))
+        self._ready.set()
         self._loop.run_forever()
 
     async def _worker(self, name: str):

@@ -97,8 +97,11 @@ jobs:
       - run: mypy
       # 依赖漏洞审计硬门槛：锁定版本 + 官方漏洞库，0 已知漏洞
       - run: pip-audit -r requirements.lock --no-deps
-      # 覆盖率硬门槛（防回退）：2026-08-21 T38 后实测 91%（CI 报告 88%）, 门槛 80% 留 8-11pp 裕量
-      # 覆盖率报告见 Actions artifact；本地复现: python -m pytest --cov=. --cov-config=.coveragerc
+      # 覆盖率硬门槛（防回退）：门槛 80%。
+      # 2026-08-22 DOM 契约测试移出仓库后，平台 DOM 交互层（impl/*/platform.py、
+      # _*.py、picker.py）已从 .coveragerc omit（改由外部 DOM 套件覆盖），
+      # 剩余逻辑实测 86%，留 ~6pp 裕量。覆盖率报告见 Actions artifact。
+      # 本地复现: python -m pytest --cov=. --cov-config=.coveragerc
       - run: python -m pytest -q --cov=. --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=80
       - uses: actions/upload-artifact@v4
         if: always()
