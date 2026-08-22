@@ -13,10 +13,10 @@ from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
     save_login_result,
-    scrape_weibo_profile,
 )
 from ..base_platform import BasePlatform
 from . import categories as _weibo_categories
+from ._profile import scrape_weibo_profile
 
 logger = get_channel_logger("weibo")
 

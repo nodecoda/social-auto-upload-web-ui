@@ -24,9 +24,9 @@ from util._logger import get_channel_logger
 from .._browser import close_browser
 from .._utils import (
     save_login_result,
-    scrape_jingmai_profile,
 )
 from ..base_platform import BasePlatform
+from ._profile import scrape_jingmai_profile
 
 logger = get_channel_logger("jingmai")
 

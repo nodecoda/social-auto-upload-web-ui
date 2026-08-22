@@ -22,10 +22,10 @@ from .._utils import (
     get_account_name_by_cookie_file,
     parse_schedule_time,
     save_login_result,
-    scrape_taobao_guanghe_profile,
 )
 from ..base_platform import BasePlatform
 from . import _link_ops
+from ._profile import scrape_taobao_guanghe_profile
 
 logger = get_channel_logger("taobao_guanghe")
 

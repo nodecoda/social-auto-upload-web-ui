@@ -25,8 +25,9 @@ logger = get_channel_logger("youtube")
 from conf import BASE_DIR
 
 from .._browser import close_browser
-from .._utils import clear_input, get_account_name_by_cookie_file, parse_schedule_time, scrape_youtube_profile
+from .._utils import clear_input, get_account_name_by_cookie_file, parse_schedule_time
 from ..base_platform import BasePlatform
+from ._profile import scrape_youtube_profile
 
 YOUTUBE_STUDIO_URL = "https://studio.youtube.com"
 

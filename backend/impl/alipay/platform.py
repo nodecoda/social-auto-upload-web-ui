@@ -42,9 +42,9 @@ from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
     save_login_result,
-    scrape_alipay_profile,
 )
 from ..base_platform import BasePlatform
+from ._profile import scrape_alipay_profile
 
 logger = get_channel_logger("alipay")
 

@@ -23,9 +23,9 @@ from .._utils import (
     get_account_name_by_cookie_file,
     parse_schedule_time,
     save_login_result,
-    scrape_tencent_profile,
 )
 from ..base_platform import BasePlatform
+from ._profile import scrape_tencent_profile
 
 # ---------------------------------------------------------------------------
 # Constants

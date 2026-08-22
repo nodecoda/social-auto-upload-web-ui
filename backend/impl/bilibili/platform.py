@@ -24,9 +24,9 @@ from .._utils import (
     get_account_name_by_cookie_file,
     parse_schedule_time,
     save_login_result,
-    scrape_bilibili_profile,
 )
 from ..base_platform import BasePlatform
+from ._profile import scrape_bilibili_profile
 
 BILIBILI_UPLOAD_URL = "https://member.bilibili.com/platform/upload/video/frame"
 BILIBILI_MANAGE_URL = "https://member.bilibili.com/platform/upload-manager/article"
