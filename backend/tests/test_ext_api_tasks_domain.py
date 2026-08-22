@@ -487,7 +487,19 @@ class TestTaskQueueDomain:
 
     def test_get_status_initial_empty(self):
         q = TaskQueue(max_concurrent=2)
-        assert q.get_status() == {'pending': 0, 'running': 0, 'completed': 0, 'running_tasks': []}
+        status = q.get_status()
+        assert status['pending'] == 0
+        assert status['running'] == 0
+        assert status['completed'] == 0
+        assert status['running_tasks'] == []
+        # C2: 健康计数 + heartbeat
+        assert status['j_complete'] == 0
+        assert status['j_failed'] == 0
+        assert status['j_ongoing'] == 0
+        assert status['failed_count'] == 0
+        assert status['heartbeat'] == ''
+        assert status['started_at'] == ''
+
 
     def test_get_status_with_running_tasks(self):
         q = TaskQueue(max_concurrent=2)
