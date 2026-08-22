@@ -42,6 +42,13 @@ def _msg(text: str) -> str:
 
 
 class YoutubePlatform(BasePlatform):
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://studio.youtube.com"
+    CHECK_INVALID_URL_MARKERS = (
+        "accounts.google.com",
+        "signin",
+    )
+    CHECK_SLEEP = 0.0
     platform_id = 8
     platform_key = "youtube"
     platform_name = "YouTube"
@@ -175,42 +182,6 @@ class YoutubePlatform(BasePlatform):
     # check_cookie
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        """Check whether the saved cookie file is still valid.
-
-        Opens YouTube Studio with cookies + proxy.  If the page redirects to
-        accounts.google.com or contains ``signin`` in the URL, the cookie
-        is invalid.
-        """
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-        browser = None
-        try:
-            browser = await self.create_browser(headless=True)
-            context = await self.create_context(browser, storage_state=cookie_path)
-            page = await context.new_page()
-            await page.goto(YOUTUBE_STUDIO_URL, timeout=20000)
-
-            current_url = page.url.lower()
-            if "accounts.google.com" in current_url or "signin" in current_url:
-                logger.info(_msg("cookie expired"))
-                return False
-
-            logger.info(_msg("cookie valid"))
-            return True
-
-        except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-            logger.info(_msg(f"cookie check error: {exc}"))
-            return False
-        finally:
-            if browser:
-                try:  # noqa: SIM105
-                    await self.close_browser(browser)
-                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
-                    pass
-
-    # ------------------------------------------------------------------
-    # sync_profile
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> tuple:
         """Sync profile info (name, avatar) from YouTube Studio."""

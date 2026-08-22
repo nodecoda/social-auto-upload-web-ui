@@ -134,6 +134,17 @@ class WeixinGzhPlatform(WeixinGzhImageOps, BasePlatform):
     _is_wheel_item_selected = staticmethod(_is_wheel_item_selected)
     _wait_for_home = staticmethod(_wait_for_home)
 
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://mp.weixin.qq.com/"
+    CHECK_SLEEP = 3.0
+    CHECK_INVALID_URL_MARKERS = (
+        "/cgi-bin/bizlogin",
+        "/cgi-bin/loginpage",
+    )
+    CHECK_VALID_URL = (
+        "/cgi-bin/home",
+        "token=",
+    )
     platform_id = 17
     platform_key = "weixin_gzh"
     platform_name = "微信公众号"
@@ -262,45 +273,6 @@ class WeixinGzhPlatform(WeixinGzhImageOps, BasePlatform):
     # check_cookie — verify stored cookie is still valid
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        """校验公众号 cookie 是否有效。
-
-        用 cookie 打开 ``https://mp.weixin.qq.com/``，等待自动跳转：
-        - 跳到失效 marker（/cgi-bin/bizlogin、/cgi-bin/loginpage）→ 失效
-        - 跳到 ``/cgi-bin/home`` 且带 token= → 有效
-        - 其他 → 失效
-        """
-        logger.info("[Cookie检查] 开始检查cookie有效性: %s", cookie_file)
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            try:
-                page = await context.new_page()
-                await page.goto(_LOGIN_URL, wait_until="domcontentloaded", timeout=20000)
-                await asyncio.sleep(3)
-
-                current_url = page.url or ""
-                # 失效 marker 命中即视为失效
-                for marker in _COOKIE_INVALID_URL_MARKERS:
-                    if marker in current_url:
-                        logger.info("[Cookie检查] Cookie无效，跳转到登录页 (matched: %s)", marker)
-                        return False
-                # 跳到首页且带 token 视为有效
-                if _HOME_PATH in current_url and "token=" in current_url:
-                    logger.info("[Cookie检查] Cookie有效，已跳转到首页")
-                    return True
-
-                logger.warning("[Cookie检查] Cookie无效，当前 URL: %s", current_url)
-                return False
-            finally:
-                await context.close()
-        finally:
-            await self.close_browser(browser)
-
-    # ------------------------------------------------------------------
-    # sync_profile — refresh user name / avatar / stats
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> dict:
         """同步公众号昵称、头像、运营数据(stats)。

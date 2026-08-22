@@ -100,6 +100,12 @@ class AlipayPlatform(AlipayImageOps, BasePlatform):
     _wait_for_publish_success = staticmethod(_wait_for_publish_success)
 
     supports_image = True  # 图集发布能力（A4 门控）
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://c.alipay.com/page/life-account/index"
+    CHECK_SLEEP = 0.0
+    CHECK_VALID_URL = (
+        "c.alipay.com/page/life-account/index",
+    )
     platform_id = 12
     platform_key = "alipay"
     platform_name = "支付宝"
@@ -164,43 +170,6 @@ class AlipayPlatform(AlipayImageOps, BasePlatform):
     # check_cookie()
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        """检查 cookie 是否仍然有效。
-
-        判据:用 cookie 打开生活号首页,如果没有跳转到登录页面即视为有效;
-        cookie 失效会被重定向到登录页(URL 中含 login/passport/authorize 等)。
-        """
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-        if not os.path.exists(cookie_path):
-            return False
-
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            page = await context.new_page()
-            try:
-                await page.goto(_ALIPAY_CREATOR_URL, timeout=30000)
-                await page.wait_for_load_state("domcontentloaded", timeout=15000)
-
-                final_url = page.url
-                # 仍停留在生活号首页(没被重定向) → cookie 有效
-                valid = "c.alipay.com/page/life-account/index" in final_url
-                logger.info(
-                    f"[alipay] cookie {'有效' if valid else '失效,需重新登录'} "
-                    f"(final_url={final_url})"
-                )
-                return valid
-            except Exception as exc:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
-                logger.info(f"[alipay] cookie 检查异常: {exc}")
-                return False
-            finally:
-                await context.close()
-        finally:
-            await self.close_browser(browser)
-
-    # ------------------------------------------------------------------
-    # open_creator_center()
-    # ------------------------------------------------------------------
 
     async def open_creator_center(self, cookie_file: str) -> None:
         """打开支付宝创作中心首页(可见浏览器,线程内同步 API)。"""

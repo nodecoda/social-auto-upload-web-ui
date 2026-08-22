@@ -32,6 +32,13 @@ TK_DEFAULT = 'body'
 
 
 class TiktokPlatform(BasePlatform):
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://www.tiktok.com/tiktokstudio/upload?lang=en"
+    CHECK_WAIT_UNTIL = "load"
+    CHECK_NETWORKIDLE = True
+    CHECK_REVOKED_SELECTOR = "select[class*='SelectFormContainer']"
+    CHECK_DEFAULT_STATE = "active"
+    CHECK_SLEEP = 0.0
     platform_id = 7
     platform_key = "tiktok"
     platform_name = "TikTok"
@@ -93,37 +100,6 @@ class TiktokPlatform(BasePlatform):
     # Cookie validation
     # ------------------------------------------------------------------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        """Check whether the saved cookie file is still valid.
-
-        Opens the TikTok Studio upload page and inspects ``<select>``
-        elements for a class matching ``tiktok-.*-SelectFormContainer.*``,
-        which indicates an expired / unauthenticated session.
-        """
-        cookie_path = str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-        browser = await self.create_browser(headless=True)
-        try:
-            context = await self.create_context(browser, storage_state=cookie_path)
-            page = await context.new_page()
-            await page.goto("https://www.tiktok.com/tiktokstudio/upload?lang=en")
-            await page.wait_for_load_state("networkidle")
-            try:
-                select_elements = await page.query_selector_all("select")
-                for element in select_elements:
-                    class_name = await element.get_attribute("class")
-                    if class_name and re.match(
-                        r"tiktok-.*-SelectFormContainer.*", class_name
-                    ):
-                        return False
-                return True
-            except Exception:  # noqa: BLE001 -- 捕获后返回兜底值/错误响应
-                return True
-        finally:
-            await self.close_browser(browser)
-
-    # ------------------------------------------------------------------
-    # Profile sync
-    # ------------------------------------------------------------------
 
     async def sync_profile(self, cookie_file: str) -> tuple:
         """Sync profile info (name, avatar) from TikTok.

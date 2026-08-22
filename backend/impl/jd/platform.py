@@ -54,6 +54,13 @@ class JdPlatform(BasePlatform):
     本类先以 NotImplementedError 占位,保证 class 可实例化、registry 可注册。
     """
 
+    # ---- Cookie 校验参数（基类探针 session_verify 使用, 提炼自原 check_cookie）----
+    CHECK_URL = "https://dr.jd.com/jm/"
+    CHECK_SLEEP = 2.0
+    CHECK_INVALID_URL_MARKERS = (
+        "passport.jd.com",
+        "passport.shop.jd.com",
+    )
     platform_id = 20
     platform_key = "jd"
     platform_name = "京东"
@@ -134,39 +141,6 @@ class JdPlatform(BasePlatform):
 
     # ---------- 占位:后续 Task 实现 ----------
 
-    async def check_cookie(self, cookie_file: str) -> bool:
-        """检测 cookie 是否有效。
-
-        策略:用 cookie 打开创作中心,如果被重定向到 passport.* → 无效。
-        """
-        cookie_path = Path(BASE_DIR / "cookiesFile" / cookie_file)
-        if not cookie_path.exists():
-            return False
-
-        browser = await self.create_browser(headless=True)
-        try:
-            ctx = await self.create_context(browser, storage_state=str(cookie_path))
-            page = await ctx.new_page()
-            try:
-                await page.goto(JD_CREATOR_CENTER_URL, wait_until="domcontentloaded")
-                await asyncio.sleep(2)
-                url = page.url or ""
-                for invalid_host in JD_COOKIE_INVALID_MARKERS:
-                    if invalid_host in url:
-                        logger.warning(f"京东 cookie 失效: 当前 URL {url}")
-                        return False
-                return True
-            finally:
-                try:  # noqa: SIM105
-                    await page.close()
-                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
-                    pass
-                try:  # noqa: SIM105
-                    await ctx.close()
-                except Exception:  # noqa: S110, BLE001 -- 资源清理兜底,失败可忽略
-                    pass
-        finally:
-            await self.close_browser(browser)
 
     async def sync_profile(self, cookie_file: str):
         """同步账号昵称/头像。
