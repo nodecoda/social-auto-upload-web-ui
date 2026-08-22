@@ -24,7 +24,13 @@ from ._browser import (
     create_browser as _create_browser,
 )
 from ._browser import (
+    create_browser_sync as _create_browser_sync,
+)
+from ._browser import (
     create_context as _create_context,
+)
+from ._browser import (
+    create_context_sync as _create_context_sync,
 )
 from ._browser import (
     create_persistent_context as _create_persistent_context,
@@ -113,6 +119,27 @@ class BasePlatform(ABC):
         直接调用 _browser.close_browser；本方法为其提供类内调用入口。
         """
         await _close_browser(browser, is_close_by_code=is_close_by_code)
+
+    def create_browser_sync(self, headless: bool = False):
+        """同步创建浏览器入口（A5: 收敛 20/20 平台直调 _browser.create_browser_sync）。
+
+        与 close_browser 对齐：平台发布/图集收尾只调 self.* 统一入口，
+        不再直接 import .._browser 的函数，保证生命周期入口单一。
+        """
+        return _create_browser_sync(headless=headless)
+
+    def create_context_sync(
+        self,
+        browser,
+        storage_state: str | None = None,
+        user_agent: str | None = None,
+    ):
+        """同步创建 context 入口（A5，同上收敛理由）。"""
+        return _create_context_sync(
+            browser,
+            storage_state=storage_state,
+            user_agent=user_agent,
+        )
 
     async def create_persistent_context(
         self,

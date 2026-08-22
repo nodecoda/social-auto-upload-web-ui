@@ -25,7 +25,7 @@ logger = get_channel_logger("youtube")
 
 from conf import BASE_DIR
 
-from .._browser import close_browser, create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import clear_input, get_account_name_by_cookie_file, parse_schedule_time, scrape_youtube_profile
 from ..base_platform import BasePlatform
 
@@ -261,9 +261,9 @@ class YoutubePlatform(BasePlatform):
         url = YOUTUBE_STUDIO_URL + "/"
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
                 try:

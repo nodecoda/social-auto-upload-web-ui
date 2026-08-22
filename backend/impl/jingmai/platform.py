@@ -21,7 +21,7 @@ from queue import Queue
 from conf import BASE_DIR
 from util._logger import get_channel_logger
 
-from .._browser import close_browser, create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import (
     save_login_result,
     scrape_jingmai_profile,
@@ -361,9 +361,9 @@ class JingmaiPlatform(BasePlatform):
         url = _JINGMAI_HOME_URL
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
                 try:

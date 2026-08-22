@@ -16,7 +16,7 @@ from queue import Queue
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
-from .._browser import close_browser, create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import (
     get_account_name_by_cookie_file,
     parse_schedule_time,
@@ -379,9 +379,9 @@ class ZhihuPlatform(BasePlatform):
         url = ZHIHU_CREATOR_URL
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
                 try:

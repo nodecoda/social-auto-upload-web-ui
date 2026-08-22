@@ -18,7 +18,7 @@ from util._logger import bind_account_name, get_channel_logger
 
 logger = get_channel_logger("channels")
 
-from .._browser import close_browser, create_browser_sync, create_context_sync
+from .._browser import close_browser
 from .._utils import (
     clear_and_type,
     get_account_name_by_cookie_file,
@@ -1438,9 +1438,9 @@ class ChannelsPlatform(BasePlatform):
         url = "https://channels.weixin.qq.com/platform"
 
         def _launch():
-            browser = create_browser_sync(headless=False)
+            browser = self.create_browser_sync(headless=False)
             try:
-                context = create_context_sync(browser, storage_state=cookie_path)
+                context = self.create_context_sync(browser, storage_state=cookie_path)
                 page = context.new_page()
                 page.goto(url)
                 try:

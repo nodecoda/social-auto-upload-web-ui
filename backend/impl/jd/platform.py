@@ -213,10 +213,10 @@ class JdPlatform(BasePlatform):
             raise FileNotFoundError(f"cookie 文件不存在: {cookie_file}")
 
         def _launch():
-            from .._browser import close_browser, create_browser_sync, create_context_sync
-            browser = create_browser_sync(headless=False)
+            from .._browser import close_browser
+            browser = self.create_browser_sync(headless=False)
             try:
-                ctx = create_context_sync(browser, storage_state=str(cookie_path))
+                ctx = self.create_context_sync(browser, storage_state=str(cookie_path))
                 page = ctx.new_page()
                 page.goto(JD_CREATOR_CENTER_URL, wait_until="domcontentloaded")
                 try:
