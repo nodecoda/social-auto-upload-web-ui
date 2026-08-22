@@ -34,7 +34,9 @@
 | R6 队列三合一 | ✅ done | `bf26ac8`：image_publish 2 路由入队化(publish_images/execute_publish)、删 postVideoBatch(132 行)、task_queue 按 publish_kind 分发 + 清 myUtils 旧路径、create_task payload 化(registry 真源校验)、3 平台 publish_image async 化（轻量 332 passed，DOM 留 CI） |
 | R7 历史唯一 writer | ✅ done | `16ec5eb`：状态枚举/聚合升 `util/status.py` 唯一真源，image_publish_bp 2 路由行内 INSERT 收敛 `_record_publish`，聚合补 in-flight 态对齐 task_queue （轻量 122 passed，DOM 留 CI） |
 | R8 浏览器生命周期 | ✅ done | `e454576`：impl 59 处 → self.close_browser、19 处 _launch → asyncio.run(close_browser)、blueprint 16 处 → close_browser、全仓 get_event_loop 清零 |
-| R9 样板上移 + _utils 拆分 | ⏳ 待做 | 依赖 R5 防返工 |
+| R9 样板上移 + _utils 拆分 | ✅ done | `85d84f4` 等：A5 create 入口收敛(`a4f7a27`)/A6 cookie 解析上移(`40fc331`)/A7 _utils 拆分(`85d84f4`)，R9 三子项全部完成；剩余定时/封面/账号路径上移归入 v3 A8 之后的延伸项 |
+| v3 A8 平台文件瘦身 | ✅ done | `ade9631`+`479db5f`+`98805e3`：weixin_gzh 2208→717、weibo 2069→817、alipay 2011→590、douyin 1862→703，按职责拆 `_dom_ops.py`/`_image_ops.py`（零行为变更，20/20 import OK，ruff 0 错，轻量 300+ passed，DOM 留 CI） |
+| v3 A9 services/ 审计 | ✅ done | `审计结论`：确认合理，不拆分——v3 描述的 `services/_logger.py`(4178)/`async_utils.py`(1326)/`video_limits.py`(8536) 系子代理路径误报（services/ 下无此三文件）；实际 `util/` 下同名文件共 338 行（_logger 114/video_limits 190/async_utils 34）职责单一；services/ 最大 ffmpeg_service.py 仅 502 行，职责单一 |
 
 > 验证限制：本机内存 3.7GB，重型 DOM 测试（20 个 `*_platform_dom.py`）多次 OOM 未跑全；
 > kuaishou/xiaohongshu/bilibili 三个代表性 DOM 已通过。全量验证在 CI 进行。
