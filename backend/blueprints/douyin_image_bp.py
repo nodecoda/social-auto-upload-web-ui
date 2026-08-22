@@ -3,7 +3,6 @@
 使用CloakBrowser来请求抖音API，避免反检测
 """
 
-import sqlite3
 import sys
 from pathlib import Path
 from urllib.parse import quote
@@ -14,7 +13,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
 from impl._browser import close_browser, create_browser, create_context
 from util._logger import get_channel_logger
+from util.account_db import get_account_cookie_file as _get_account_cookie_file_impl
 from util.async_utils import run_async
+
+
+def _get_account_cookie_file(account_id):
+    """取账号 cookie 文件名（共享实现,绑定本平台 type=3）。
+
+    原为每个 blueprint 内联 20 行 SQL, 已收敛到 util/account_db.py。
+    """
+    return _get_account_cookie_file_impl(account_id, 3)
 
 logger = get_channel_logger("douyin_image")
 
@@ -24,21 +32,6 @@ douyin_image_bp = Blueprint('douyin_image', __name__, url_prefix='/api/douyin-im
 def _get_cookie_path(cookie_file: str) -> str:
     """获取cookie文件的完整路径"""
     return str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-
-
-def _get_account_cookie_file(account_id: str) -> str:
-    """从数据库获取账号的cookie文件路径"""
-    conn = sqlite3.connect(str(Path(BASE_DIR / "db" / "database.db")))
-    cursor = conn.cursor()
-    if account_id:
-        cursor.execute("SELECT filePath FROM user_info WHERE id = ?", (account_id,))
-    else:
-        cursor.execute("SELECT filePath FROM user_info WHERE type = 3 LIMIT 1")
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        return None
-    return row[0]
 
 
 async def _fetch_with_browser(cookie_file: str, url: str, base_url: str = "https://creator.douyin.com/") -> dict:

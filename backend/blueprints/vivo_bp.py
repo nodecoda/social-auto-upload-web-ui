@@ -14,7 +14,6 @@ POI 搜索同源),不直接 fetch。
 """
 
 import asyncio
-import sqlite3
 import sys
 from pathlib import Path
 
@@ -25,7 +24,16 @@ from conf import BASE_DIR
 from impl._browser import close_browser, create_browser, create_context
 from services.test_video import get_test_video
 from util._logger import get_channel_logger
+from util.account_db import get_account_cookie_file as _get_account_cookie_file_impl
 from util.async_utils import run_async
+
+
+def _get_account_cookie_file(account_id):
+    """取账号 cookie 文件名（共享实现,绑定本平台 type=16）。
+
+    原为每个 blueprint 内联 20 行 SQL, 已收敛到 util/account_db.py。
+    """
+    return _get_account_cookie_file_impl(account_id, 16)
 
 logger = get_channel_logger("vivo")
 
@@ -37,22 +45,6 @@ _VIVO_UPLOAD_URL = "https://www.kaixinkan.com.cn/#/content/uploads"
 
 def _get_cookie_path(cookie_file: str) -> str:
     return str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-
-
-def _get_account_cookie_file(account_id: str) -> str | None:
-    """从数据库按账号 id 取 cookie 文件名;account_id 为空则取任意 VIVO 账号。"""
-    conn = sqlite3.connect(str(Path(BASE_DIR / "db" / "database.db")))
-    cursor = conn.cursor()
-    if account_id:
-        cursor.execute("SELECT filePath FROM user_info WHERE id = ?", (account_id,))
-    else:
-        # type=16 为 VIVO
-        cursor.execute("SELECT filePath FROM user_info WHERE type = 16 LIMIT 1")
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        return None
-    return row[0]
 
 
 # ======================================================================

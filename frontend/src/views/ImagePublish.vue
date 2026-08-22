@@ -500,8 +500,8 @@ appStore.loadAccountCheckMode()
 appStore.loadAutoSaveSettings()
 const route = useRoute()
 
-const IMAGE_PLATFORM_KEYS = ['xiaohongshu', 'douyin', 'kuaishou', 'weibo', 'alipay', 'weixin_gzh']
-const IMAGE_PLATFORMS = platformList.filter(p => IMAGE_PLATFORM_KEYS.includes(p.key))
+// 图集能力面由 platforms.ts 的 supportsImage 单源驱动（与后端 supports_image 对齐）
+const IMAGE_PLATFORMS = platformList.filter(p => p.supportsImage)
 
 // ========== Left Sidebar State ==========
 const expandedGroups = ref(new Set<string>())

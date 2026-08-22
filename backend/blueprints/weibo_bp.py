@@ -8,7 +8,6 @@
 """
 
 import asyncio
-import sqlite3
 import sys
 from pathlib import Path
 
@@ -20,7 +19,16 @@ from impl._browser import close_browser, create_browser, create_context
 from impl.weibo.platform import WeiboPlatform
 from services.test_video import get_test_video
 from util._logger import get_channel_logger
+from util.account_db import get_account_cookie_file as _get_account_cookie_file_impl
 from util.async_utils import run_async
+
+
+def _get_account_cookie_file(account_id):
+    """取账号 cookie 文件名（共享实现,绑定本平台 type=11）。
+
+    原为每个 blueprint 内联 20 行 SQL, 已收敛到 util/account_db.py。
+    """
+    return _get_account_cookie_file_impl(account_id, 11)
 
 logger = get_channel_logger("weibo")
 
@@ -32,25 +40,6 @@ _WEIBO_UPLOAD_URL = "https://weibo.com/upload/channel"
 
 def _get_cookie_path(cookie_file: str) -> str:
     return str(Path(BASE_DIR / "cookiesFile" / cookie_file))
-
-
-def _get_account_cookie_file(account_id):
-    """从 user_info 表查微博账号(type=11)的 cookie 文件名。"""
-    db_path = BASE_DIR / "db" / "database.db"
-    conn = sqlite3.connect(str(db_path))
-    try:
-        cursor = conn.cursor()
-        if account_id:
-            cursor.execute(
-                "SELECT filePath FROM user_info WHERE type = 11 AND id = ? LIMIT 1",
-                (account_id,),
-            )
-        else:
-            cursor.execute("SELECT filePath FROM user_info WHERE type = 11 LIMIT 1")
-        row = cursor.fetchone()
-        return row[0] if row else None
-    finally:
-        conn.close()
 
 
 @weibo_bp.route('/collections', methods=['GET'])

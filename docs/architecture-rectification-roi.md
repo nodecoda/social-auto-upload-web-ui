@@ -38,6 +38,10 @@
 | v3 A8 平台文件瘦身 | ✅ done | `ade9631`+`479db5f`+`98805e3`：weixin_gzh 2208→717、weibo 2069→817、alipay 2011→590、douyin 1862→703，按职责拆 `_dom_ops.py`/`_image_ops.py`（零行为变更，20/20 import OK，ruff 0 错，轻量 300+ passed，DOM 留 CI） |
 | v3 A9 services/ 审计 | ✅ done | `审计结论`：确认合理，不拆分——v3 描述的 `services/_logger.py`(4178)/`async_utils.py`(1326)/`video_limits.py`(8536) 系子代理路径误报（services/ 下无此三文件）；实际 `util/` 下同名文件共 338 行（_logger 114/video_limits 190/async_utils 34）职责单一；services/ 最大 ffmpeg_service.py 仅 502 行，职责单一 |
 
+| 剩余批次: 账号路径收敛 | ✅ done | `待提交`：`_get_account_cookie_file` 10 个 blueprint 内联 SQL 收敛到 `util/account_db.py`（共享实现 + 平台 type 薄包装），-166/+90 行，临时 DB 行为等价验证（覆盖 8 平台模式 A + weibo/kuaishou 变体） |
+| 剩余批次: 前端图集能力面 | ✅ done | `待提交`：确认前端早已按 6 平台白名单禁用图集入口（ImagePublish.vue 硬编码与后端 supports_image 一致）；本次改为 `platforms.ts` 的 `supportsImage` 字段单源（19 平台全声明）+ `ImagePublish.vue` 改 `filter(p => p.supportsImage)`，新增契约测试锁定 6 平台与后端一致 |
+| 剩余批次: 定时/封面上移 | ➖ 判定不适用 | v1/v2 review 称 `_set_schedule_time` 14 平台重复、封面 9-10 处重复——逐字节复核为**同名不同实现**：各平台 UI 框架（antd/Element-plus/Next/原生 DOM）差异巨大（15~132 行/函数），无公共 DOM 可提；强制上移会产生巨型 if/elif 平台分发，ROI 为负。维持平台内实现（A8 后由各平台 `_dom_ops.py` 承载） |
+
 > 验证限制：本机内存 3.7GB，重型 DOM 测试（20 个 `*_platform_dom.py`）多次 OOM 未跑全；
 > kuaishou/xiaohongshu/bilibili 三个代表性 DOM 已通过。全量验证在 CI 进行。
 > 未跑重型 DOM 测试为明确验证缺口，合并前需 CI 4 checks 全绿兜底。
