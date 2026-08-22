@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from conf import BASE_DIR
 from impl.registry import get_platform
+from services.telemetry import classify_error, record_event
 from util._logger import get_channel_logger
 
 # R7: 状态枚举 + 聚合逻辑的唯一真源（原本地定义迁移到 util/status.py，
@@ -227,6 +228,13 @@ class TaskQueue:
                 # 避免误触发「同一任务再次开浏览器重新上传」
                 task.status = TaskStatus.FAILED
                 task.error_message = _friendly_error_message(e)
+                # D1 遥测：页面漂移/选择器失败事件落库（失败兜底不影响主流程）
+                record_event(
+                    platform=task.platform,
+                    step="publish",
+                    error_type=classify_error(e),
+                    message=task.error_message,
+                )
 
             finally:
                 task.finished_at = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
