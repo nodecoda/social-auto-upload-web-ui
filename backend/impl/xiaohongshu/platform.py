@@ -20,7 +20,7 @@ from .._utils import (
     scrape_user_profile,
 )
 from ..base_platform import BasePlatform
-from ..primitives import get_params, set_schedule
+from ..primitives import fill_title, get_params, set_schedule
 
 logger = get_channel_logger("xiaohongshu")
 
@@ -669,7 +669,7 @@ async def _publish_single_image(
 
             # Fill title, description, tags
             logger.info("[填写标题] 开始填写标题、简介与标签...")
-            await _fill_title(page, title)
+            await fill_title(page, title, get_params("xiaohongshu", "FILL_TITLE"))
             await _fill_desc(page, desc)
 
             await page.keyboard.press("Space")
@@ -852,7 +852,7 @@ async def _upload_video_content(
 
     # --- Fill title (20 char limit) ---
     logger.info("[填写标题] 开始填写标题、简介与标签...")
-    await _fill_title(page, title)
+    await fill_title(page, title, get_params("xiaohongshu", "FILL_TITLE"))
     await _fill_desc(page, desc)
     await _fill_tags(page, tags)
     logger.info("[填写标题] 标题: %s", title)
@@ -984,10 +984,6 @@ async def _click_publish_button(page, btn_text: str) -> None:
         await cdp.detach()
 
 
-async def _fill_title(page, title: str) -> None:
-    """Fill the title input (max 20 characters)."""
-    container = page.locator('input[placeholder*="填写标题"]')
-    await container.fill(title[:20])
 
 
 async def _fill_desc(page, desc: str) -> None:

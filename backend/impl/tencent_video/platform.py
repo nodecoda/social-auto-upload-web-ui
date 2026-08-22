@@ -16,9 +16,9 @@ from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
 
 from .._browser import close_browser
-from .._utils import clear_and_type, get_account_name_by_cookie_file, parse_schedule_time, save_login_result
+from .._utils import get_account_name_by_cookie_file, parse_schedule_time, save_login_result
 from ..base_platform import BasePlatform
-from ..primitives import get_params, set_schedule
+from ..primitives import fill_title, get_params, set_schedule
 
 logger = get_channel_logger("tencent_video")
 
@@ -573,7 +573,7 @@ class TencentVideoPlatform(BasePlatform):
                     )
 
                 # Step 3: Fill title
-                await self._fill_title(page, title or desc)
+                await fill_title(page, title or desc, get_params("tencent_video", "FILL_TITLE"))
 
                 # Step 4: Upload cover image (按视频方向选主封面 + 选填)
                 if primary_cover:
@@ -611,30 +611,6 @@ class TencentVideoPlatform(BasePlatform):
         finally:
             await self.close_browser(browser, is_close_by_code=True)
 
-    @staticmethod
-    async def _fill_title(page, title: str):
-        """Fill the video title in the contenteditable div."""
-        if not title:
-            return
-        title_container = page.locator(
-            'div[data-field-name="videos.0.title"]'
-        ).first
-        if await title_container.count() == 0:
-            logger.warning("[填写标题] Title field not found")
-            return
-
-        title_div = title_container.locator(
-            'div.ProseMirror.ExEditor-cc-title-input'
-        ).first
-        if await title_div.count() == 0:
-            logger.warning("[填写标题] Title contenteditable div not found")
-            return
-
-        await title_div.wait_for(state="visible", timeout=10000)
-        await title_div.click()
-        # 清空后输入(跨平台:Mac 用 Cmd+A,其他用 Ctrl+A)
-        await clear_and_type(page, title[:80])
-        logger.info("[填写标题] 标题已填写: %s", title[:80])
 
     @staticmethod
     async def _upload_cover(page, cover_path: str, aspect: str = "16:9"):
