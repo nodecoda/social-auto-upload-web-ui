@@ -23,7 +23,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from conf import BASE_DIR
 from impl._utils import scrape_user_profile
 from impl.tiktok.platform import TiktokPlatform

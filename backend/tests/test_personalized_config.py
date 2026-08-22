@@ -84,6 +84,10 @@ class TestPublishTaskPersonalizedFields(unittest.TestCase):
         # 镜像 test_task_queue_writes.py:74-75 的模式,避免 test 间 DB_PATH 互扰
         from ext_api import task_queue as _tq_mod
         _tq_mod.DB_PATH = DB_PATH
+        # 同步发布域 DB_PATH（A1 唯一 writer 后 _insert_db 走 publish_history）,
+        # 避免批次运行时 publish_history.DB_PATH 被前序测试文件改写
+        from services import publish_history as _ph_mod
+        _ph_mod.DB_PATH = DB_PATH
         # 每个测试用独立 task id 避免互扰
         self.t = PublishTask(
             id="task-1",

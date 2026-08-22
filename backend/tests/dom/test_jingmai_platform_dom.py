@@ -12,7 +12,7 @@ from pathlib import Path
 from queue import Queue
 from unittest import mock
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from impl.jingmai import platform as jm
 
@@ -386,7 +386,7 @@ class TestJingmaiPublishVideo(unittest.TestCase):
     def test_publish_video_delegates_to_jd(self):
         platform = _make_platform()
         with mock.patch('impl.jd.platform.JdPlatform') as m_jd:
-            m_jd.return_value.publish_video.return_value = True
+            m_jd.return_value.publish_video = mock.AsyncMock(return_value=True)
             result = asyncio.run(platform.publish_video(title='T'))
         self.assertTrue(result)
         m_jd.return_value.publish_video.assert_called_once_with(title='T')
@@ -424,8 +424,8 @@ class TestJingmaiOpenCreatorCenter(unittest.TestCase):
         def _create_ctx(*a, **k):
             return _FakeSyncContext()
 
-        with mock.patch('impl.jingmai.platform.create_browser_sync', _create_sync), \
-                mock.patch('impl.jingmai.platform.create_context_sync', _create_ctx):
+        with mock.patch.object(platform, 'create_browser_sync', _create_sync), \
+                mock.patch.object(platform, 'create_context_sync', _create_ctx):
             asyncio.run(platform.open_creator_center('c.json'))
         # 线程启动（daemon），主线程不阻塞
         self.assertTrue(launched.wait(3))
@@ -507,8 +507,8 @@ class TestJingmaiOpenCreatorCenterDefensive(unittest.TestCase):
             launched.set()
             return _FakeSyncBrowser()
 
-        with mock.patch('impl.jingmai.platform.create_browser_sync', _create_sync), \
-                mock.patch('impl.jingmai.platform.create_context_sync',
+        with mock.patch.object(platform, 'create_browser_sync', _create_sync), \
+                mock.patch.object(platform, 'create_context_sync',
                            lambda *a, **k: _FakeSyncContext()):
             asyncio.run(platform.open_creator_center('c.json'))
         self.assertTrue(launched.wait(3))

@@ -17,7 +17,7 @@ from pathlib import Path
 from queue import Queue
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from conf import BASE_DIR
 from impl.jd.platform import (
     JdPlatform,
