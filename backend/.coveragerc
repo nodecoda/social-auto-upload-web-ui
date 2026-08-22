@@ -5,3 +5,10 @@ omit =
     tests/*
     test_*.py
     init_db.py
+    # 平台 DOM 交互层（platform.py / _*.py / picker.py）：
+    # 2026-08-22 DOM 契约测试移出仓库（→ /home/dev/fuck-dom），
+    # 页面将大改，此层改由外部 DOM 套件覆盖，不纳入仓库内覆盖率门槛。
+    # primitives/ 等平台无关逻辑保留计量。
+    impl/*/platform.py
+    impl/*/_*.py
+    impl/*/picker.py
