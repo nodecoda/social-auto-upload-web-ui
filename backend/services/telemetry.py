@@ -84,7 +84,8 @@ def query_events(platform: str | None = None, step: str | None = None,
                  error_type: str | None = None, since: str | None = None,
                  limit: int = 200) -> list[dict]:
     """遥测事件查询（按平台/步骤/错误类型/时间过滤，最近优先）。"""
-    where, params = [], []
+    where: list[str] = []
+    params: list[object] = []
     if platform:
         where.append("platform = ?")
         params.append(platform)
@@ -113,7 +114,8 @@ def query_events(platform: str | None = None, step: str | None = None,
 
 def failure_stats(platform: str | None = None, since: str | None = None) -> list[dict]:
     """D2 门槛统计：按 (platform, error_type) 分组的事件计数。"""
-    where, params = [], []
+    where: list[str] = []
+    params: list[object] = []
     if platform:
         where.append("platform = ?")
         params.append(platform)
