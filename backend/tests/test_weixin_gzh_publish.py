@@ -80,11 +80,11 @@ class TestBuildHomeUrl:
 class TestBuildPublishDatetime:
     def test_parsed(self):
         dt = datetime(2026, 8, 22, 10, 30, tzinfo=ZoneInfo('Asia/Shanghai'))
-        with patch('impl.weixin_gzh.platform.parse_schedule_time', return_value=[dt]):
+        with patch('impl.weixin_gzh._dom_ops.parse_schedule_time', return_value=[dt]):
             assert WeixinGzhPlatform._build_publish_datetime('2026-08-22 10:30', 1) == dt
 
     def test_empty_result_zero(self):
-        with patch('impl.weixin_gzh.platform.parse_schedule_time', return_value=[]):
+        with patch('impl.weixin_gzh._dom_ops.parse_schedule_time', return_value=[]):
             assert WeixinGzhPlatform._build_publish_datetime('bad', 1) == 0
 
 
