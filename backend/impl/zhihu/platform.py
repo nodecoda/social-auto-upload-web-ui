@@ -11,6 +11,7 @@ import asyncio
 import threading
 from pathlib import Path
 from queue import Queue
+from typing import Any
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -159,7 +160,7 @@ class ZhihuPlatform(BasePlatform):
         Returns:
             list[dict]: 按 SORT 排序的运营数据列表
         """
-        stats = []
+        stats: list[dict[str, Any]] = []
         # label_map: 知乎原始 DOM label text -> (ICON, SORT, NAME)
         # NAME 字段去掉"总数""总量"等冗余后缀,保留核心语义词
         # (关注者/赞同/阅读/喜欢/评论/收藏/分享/转发/播放)
@@ -495,11 +496,8 @@ class ZhihuPlatform(BasePlatform):
         creation_declaration: str = "内容无需标注",
         desc: str = "",
         thumbnail_path: str | None = None,
-    ) -> str:
-        """Returns:
-            空串 = 发布成功
-            非空串 = 错误消息（用于 publish_video 聚合后抛给 app.py）
-        """
+    ) -> None:
+        """发布失败直接 raise（异常传到 publish_video）；成功隐式返回 None。"""
         log_dir = Path(BASE_DIR / "logs")
         log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -764,7 +762,7 @@ class ZhihuPlatform(BasePlatform):
         if full_text and len(full_text) > 2000:
             full_text = full_text[:2000]
 
-        parsed_tags = []
+        parsed_tags: list = []
         for t in tags or []:
             if isinstance(t, str):
                 parsed_tags.extend(

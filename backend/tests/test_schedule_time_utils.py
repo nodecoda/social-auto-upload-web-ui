@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+# 运行时注入 utils.files_times fake, 类型不可静态解析
 """impl/_utils 调度与账号名契约测试（T26）。
 
 - parse_schedule_time: 全平台共享的定时解析核心

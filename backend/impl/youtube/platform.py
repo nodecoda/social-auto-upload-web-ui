@@ -133,6 +133,7 @@ class YoutubePlatform(BasePlatform):
                 uuid_v1 = uuid.uuid1()
                 cookie_filename = f"{uuid_v1}.json"
 
+            assert cookie_filename is not None
             await context.storage_state(path=cookies_dir / cookie_filename)
             logger.info(_msg(f"cookie saved as {cookie_filename}"))
 

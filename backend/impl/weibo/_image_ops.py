@@ -6,6 +6,7 @@
 """
 import asyncio
 from pathlib import Path
+from typing import Any
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -15,6 +16,18 @@ from .._utils import get_account_name_by_cookie_file
 logger = get_channel_logger("weibo")
 
 class WeiboImageOps:
+    # A8 拆分: 下列成员由宿主平台类绑定(_dom_ops staticmethod)或
+    # BasePlatform 提供,经 MRO 运行时可达;此处仅作 mypy 类型声明(Any 放宽),
+    # 不产生运行时属性(纯注解)。
+    _click_send: Any
+    _set_content_statement: Any
+    _set_description: Any
+    _upload_images: Any
+    _wait_for_image_publish_success: Any
+    close_browser: Any
+    create_browser: Any
+    create_context: Any
+
 
     async def publish_image(self, **kwargs) -> bool:
             """Publish an image album to Weibo（R6 起 async）。

@@ -6,6 +6,7 @@
 """
 import asyncio
 import os
+from typing import Any
 
 from util._logger import get_channel_logger
 
@@ -90,7 +91,7 @@ async def _upload_images(page, image_paths: list):
                 )
 
                 # 使用可变对象存储响应,避免闭包问题
-                upload_result = {"response": None}
+                upload_result: dict[str, Any] = {"response": None}
                 async def handle_upload_response(response, _upload_result=upload_result):
                     if "mass.alipay.com/file/auth/upload" in response.url:
                         try:

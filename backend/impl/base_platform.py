@@ -464,7 +464,9 @@ class BasePlatform(ABC):
         #   - 旧约定: tuple(name, avatar)                 （少数旧实现，stats 视为 []）
         # 不能直接 `name, avatar = await sync_profile(...)`: dict 会迭代出 3 个 key
         # 触发 "too many values to unpack (expected 2)"。
-        name, avatar, stats = "", "", []
+        name: str = ""
+        avatar: str = ""
+        stats: list = []
         try:
             status_queue.put(json.dumps({
                 "step": 3, "status": "running", "msg": "同步用户资料",
@@ -537,7 +539,7 @@ class BasePlatform(ABC):
                         "VALUES (?, ?, ?, 1, ?, ?)",
                         (self.platform_id, cookie_filename, name, avatar, stats_json),
                     )
-                    account_id_saved = cursor.lastrowid
+                    account_id_saved = int(cursor.lastrowid or 0)
                     _base_logger.info(
                         "[import_cookie] %s 新建账号 id=%s, name=%r, stats=%d项",
                         self.platform_name, account_id_saved, name, len(stats),

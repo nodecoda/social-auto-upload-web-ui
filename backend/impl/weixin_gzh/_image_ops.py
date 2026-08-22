@@ -6,6 +6,7 @@
 """
 import asyncio
 from pathlib import Path
+from typing import Any
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -15,6 +16,21 @@ from .._utils import get_account_name_by_cookie_file
 logger = get_channel_logger("weixin_gzh")
 
 class WeixinGzhImageOps:
+    # A8 拆分: 下列成员由 WeixinGzhPlatform 类绑定(_dom_ops staticmethod)或
+    # BasePlatform 提供,经 MRO 在运行时可达;此处仅作 mypy 类型声明(Any 放宽),
+    # 不产生运行时属性(纯注解)。
+    create_browser: Any
+    create_context: Any
+    close_browser: Any
+    _resolve_token: Any
+    _build_home_url: Any
+    _fill_publish_title: Any
+    _fill_description: Any
+    _set_collection: Any
+    _set_claim_source: Any
+    _build_publish_datetime: Any
+    _publish_scheduled: Any
+    _publish_immediate: Any
     _IMAGE_MENU_TEXT = "贴图"
     _IMAGE_TITLE_MAX = 20
     _IMAGE_DESC_MAX = 1000
@@ -266,6 +282,7 @@ class WeixinGzhImageOps:
             finally:
                 context.remove_listener("page", _on_new_page)
 
+    @staticmethod
     async def _upload_images(page, file_path_list: list):
             """上传多张图片(一次性 set_input_files)。
 

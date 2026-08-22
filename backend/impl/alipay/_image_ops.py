@@ -6,6 +6,7 @@
 """
 import asyncio
 from pathlib import Path
+from typing import Any
 
 from conf import BASE_DIR
 from util._logger import bind_account_name, get_channel_logger
@@ -20,6 +21,21 @@ _ALIPAY_SHORT_CONTENT_URL = (
 
 
 class AlipayImageOps:
+    # A8 拆分: 下列成员由宿主平台类绑定(_dom_ops staticmethod)或
+    # BasePlatform 提供,经 MRO 运行时可达;此处仅作 mypy 类型声明(Any 放宽),
+    # 不产生运行时属性(纯注解)。
+    _click_publish: Any
+    _set_author_statement: Any
+    _set_description_and_tags: Any
+    _set_music: Any
+    _set_title: Any
+    _upload_images: Any
+    _wait_for_image_form: Any
+    _wait_for_publish_success: Any
+    close_browser: Any
+    create_browser: Any
+    create_context: Any
+
 
     async def publish_image(self, **kwargs) -> bool:
             """支付宝图集发布（R6 起 async，与 publish_video 契约一致）。

@@ -21,6 +21,7 @@ import asyncio
 import sqlite3
 import threading
 from pathlib import Path
+from typing import Any
 
 from conf import BASE_DIR
 from util._logger import get_channel_logger
@@ -68,10 +69,10 @@ class GuanghePickerSession:
     def __init__(self, session_id: str, cookie_path: str):
         self.session_id = session_id
         self.cookie_path = cookie_path
-        self.browser = None
-        self.context = None
-        self.page = None
-        self.frame = None  # 发布页 iframe
+        self.browser: Any = None
+        self.context: Any = None
+        self.page: Any = None
+        self.frame: Any = None  # 发布页 iframe
         self.current_type: str | None = None  # 'product' / 'shop'
 
     # ---- 生命周期 ----
@@ -238,6 +239,7 @@ class GuanghePickerSession:
 
     async def _scrape(self) -> tuple[list, bool]:
         """抓取当前面板所有商品/店铺。"""
+        assert self.current_type is not None
         return await _link_ops.scrape(self.frame, self.current_type)
 
     async def _scrape_filters(self) -> dict:

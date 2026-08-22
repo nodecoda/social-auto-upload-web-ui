@@ -147,7 +147,7 @@ async def _search_music_via_browser(cookie_file: str, keyword: str, count: str =
             logger.info("[步骤4] 开始查找「添加音乐」...")
             count = await page.locator("*:has-text('添加音乐')").count()
             logger.info(f"[步骤4] 含「添加音乐」的元素数量: {count}")
-            for i in range(min(count, 10)):
+            for i in range(min(int(count), 10)):
                 el = page.locator("*:has-text('添加音乐')").nth(i)
                 info = await el.evaluate("e => ({ tag: e.tagName, cls: e.className.substring(0,80), text: e.textContent.trim().substring(0,50), visible: e.offsetParent !== null })")
                 logger.info(f"  [{i}] <{info['tag']}> class=\"{info['cls']}\" text=\"{info['text']}\" visible={info['visible']}")

@@ -564,7 +564,7 @@ def _normalize_music_detail(detail: dict) -> dict:
             cfg = _json.loads(configs_raw)
             audio_time = cfg.get("audioTime")
             if isinstance(audio_time, (int, float)):
-                duration = int(audio_time)
+                duration = str(int(audio_time))
         except (ValueError, TypeError):
             pass
 

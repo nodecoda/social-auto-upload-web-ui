@@ -10,6 +10,7 @@
 import asyncio
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 from conf import BASE_DIR
 from util._logger import get_channel_logger
@@ -55,10 +56,10 @@ class JdPickerSession:
     def __init__(self, account_id: str):
         self.account_id = account_id
         self.browser = None
-        self.page = None
+        self.page: Any = None
         # 京东微前端架构:发布表单在 iframe 里(self.frame),不在 top frame(self.page)。
         # 所有 link_ops 操作必须传 self.frame,否则永远找不到 .addgoods-upload 等元素。
-        self.frame = None
+        self.frame: Any = None
 
     async def _wait_publish_frame(self, timeout: float = 20):
         """等发布表单 iframe(委托给 link_ops.wait_publish_frame 公共函数)。"""
@@ -307,8 +308,8 @@ class JdPickerSession:
             logger.warning(f"关闭 picker 浏览器失败: {e}")
         finally:
             self.browser = None
-            self.page = None
-            self.frame = None
+            self.page: Any = None
+            self.frame: Any = None
 
 
 # ---------- session 池 ----------
