@@ -5,6 +5,7 @@
 
 import asyncio
 import json
+import sqlite3 as _sqlite3
 import sys
 import threading
 import uuid
@@ -158,6 +159,9 @@ def _friendly_error_message(exc: Exception) -> str:
 class TaskQueue:
     """基于 asyncio 的任务队列，在后台线程中运行"""
 
+    # C1: 失败注册表保留期（对齐 RQ FailedJobRegistry TTL），到期惰性清理
+    FAILED_TTL_DAYS = 7
+
     def __init__(self, max_concurrent: int = 2):
         self.queue: asyncio.Queue | None = None
         self.running: dict[str, PublishTask] = {}
@@ -169,6 +173,12 @@ class TaskQueue:
         self._started = False
         self._ready = threading.Event()  # _run_loop 初始化完成信号（防 start 返回即 add_task 的竞态）
         self._status_callbacks: list = []  # 状态变更回调
+        # C1: 失败注册表（task_id -> {"task": PublishTask, "failed_at": iso}），
+        # 对齐 RQ FailedJobRegistry：仅登记，requeue 由 retry_task 手动触发。
+        self.failed_registry: dict[str, dict] = {}
+        # C2: 健康计数心跳（对齐 arq health-check），随任务活动更新。
+        self.heartbeat: str = ""
+        self.started_at: str = ""
 
     def start(self):
         """在后台线程中启动事件循环，等待事件循环初始化完成再返回"""
@@ -181,6 +191,8 @@ class TaskQueue:
         if not self._ready.wait(timeout=10):
             raise RuntimeError("[TaskQueue] 事件循环启动超时")
         self._started = True
+        self.started_at = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
+        self._touch_heartbeat()
         logger.info(f"[TaskQueue] 启动，并发数={self.max_concurrent}")
 
     def _run_loop(self):
@@ -221,8 +233,15 @@ class TaskQueue:
                 if task.id in self.running:
                     del self.running[task.id]
                 self.completed.append(task)
+                # C1: 失败任务入注册表（仅登记供人工 requeue，不自动重试）
+                if task.status == TaskStatus.FAILED:
+                    self.failed_registry[task.id] = {
+                        "task": task,
+                        "failed_at": task.finished_at or "",
+                    }
                 self._update_db(task)
                 self._notify_status(task)
+                self._touch_heartbeat()
                 assert self.queue is not None
                 self.queue.task_done()
 
@@ -241,6 +260,12 @@ class TaskQueue:
             raise ValueError(
                 f"任务缺少 payload（R6 起所有发布任务必须携带 payload），task={task.id}"
             )
+
+        # C3: 幂等核对（pessimistic execution 的 postcondition 探测）——
+        # 若该 detail 已是 success（前序执行已确认发布成功），直接跳过不重复发布。
+        if task.detail_id and self._detail_already_success(task.detail_id):
+            logger.info(f"[TaskQueue] 幂等跳过: detail={task.detail_id} 已成功发布")
+            return True
 
         platform = get_platform(task.platform_type)
         if not platform:
@@ -291,32 +316,130 @@ class TaskQueue:
         return False
 
     def retry_task(self, task_id: str) -> bool:
-        """重试失败的任务"""
-        for task in list(self.completed):
-            if task.id == task_id and task.status == TaskStatus.FAILED:
-                task.retry_count = 0
-                task.error_message = ""
-                task.status = TaskStatus.QUEUED
-                self.completed.remove(task)
-                assert self.queue is not None and self._loop is not None
-                asyncio.run_coroutine_threadsafe(self.queue.put(task), self._loop)
-                self._update_db(task)
-                return True
-        return False
+        """重试失败的任务（C1: 对齐 RQ FailedJobRegistry.requeue）。
+
+        从失败注册表 requeue（requeue 后移出注册表）；兼容旧 completed 路径。
+        """
+        self._cleanup_failed_registry()
+        entry = self.failed_registry.pop(task_id, None)
+        task = entry["task"] if entry else None
+        if task is None:
+            for t in list(self.completed):
+                if t.id == task_id and t.status == TaskStatus.FAILED:
+                    task = t
+                    self.completed.remove(t)
+                    break
+        if task is None:
+            return False
+        task.retry_count = 0
+        task.error_message = ""
+        task.status = TaskStatus.QUEUED
+        assert self.queue is not None and self._loop is not None
+        asyncio.run_coroutine_threadsafe(self.queue.put(task), self._loop)
+        self._update_db(task)
+        self._touch_heartbeat()
+        return True
+
+    def get_failed_tasks(self) -> list[dict]:
+        """失败注册表快照（观测用，含失败时间；TTL 过期条目惰性清理）。"""
+        self._cleanup_failed_registry()
+        return [
+            {
+                "id": tid,
+                "platform": e["task"].platform,
+                "account": e["task"].account_name,
+                "title": e["task"].title,
+                "error_message": e["task"].error_message,
+                "failed_at": e["failed_at"],
+            }
+            for tid, e in self.failed_registry.items()
+        ]
+
+    def _cleanup_failed_registry(self):
+        """TTL 清理：删除超过保留期的失败条目（惰性触发）。"""
+        if not self.failed_registry:
+            return
+        now = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None)
+        expired = []
+        for tid, e in self.failed_registry.items():
+            try:
+                failed_at = datetime.fromisoformat(e.get("failed_at", ""))
+            except (ValueError, TypeError):
+                expired.append(tid)
+                continue
+            if (now - failed_at).days > self.FAILED_TTL_DAYS:
+                expired.append(tid)
+        for tid in expired:
+            self.failed_registry.pop(tid, None)
+
+    def _touch_heartbeat(self):
+        self.heartbeat = datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat()
 
     def get_status(self) -> dict:
-        """获取队列状态"""
+        """获取队列状态（C2: 含健康计数 j_* + heartbeat，对齐 arq health-check）。"""
         pending = self.queue.qsize() if self.queue else 0
         running_tasks = [
             {"id": t.id, "platform": t.platform, "account": t.account_name, "title": t.title}
             for t in self.running.values()
         ]
+        # 健康计数（内存快照口径；j_ongoing = pending + running）
+        j_complete = sum(1 for t in self.completed if t.status == TaskStatus.SUCCESS)
+        j_failed = sum(1 for t in self.completed if t.status == TaskStatus.FAILED)
+        j_cancelled = sum(1 for t in self.completed if t.status == TaskStatus.CANCELLED)
+        j_retried = sum(1 for t in self.completed if t.retry_count > 0)
         return {
             "pending": pending,
             "running": len(self.running),
             "completed": len(self.completed),
             "running_tasks": running_tasks,
+            # C2: 健康计数
+            "j_complete": j_complete,
+            "j_failed": j_failed,
+            "j_cancelled": j_cancelled,
+            "j_retried": j_retried,
+            "j_ongoing": pending + len(self.running),
+            "failed_count": len(self.failed_registry),
+            # C2: heartbeat（最近活动）+ 启动时间
+            "heartbeat": self.heartbeat,
+            "started_at": self.started_at,
         }
+
+    def recover_interrupted_tasks(self) -> int:
+        """重启恢复核对（C3: arq pessimistic execution 语义）。
+
+        启动时扫描 DB 中仍处于 queued/running 的 detail —— 它们是进程中断时
+        遗留的 in-flight 任务（本队列重启后内存已清空，不会被消费）。将其标记为
+        FAILED（error=服务重启中断），聚合 batch 状态。**不自动入队**（C4:
+        自动重试明确不引入，requeue 由人工经 retry_task 触发）。
+
+        Returns: 标记恢复的任务数。
+        """
+        
+        try:
+            conn = _sqlite3.connect(str(DB_PATH))
+            try:
+                rows = conn.execute(
+                    "SELECT id FROM publish_details WHERE status IN ('queued', 'running')"
+                ).fetchall()
+                interrupted_ids = [r[0] for r in rows]
+                if not interrupted_ids:
+                    return 0
+                from services.publish_history import _update_publish_result
+                for detail_id in interrupted_ids:
+                    _update_publish_result(
+                        detail_id=detail_id,
+                        status=TaskStatus.FAILED,
+                        finished_at=datetime.now(ZoneInfo("Asia/Shanghai")).replace(tzinfo=None).isoformat(),
+                        error_message="服务重启中断，可手动重试",
+                        retry_count=0,
+                    )
+                logger.info(f"[TaskQueue] 重启恢复: 标记 {len(interrupted_ids)} 个中断任务为可重跑")
+                return len(interrupted_ids)
+            finally:
+                conn.close()
+        except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
+            logger.info(f"[TaskQueue] 重启恢复核对失败: {e}")
+            return 0
 
     def on_status_change(self, callback):
         """注册状态变更回调"""
@@ -378,6 +501,20 @@ class TaskQueue:
             )
         except Exception as e:  # noqa: BLE001 -- 统一兜底并记录调试日志,防御性编码
             logger.info(f"[TaskQueue] 更新数据库失败: {e}")
+
+    def _detail_already_success(self, detail_id: str) -> bool:
+        """幂等核对: publish_details 该 detail 是否已成功（C3 postcondition 探测）。"""
+        try:
+            conn = _sqlite3.connect(str(DB_PATH))
+            try:
+                row = conn.execute(
+                    "SELECT status FROM publish_details WHERE id=?", (detail_id,)
+                ).fetchone()
+                return bool(row and row[0] == "success")
+            finally:
+                conn.close()
+        except Exception:  # noqa: BLE001 -- 探测失败视为未成功（安全侧：不跳过）
+            return False
 
 
 
