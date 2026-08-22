@@ -465,6 +465,7 @@ class TestGuangheSession:
         s = GuanghePickerSession('sid', '/cookies/x.json')
         with patch('impl.taobao_guanghe.picker.create_browser', AsyncMock(return_value=browser)), \
              patch('impl.taobao_guanghe.picker.create_context', AsyncMock(return_value=ctx)), \
+             patch('asyncio.sleep', AsyncMock()), \
              patch.object(s, '_find_publish_frame', AsyncMock(side_effect=RuntimeError('no iframe'))):
             try:
                 _run(s.open('product'))

@@ -6,7 +6,7 @@ _fetch_collections_via_browser:首页解析 token → 打开管理页 → 点类
 import asyncio
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from blueprints.weixin_gzh_bp import _fetch_collections_via_browser
@@ -130,8 +130,16 @@ def _cfg(**overrides):
 
 
 def test_token_parse_fail():
-    """首页 URL 无 token → 报错。"""
-    result, _ = _run(_fetch_collections_via_browser, _cfg(url='https://mp.weixin.qq.com/'))
+    """首页 URL 无 token → 报错。
+
+    生产 _resolve_token 硬编码 15s 真实 deadline；不 mock 时间会空转 15s，
+    用 fake loop.time 让轮询立即超时（与 test_weixin_gzh_publish 同款）。
+    """
+    fake = MagicMock()
+    fake.time.side_effect = [0, 0, 1000]
+    with patch('asyncio.get_running_loop', return_value=fake), \
+            patch('asyncio.sleep', AsyncMock()):
+        result, _ = _run(_fetch_collections_via_browser, _cfg(url='https://mp.weixin.qq.com/'))
     assert result['success'] is False
     assert '未能解析 token' in result['error']
 

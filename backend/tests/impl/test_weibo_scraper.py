@@ -2,7 +2,7 @@
 import asyncio
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 # 把 backend 目录加进 sys.path（与项目其他测试一致）
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -24,7 +24,8 @@ def _make_page(evaluate_result=None, evaluate_raises=False):
 def test_scraper_returns_empty_on_evaluate_exception():
     """evaluate 抛异常时返回空字符串。"""
     page = _make_page(evaluate_raises=True)
-    name, avatar = asyncio.run(scrape_weibo_profile(page))
+    with patch('asyncio.sleep', AsyncMock()):  # 生产 sleep(2) 真实等待,测试不等待
+        name, avatar = asyncio.run(scrape_weibo_profile(page))
     assert name == ""
     assert avatar == ""
 
@@ -36,5 +37,6 @@ def test_scraper_extracts_sinaimg_avatar():
         "avatar": "https://tvax2.sinaimg.cn/crop.0.0.512.512.180/abc123.jpg",
         "debug": [],
     })
-    _, avatar = asyncio.run(scrape_weibo_profile(page))
+    with patch('asyncio.sleep', AsyncMock()):  # 生产 sleep(2) 真实等待,测试不等待
+        _, avatar = asyncio.run(scrape_weibo_profile(page))
     assert avatar == "https://tvax2.sinaimg.cn/crop.0.0.512.512.180/abc123.jpg"

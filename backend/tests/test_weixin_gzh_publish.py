@@ -40,6 +40,19 @@ class _FakePage:
         return False
 
 
+
+def _immediate_timeout_loop():
+    """让 get_running_loop().time() 立即超时（配合 sleep mock 消灭真实空转）。
+
+    生产 _resolve_token/_wait_for_video_uploaded/_click_primary_when_enabled 用
+    asyncio.get_running_loop().time() 算 deadline；测试只 mock asyncio.sleep 后
+    循环变成真实时间高速空转（_resolve_token 硬编码 15s / timeout 用例 ~1s），
+    mock 分配爆炸拖慢整套测试。打桩 fake loop.time: 0→0→1000 两轮内退出。
+    """
+    fake = MagicMock()
+    fake.time.side_effect = [0, 0, 1000]  # deadline 计算 + 首轮进入 + 二轮超时
+    return patch('asyncio.get_running_loop', return_value=fake)
+
 def _run_async(coro):
     import asyncio
     return asyncio.run(coro)
@@ -212,7 +225,7 @@ class TestResolveToken:
 
     def test_failure_timeout(self):
         page = _FakePage(url='https://mp.weixin.qq.com/')
-        with patch('impl.weixin_gzh.platform.asyncio.sleep', AsyncMock()):
+        with _immediate_timeout_loop(), patch('asyncio.sleep', AsyncMock()):
             assert _run_async(WeixinGzhPlatform._resolve_token(page)) == ''
         assert page.events[0] == ('goto', 'https://mp.weixin.qq.com/')
 
@@ -230,7 +243,7 @@ class TestWaitForVideoUploaded:
 
     def test_timeout_raises(self):
         page = _FakePage(evaluate_results=[False, False])
-        with patch('impl.weixin_gzh.platform.asyncio.sleep', AsyncMock()), \
+        with _immediate_timeout_loop(), patch('asyncio.sleep', AsyncMock()), \
              pytest.raises(RuntimeError, match='等待超时'):
             _run_async(WeixinGzhPlatform._wait_for_video_uploaded(page, timeout_s=1))
 
@@ -242,7 +255,7 @@ class TestClickPrimaryWhenEnabled:
 
     def test_timeout(self):
         page = _FakePage(evaluate_results=[False])
-        with patch('impl.weixin_gzh.platform.asyncio.sleep', AsyncMock()), \
+        with _immediate_timeout_loop(), patch('asyncio.sleep', AsyncMock()), \
              pytest.raises(RuntimeError, match='保存'):
             _run_async(WeixinGzhPlatform._click_primary_when_enabled(page, '保存', timeout_s=1))
 
