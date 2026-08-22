@@ -9,6 +9,7 @@ and implement the abstract methods. Browser entry points delegate to
 import asyncio
 import json
 import sqlite3
+import time
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -220,16 +221,36 @@ class BasePlatform(ABC):
     ) -> tuple[list[dict], list[dict]]:
         """把 'k=v; k=v' 解析为 Playwright storage_state 的 (cookies, origins)。
 
-        只有 ``supports_cookie_import=True`` 的平台需要重写。基类的默认实现
-        直接抛错，由 :meth:`import_cookie` 触发并通过 status_queue 上报。
-        子类的典型实现参考 BaijiahaoPlatform。
+        A6/R9-2: 通用实现上移基类 —— 全部 cookie 归属 ``platform_cookie_domain``，
+        expires 给 7 天保守占位（sync_profile 跑完后回写真实 expires）。
+        带特殊规则的平台（如 csdn 的按名域名映射 + SESSION 双域）自行重写；
+        其余 supports_cookie_import=True 的平台无需再写本地副本。
 
         Returns:
             ``(cookies, origins)`` —— ``import_cookie`` 会原样写入 storage_state。
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} does not support cookie import"
+        cookies: list[dict] = []
+        expires = time.time() + self._IMPORT_COOKIE_EXPIRES_SECONDS
+        for pair in cookie_str.split(";"):
+            pair = pair.strip()
+            if not pair or "=" not in pair:
+                continue
+            name, _, value = pair.partition("=")
+            cookies.append({
+                "name": name.strip(),
+                "value": value.strip(),
+                "domain": self.platform_cookie_domain,
+                "path": "/",
+                "expires": expires,
+                "httpOnly": True,
+                "secure": False,
+                "sameSite": "Lax",
+            })
+        _base_logger.info(
+            "[%s] cookie 解析: %d 条, domain=%s",
+            self.platform_key, len(cookies), self.platform_cookie_domain,
         )
+        return cookies, []
 
     # Cookie import expires 保守占位（7 天）: 手工导入的 cookie 没有真实 expires，
     # Chromium 对 expires=-1（session）部分平台不收；sync_profile 跑完后会

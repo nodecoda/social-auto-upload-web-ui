@@ -9,7 +9,6 @@ Chromium) with automatic Playwright fallback.
 import asyncio
 import re
 import threading
-import time
 from pathlib import Path
 from queue import Queue
 
@@ -45,38 +44,6 @@ class DouyinPlatform(BasePlatform):
     supports_cookie_import = True
     # 抖音 cookie 全部由 .douyin.com 域下发，覆盖 creator.douyin.com 子域
     platform_cookie_domain = ".douyin.com"
-
-    def _parse_cookie_to_storage_state(
-        self, cookie_str: str
-    ) -> tuple[list[dict], list[dict]]:
-        """把 'k=v; k=v' 解析为 Playwright storage_state 的 (cookies, origins)。
-
-        - 全部 cookie 归属 ``platform_cookie_domain`` (.douyin.com)
-        - expires 给 7 天保守占位，sync_profile 跑完后 storage_state 会被
-          回写为真实的 cookie（含真实 expires + localStorage）
-        - localStorage 留空，由 sync_profile 自然补全
-        """
-        cookies: list[dict] = []
-        expires = time.time() + BasePlatform._IMPORT_COOKIE_EXPIRES_SECONDS
-        for pair in cookie_str.split(";"):
-            pair = pair.strip()
-            if not pair or "=" not in pair:
-                continue
-            name, _, value = pair.partition("=")
-            cookies.append({
-                "name": name.strip(),
-                "value": value.strip(),
-                "domain": self.platform_cookie_domain,
-                "path": "/",
-                "expires": expires,
-                "httpOnly": True,
-                "secure": False,
-                "sameSite": "Lax",
-            })
-        logger.info(
-            f"[douyin] cookie 解析: {len(cookies)} 条, domain={self.platform_cookie_domain}"
-        )
-        return cookies, []
 
     # ------------------------------------------------------------------
     # login — QR code scan via CloakBrowser
